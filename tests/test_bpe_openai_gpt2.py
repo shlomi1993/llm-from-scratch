@@ -16,54 +16,6 @@ from unittest.mock import patch, mock_open, MagicMock
 from bpe_openai_gpt2 import bytes_to_unicode, get_pairs, Encoder, get_encoder, download_vocab
 
 
-@pytest.fixture(scope="session", autouse=True)
-def cleanup_test_artifacts():
-    """
-    Clean up any test artifacts that might be created during testing.
-    """
-    yield
-    artifacts_to_cleanup = ['gpt2_model', 'test_model']
-    for artifact in artifacts_to_cleanup:
-        if os.path.exists(artifact):
-            try:
-                if os.path.isdir(artifact):
-                    shutil.rmtree(artifact)
-                else:
-                    os.remove(artifact)
-            except Exception:
-                pass  # Ignore cleanup errors
-
-
-@pytest.fixture(autouse=True)
-def ensure_clean_test_environment():
-    """
-    Ensure each test starts with a clean environment.
-    """
-    artifacts_to_cleanup = ['gpt2_model', 'test_model']
-    for artifact in artifacts_to_cleanup:
-        if os.path.exists(artifact):
-            try:
-                if os.path.isdir(artifact):
-                    shutil.rmtree(artifact)
-                else:
-                    os.remove(artifact)
-            except Exception:
-                pass
-
-    yield
-
-    # Clean up after test (just in case)
-    for artifact in artifacts_to_cleanup:
-        if os.path.exists(artifact):
-            try:
-                if os.path.isdir(artifact):
-                    shutil.rmtree(artifact)
-                else:
-                    os.remove(artifact)
-            except Exception:
-                pass
-
-
 class TestBytesToUnicode:
     """
     Test cases for the bytes_to_unicode function.

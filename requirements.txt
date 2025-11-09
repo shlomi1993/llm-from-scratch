@@ -1,3 +1,4 @@
+ipdb >= 0.13.13
 jupyterlab >= 4.0
 matplotlib >= 3.7.1
 nbformat>=5.7.0

@@ -1,3 +1,19 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # Python bytecode and cache files
 __pycache__/
 *.py[codz]
@@ -12,62 +28,11 @@ dist/
 *.egg
 MANIFEST
 
-# Testing and coverage
-.pytest_cache/
-.coverage
-.coverage.*
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-htmlcov/
-
-# Virtual environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# Virtual environment
 llm-from-scratch-venv/
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Project log files
-tests/logs/
-*.log
-
-# Machine learning and data files
-*.h5
-*.hdf5
-*.pkl
-*.pickle
-models/
-checkpoints/
-data/
+# Datasets
 datasets/
-!datasets/the-verdict.txt
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Development tools
-.mypy_cache/
-.ruff_cache/
-.pdm-python
-.pdm-build/
+# Log files
+*.log
