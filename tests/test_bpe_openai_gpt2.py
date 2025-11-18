@@ -7,7 +7,6 @@ tests for all functions and the Encoder class.
 
 import json
 import os
-import shutil
 import tempfile
 import pytest
 
