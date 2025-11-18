@@ -1,0 +1,15 @@
+# Chapter 3 Main Code Summary
+
+## Overview
+
+This directory contains the core implementation of attention mechanisms, which form the foundation of Large Language Models. The main notebook (`ch03.ipynb`) provides a comprehensive journey through building attention mechanisms from scratch, starting with the fundamental problem of modeling long sequences and progressing to sophisticated multi-head attention. The `multihead-attention.ipynb` notebook distills the key implementation alongside the data loading pipeline from Chapter 2, creating a complete foundation for transformer models.
+
+The chapter addresses the critical limitation of earlier sequence models that struggled to capture long-range dependencies in text. Traditional encoder-decoder RNNs processed sequences sequentially, creating a bottleneck where information from early tokens could be lost or diluted by the time the model processed later tokens. Attention mechanisms solve this by allowing the model to directly access any part of the input sequence when processing each token, creating dynamic connections based on content similarity rather than positional proximity.
+
+The notebooks progressively build complexity, starting with a simple self-attention mechanism without trainable weights to illustrate the core concept. This evolves into sophisticated implementations with trainable query, key, and value projections that learn optimal attention patterns during training. The journey includes implementing causal attention masks that prevent the model from "cheating" by looking at future tokens during training, and dropout mechanisms that improve generalization by randomly masking some attention weights.
+
+The culmination is multi-head attention, which runs multiple attention mechanisms in parallel, each potentially focusing on different types of relationships in the data. Some attention heads might focus on syntactic relationships while others capture semantic connections, allowing the model to simultaneously process multiple aspects of language understanding. The implementation demonstrates both conceptual approaches (stacking multiple single-head layers) and the efficient weight-splitting approach used in production systems.
+
+## Lesson Learned
+
+Attention mechanisms transform how neural networks process sequences by replacing sequential bottlenecks with direct, content-based connections between any two positions in the input. The key insight is that instead of forcing information to flow through a fixed sequential path, attention computes dynamic weights that determine how much each input position should influence the representation of every other position. Multi-head attention amplifies this by running multiple attention mechanisms in parallel, enabling the model to simultaneously capture different types of relationships and dependencies that exist in natural language.
