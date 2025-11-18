@@ -1,6 +1,6 @@
 # Embeddings vs Linear Layers Notebook Summary
 
-## Summary
+## Overview
 
 This notebook reveals a fundamental insight about how neural networks handle discrete tokens: embedding layers and linear layers are mathematically equivalent but computationally very different. When one have a token ID (like 5), one could either use an embedding layer to directly look up row 5 from a weight matrix, or one could create a one-hot vector [0,0,0,0,0,1,0,0,...] and multiply it by a linear layer's weights. Both approaches give identical results, but the embedding lookup is much faster because it skips all the wasteful multiplications by zero. The notebook demonstrates this equivalence step-by-step with code examples, showing that while one *could* use matrix multiplication on one-hot vectors, embedding layers are the smart, efficient choice for handling tokens in language models.
 

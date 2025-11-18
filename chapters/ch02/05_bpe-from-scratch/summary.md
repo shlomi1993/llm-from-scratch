@@ -1,6 +1,6 @@
 # BPE From Scratch Notebooks Summary
 
-## Summary
+## Overview
 
 These two notebooks provide a complete educational journey through building Byte Pair Encoding (BPE) tokenizers from scratch - the same algorithm used in GPT-2, GPT-4, and Llama models. The simple version focuses on clarity and understanding the core algorithm, while the full version implements a production-ready tokenizer that can load OpenAI's GPT-2 vocabulary and handle complex text preprocessing. Together, they reveal how BPE transforms the problem of "too many characters" into efficient subword tokens by iteratively merging the most frequent character pairs. This is the secret behind why modern language models can handle any text efficiently - instead of having a unique token for every possible word, BPE learns common patterns like "th", "ing", or "tion" that appear across many words.
 
