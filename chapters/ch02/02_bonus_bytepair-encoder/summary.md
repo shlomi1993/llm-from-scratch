@@ -1,6 +1,6 @@
 # BPE Tokenizer Comparison Notebook Summary
 
-## Summary
+## Overview
 
 This notebook is like a "tokenizer showdown" that compares four different ways to break text into tokens that language models can understand. The key insight is that while all these tokenizer implementations produce identical results (they all turn "Hello, world!" into the same sequence of numbers), they vary dramatically in speed and ease of use. Tiktoken (OpenAI's Rust-based version) is the fastest, Hugging Face provides the most integration features, the original OpenAI implementation serves as the reference standard, and the custom from-scratch version helps to understand how the Byte Pair Encoding algorithm actually works under the hood. The notebook runs performance benchmarks to show these speed differences and demonstrates that choosing the right tokenizer depends on whether we prioritize speed (production), integration (research), or learning (education).
 

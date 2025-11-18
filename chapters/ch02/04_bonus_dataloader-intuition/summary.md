@@ -1,6 +1,6 @@
 # DataLoader Intuition Notebook Summary
 
-## Summary
+## Overview
 
 This notebook simplifies the concept of how language model dataloaders work by replacing complex text tokenization with simple sequential numbers (0, 1, 2, 3, ..., 1000). Instead of dealing with words and tokens that can be hard to track, one can clearly see how the "sliding window" creates training examples: if the sequence is `[0, 1, 2, 3]`, the model learns to predict `[1, 2, 3, 4]`. The key insight is that language models are essentially learning to predict the next number (or token) in a sequence. By using numbers instead of words, we can easily visualize how different stride values create overlapping or non-overlapping training examples, how batching groups multiple sequences together, and how shuffling affects the order. This makes the abstract concept of "next token prediction" concrete and intuitive.
 

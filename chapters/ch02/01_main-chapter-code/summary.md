@@ -1,6 +1,6 @@
 # Data Loading Pipeline Notebook Summary
 
-## Summary
+## Overview
 
 This notebook shows the complete "assembly line" that turns raw text into training data for a GPT-like language model. The key insight is that language models learn by predicting the next token, so one need to create thousands of input-target pairs from the text. The pipeline uses a "sliding window" approach: it takes a book, chops it into overlapping sequences (like "Hello world" → "world is"), tokenizes these sequences into numbers that the model understands, and then creates batches for efficient training. The notebook also demonstrates how embeddings work - converting token IDs into dense vectors that capture semantic meaning, and adding positional information so the model knows where each token sits in the sequence. Everything is packaged into PyTorch's DataLoader system for smooth, batched training.
 
