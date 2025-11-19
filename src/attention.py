@@ -851,8 +851,14 @@ class MHAPyTorchFlexAttention(nn.Module):
 
         Raises:
             AssertionError: If d_out is not divisible by num_heads
+            RuntimeError: If PyTorch version is below 2.5
         """
         super().__init__()
+
+        # Check PyTorch version (FlexAttention requires PyTorch 2.5+)
+        torch_version = tuple(map(int, torch.__version__.split('.')[:2]))
+        if torch_version < (2, 5):
+            raise RuntimeError("MHAPyTorchFlexAttention requires PyTorch 2.5+ with CUDA or MPS support")
 
         assert d_out % num_heads == 0, "d_out is indivisible by num_heads"
 
@@ -864,9 +870,10 @@ class MHAPyTorchFlexAttention(nn.Module):
         self.qkv = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
         self.proj = nn.Linear(d_out, d_out)
         self.dropout = dropout
+        # Create block mask on CPU (FlexAttention only supports CPU, CUDA, or HPU)
         # self.register_buffer("block_mask", create_block_mask(causal, B=None, H=None, Q_LEN=context_length, KV_LEN=context_length))
         # `create_block_mask` function does not support buffers, yet
-        self.block_mask = create_block_mask(causal, B=None, H=None, Q_LEN=context_length, KV_LEN=context_length)
+        self.block_mask = create_block_mask(causal, B=None, H=None, Q_LEN=context_length, KV_LEN=context_length, device='cpu')
 
 
     def forward(self, x: Tensor) -> Tensor:
@@ -890,8 +897,12 @@ class MHAPyTorchFlexAttention(nn.Module):
             FlexAttention uses block-sparse patterns for efficient memory usage and supports
             custom masking functions. The causal mask is created using create_block_mask with
             the causal function to ensure autoregressive behavior.
+            
+            FlexAttention only supports CPU, CUDA, and HPU devices. For MPS devices,
+            the computation is moved to CPU and then back to the original device.
         """
         batch_size, num_tokens, embed_dim = x.shape
+        original_device = x.device
 
         # (b, num_tokens, embed_dim) --> (b, num_tokens, 3 * embed_dim)
         qkv = self.qkv(x)
@@ -905,17 +916,24 @@ class MHAPyTorchFlexAttention(nn.Module):
         # (3, b, num_heads, num_tokens, head_dim) -> 3 times (b, num_heads, num_tokens, head_dim)
         queries, keys, values = qkv
 
-        # use_dropout = 0. if not self.training else self.dropout
+        # FlexAttention only supports CPU, CUDA, and HPU devices
+        # Move to CPU if on unsupported device (like MPS)
+        compute_device = 'cpu' if original_device.type not in ['cpu', 'cuda', 'hpu'] else original_device
 
-        # Ensure attn_mask is compatible with expected shape and `batch_first=True`
-        # No need to manually adjust for num_heads; ensure it's right for the sequence
-        if self.context_length >= num_tokens:
-            attn_mask = self.block_mask[:num_tokens, :num_tokens]
-        else:
-            attn_mask = self.block_mask[:self.context_length, :self.context_length]
+        if original_device.type not in ['cpu', 'cuda', 'hpu']:
+            queries = queries.to('cpu')
+            keys = keys.to('cpu')
+            values = values.to('cpu')
+
+        # Create block mask with correct dimensions for current sequence length
+        attn_mask = create_block_mask(causal, B=None, H=None, Q_LEN=num_tokens, KV_LEN=num_tokens, device=compute_device)
 
         # Leverage PyTorch's built-in FlexAttention with the block mask
         context_vec = flex_attention(queries, keys, values, block_mask=attn_mask)
+
+        # Move back to original device if necessary
+        if original_device.type not in ['cpu', 'cuda', 'hpu']:
+            context_vec = context_vec.to(original_device)
 
         # Combine heads, where self.d_out = self.num_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)
