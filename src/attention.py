@@ -1,6 +1,7 @@
 import math
 import torch
 import torch.nn as nn
+import torch.nn.attention.flex_attention
 
 from torch import Tensor
 from torch.nn.attention.flex_attention import flex_attention, create_block_mask
@@ -897,7 +898,7 @@ class MHAPyTorchFlexAttention(nn.Module):
             FlexAttention uses block-sparse patterns for efficient memory usage and supports
             custom masking functions. The causal mask is created using create_block_mask with
             the causal function to ensure autoregressive behavior.
-            
+
             FlexAttention only supports CPU, CUDA, and HPU devices. For MPS devices,
             the computation is moved to CPU and then back to the original device.
         """
@@ -928,8 +929,17 @@ class MHAPyTorchFlexAttention(nn.Module):
         # Create block mask with correct dimensions for current sequence length
         attn_mask = create_block_mask(causal, B=None, H=None, Q_LEN=num_tokens, KV_LEN=num_tokens, device=compute_device)
 
-        # Leverage PyTorch's built-in FlexAttention with the block mask
-        context_vec = flex_attention(queries, keys, values, block_mask=attn_mask)
+        # For testing/debugging purposes, disable the compile warning
+        # In production, you would want to use torch.compile(flex_attention) on CUDA
+        original_debug_setting = getattr(torch.nn.attention.flex_attention, '_FLEX_ATTENTION_DISABLE_COMPILE_DEBUG', False)
+        torch.nn.attention.flex_attention._FLEX_ATTENTION_DISABLE_COMPILE_DEBUG = True
+
+        try:
+            # Leverage PyTorch's built-in FlexAttention with the block mask
+            context_vec = flex_attention(queries, keys, values, block_mask=attn_mask)
+        finally:
+            # Restore original debug setting
+            torch.nn.attention.flex_attention._FLEX_ATTENTION_DISABLE_COMPILE_DEBUG = original_debug_setting
 
         # Move back to original device if necessary
         if original_device.type not in ['cpu', 'cuda', 'hpu']:
