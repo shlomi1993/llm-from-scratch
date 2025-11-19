@@ -725,6 +725,48 @@ class TestMultiHeadAttentionWrapper:
             wrong_dims = torch.randn(6, 3)  # 2D instead of 3D
             mha(wrong_dims)
 
+    def test_large_scale_transformer_configuration(self):
+        """
+        Test MultiHeadAttentionWrapper with realistic transformer configuration.
+
+        This test uses parameters similar to those found in large language models:
+        - embed_dim=768 (common embedding dimension)
+        - 12 attention heads
+        - context_length=1024 (typical context window)
+        - batch_size=8
+        """
+        # Set up realistic transformer parameters
+        embed_dim = 768
+        context_len = 1024
+        batch_size = 8
+        device = torch.device("cpu")  # Use CPU for testing
+
+        # Create embeddings tensor with realistic dimensions
+        embeddings = torch.randn(batch_size, context_len, embed_dim)
+
+        # Initialize the multi-head attention wrapper with transformer-like configuration
+        mha_ch03_wrapper = MultiHeadAttentionWrapper(
+            d_in=embed_dim,
+            d_out=embed_dim//12,  # 768//12 = 64 dimensions per head
+            context_length=context_len,
+            dropout=0.0,
+            num_heads=12,
+            qkv_bias=False
+        ).to(device)
+
+        # Forward pass
+        out = mha_ch03_wrapper(embeddings)
+
+        # Verify the output shape
+        expected_shape = torch.Size([8, 1024, 768])  # batch_size, seq_len, d_out * num_heads (64 * 12 = 768)
+        assert out.shape == expected_shape, f"Expected shape {expected_shape}, got {out.shape}"
+
+        # Additional checks
+        assert isinstance(out, torch.Tensor), "Output should be a tensor"
+        assert not torch.isnan(out).any(), "Output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Output should contain finite values"
+        assert out.dtype == torch.float32, f"Expected float32, got {out.dtype}"
+
 
 class TestMultiHeadAttention:
     """
@@ -996,3 +1038,56 @@ class TestMultiHeadAttention:
 
         with pytest.raises(Exception):  # Should fail on tensor operations
             mha(wrong_input_4d)
+
+    def test_large_scale_transformer_configuration_efficient(self):
+        """
+        Test efficient MultiHeadAttention with realistic transformer configuration.
+
+        This test uses parameters similar to those found in large language models:
+        - embed_dim=768 (common embedding dimension)
+        - 12 attention heads
+        - context_length=1024 (typical context window)
+        - batch_size=8
+
+        The key difference from MultiHeadAttentionWrapper is that this efficient implementation:
+        - Uses d_out=768 total (not per head)
+        - Computes all heads simultaneously
+        - Includes output projection layer
+        """
+        # Set up realistic transformer parameters
+        embed_dim = 768
+        context_len = 1024
+        batch_size = 8
+        device = torch.device("cpu")  # Use CPU for testing
+
+        # Create embeddings tensor with realistic dimensions
+        embeddings = torch.randn(batch_size, context_len, embed_dim)
+
+        # Initialize the efficient multi-head attention with transformer-like configuration
+        # Note: d_out=embed_dim (total), not per head like in MultiHeadAttentionWrapper
+        mha_ch03_efficient = MultiHeadAttention(
+            d_in=embed_dim,
+            d_out=embed_dim,  # Total output dimension (768)
+            context_length=context_len,
+            dropout=0.0,
+            num_heads=12,
+            qkv_bias=False
+        ).to(device)
+
+        # Forward pass
+        out = mha_ch03_efficient(embeddings)
+
+        # Verify the output shape
+        expected_shape = torch.Size([8, 1024, 768])  # batch_size, seq_len, d_out (768 total)
+        assert out.shape == expected_shape, f"Expected shape {expected_shape}, got {out.shape}"
+
+        # Additional checks
+        assert isinstance(out, torch.Tensor), "Output should be a tensor"
+        assert not torch.isnan(out).any(), "Output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Output should contain finite values"
+        assert out.dtype == torch.float32, f"Expected float32, got {out.dtype}"
+
+        # Verify internal dimensions are correctly calculated
+        assert mha_ch03_efficient.head_dim == 64, f"Expected head_dim=64 (768/12), got {mha_ch03_efficient.head_dim}"
+        assert mha_ch03_efficient.d_out == 768, f"Expected d_out=768, got {mha_ch03_efficient.d_out}"
+        assert mha_ch03_efficient.num_heads == 12, f"Expected num_heads=12, got {mha_ch03_efficient.num_heads}"
