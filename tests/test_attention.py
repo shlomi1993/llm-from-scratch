@@ -2763,9 +2763,7 @@ class TestMHAPyTorchClass:
         dropout = 0.1
 
         mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads,
-            context_length=16, dropout=dropout, qkv_bias=True
-        )
+            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16, dropout=dropout, qkv_bias=True)
 
         # Check MultiheadAttention configuration
         assert mha.multihead_attn.embed_dim == d_out
