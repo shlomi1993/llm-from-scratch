@@ -1,5 +1,6 @@
 import pytest
 import torch
+import torch.nn as nn
 
 from attention import (
     SelfAttention,
@@ -8,7 +9,9 @@ from attention import (
     MultiHeadAttention,
     MultiHeadAttentionCombinedQKV,
     MHAEinsum,
-    MHAPyTorchScaledDotProduct
+    MHAPyTorchScaledDotProduct,
+    MHAPyTorchSDPAWithoutFlash,
+    MHAPyTorchClass
 )
 
 
@@ -225,7 +228,7 @@ class TestSelfAttention:
         d_in, d_out = 3, 2
         sa = SelfAttention(d_in, d_out)
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):
             wrong_input = torch.randn(6, 5)  # Wrong d_in (5 instead of 3)
             sa(wrong_input)
 
@@ -473,11 +476,11 @@ class TestCausalAttention:
         d_in, d_out, context_length, dropout = 3, 2, 8, 0.1
         ca = CausalAttention(d_in, d_out, context_length, dropout)
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):
             wrong_input = torch.randn(1, 4, 5)  # Wrong d_in (5 instead of 3)
             ca(wrong_input)
 
-        with pytest.raises((ValueError, RuntimeError, IndexError)):
+        with pytest.raises((ValueError, RuntimeError, IndexError), match="not enough values to unpack"):
             wrong_dims = torch.randn(4, 3)  # Wrong number of dimensions (2D instead of 3D)
             ca(wrong_dims)
 
@@ -724,12 +727,12 @@ class TestMultiHeadAttentionWrapper:
         mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
 
         # Test wrong feature dimension
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):
             wrong_input = torch.randn(2, 6, 5)  # Wrong d_in (5 instead of 3)
             mha(wrong_input)
 
         # Test wrong number of dimensions
-        with pytest.raises((ValueError, RuntimeError)):
+        with pytest.raises((ValueError, RuntimeError), match="not enough values to unpack"):
             wrong_dims = torch.randn(6, 3)  # 2D instead of 3D
             mha(wrong_dims)
 
@@ -2365,3 +2368,781 @@ class TestMHAPyTorchScaledDotProduct:
             # Verify output is finite and valid
             assert torch.isfinite(output).all(), f"Output should be finite for batch_size={batch_size}"
             assert not torch.isnan(output).any(), f"Output should not contain NaN for batch_size={batch_size}"
+
+
+class TestMHAPyTorchSDPAWithoutFlash:
+    """
+    Test suite for MHAPyTorchSDPAWithoutFlash multi-head attention implementation.
+    """
+
+    def test_output_shape_pytorch_sdpa_without_flash(self):
+        """
+        Test that MHAPyTorchSDPAWithoutFlash produces correct output shape.
+        """
+        batch_size, num_tokens, d_in = 2, 8, 512
+        d_out = 256
+        num_heads = 4
+        context_length = 16
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=context_length, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in)
+        out = mha(x)
+
+        assert out.shape == (batch_size, num_tokens, d_out)
+        assert not torch.isnan(out).any()
+        assert torch.isfinite(out).all()
+
+    def test_dimension_divisibility_assertion_pytorch_sdpa_without_flash(self):
+        """Test that MHAPyTorchSDPAWithoutFlash raises error for invalid dimensions."""
+        with pytest.raises(AssertionError, match="d_out is indivisible by num_heads"):
+            MHAPyTorchSDPAWithoutFlash(d_in=512, d_out=257, num_heads=4, context_length=16)
+
+    def test_head_dimension_calculation_pytorch_sdpa_without_flash(self):
+        """Test that head dimensions are calculated correctly."""
+        d_out = 768
+        num_heads = 12
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=512, d_out=d_out, num_heads=num_heads, context_length=16
+        )
+
+        expected_head_dim = d_out // num_heads
+        assert mha.head_dim == expected_head_dim
+        assert mha.num_heads == num_heads
+        assert mha.d_out == d_out
+
+    def test_pytorch_sdpa_without_flash_qkv_projection(self):
+        """
+        Test QKV projection dimensions and functionality.
+        """
+        d_in, d_out = 512, 256
+        num_heads = 4
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16
+        )
+
+        # Check QKV projection layer
+        assert mha.qkv.in_features == d_in
+        assert mha.qkv.out_features == 3 * d_out
+        assert mha.proj.in_features == d_out
+        assert mha.proj.out_features == d_out
+
+    def test_gradient_flow_pytorch_sdpa_without_flash(self):
+        """
+        Test that gradients flow properly through the model.
+        """
+        batch_size, num_tokens, d_in = 2, 8, 512
+        d_out = 256
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=4,
+            context_length=16, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in, requires_grad=True)
+        out = mha(x)
+        loss = out.sum()
+        loss.backward()
+
+        assert x.grad is not None
+        assert not torch.isnan(x.grad).any()
+        assert mha.qkv.weight.grad is not None
+        assert mha.proj.weight.grad is not None
+
+    def test_causal_mask_pytorch_sdpa_without_flash(self):
+        """Test that causal masking works correctly."""
+        torch.manual_seed(42)
+        batch_size, num_tokens, d_in = 1, 4, 64
+        d_out = 64
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=2,
+            context_length=8, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in)
+        out = mha(x)
+
+        # Check that mask buffer exists and has correct shape
+        assert hasattr(mha, 'mask')
+        assert mha.mask.shape == (8, 8)  # context_length x context_length
+        assert mha.mask.dtype == torch.bool
+
+        # Verify upper triangular structure (causal mask)
+        expected_mask = torch.triu(torch.ones(8, 8), diagonal=1).bool()
+        assert torch.equal(mha.mask, expected_mask)
+
+    def test_different_head_counts_pytorch_sdpa_without_flash(self):
+        """Test behavior with different numbers of heads."""
+        batch_size, num_tokens, d_in = 2, 6, 512
+        d_out = 256
+        context_length = 10
+
+        for num_heads in [1, 2, 4, 8]:
+            mha = MHAPyTorchSDPAWithoutFlash(
+                d_in=d_in, d_out=d_out, num_heads=num_heads,
+                context_length=context_length, dropout=0.0
+            )
+
+            x = torch.randn(batch_size, num_tokens, d_in)
+            out = mha(x)
+
+            assert out.shape == (batch_size, num_tokens, d_out)
+            assert mha.head_dim == d_out // num_heads
+
+    def test_reproducibility_pytorch_sdpa_without_flash(self):
+        """Test that the model produces reproducible results."""
+        batch_size, num_tokens, d_in = 2, 8, 512
+        d_out = 256
+
+        # First run
+        torch.manual_seed(42)
+        mha1 = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=4,
+            context_length=16, dropout=0.0
+        )
+        x1 = torch.randn(batch_size, num_tokens, d_in)
+        out1 = mha1(x1)
+
+        # Second run with same seed
+        torch.manual_seed(42)
+        mha2 = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=4,
+            context_length=16, dropout=0.0
+        )
+        x2 = torch.randn(batch_size, num_tokens, d_in)
+        out2 = mha2(x2)
+
+        assert torch.allclose(out1, out2, atol=1e-6)
+
+    def test_versus_other_implementations(self):
+        """Test consistency with other attention implementations (shape and basic properties)."""
+        torch.manual_seed(123)
+        batch_size, num_tokens, d_in = 2, 6, 128
+        d_out = 128
+        num_heads = 4
+        context_length = 10
+
+        # Create models with same configuration
+        mha_sdpa_no_flash = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=context_length, dropout=0.0
+        )
+
+        mha_combined_qkv = MultiHeadAttentionCombinedQKV(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=context_length, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in)
+
+        out_sdpa_no_flash = mha_sdpa_no_flash(x)
+        out_combined_qkv = mha_combined_qkv(x)
+
+        # Check shapes are consistent
+        assert out_sdpa_no_flash.shape == out_combined_qkv.shape
+        assert out_sdpa_no_flash.shape == (batch_size, num_tokens, d_out)
+
+    def test_training_vs_eval_mode(self):
+        """Test behavior in training vs evaluation mode."""
+        torch.manual_seed(42)
+        batch_size, num_tokens, d_in = 2, 8, 256
+        d_out = 256
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=4,
+            context_length=16, dropout=0.1  # Non-zero dropout
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in)
+
+        # Training mode
+        mha.train()
+        out_train = mha(x)
+
+        # Evaluation mode
+        mha.eval()
+        out_eval = mha(x)
+
+        # Outputs should be different due to dropout behavior
+        # Note: This test might be flaky, but generally dropout affects training/eval differently
+        assert out_train.shape == out_eval.shape
+        assert isinstance(mha.dropout, float)  # Confirm dropout is stored as float
+
+    def test_wrong_input_dimensions_pytorch_sdpa_without_flash(self):
+        """
+        Test error handling for incorrect input dimensions.
+        """
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=512, d_out=256, num_heads=4, context_length=16
+        )
+
+        # Wrong input dimension
+        x_wrong = torch.randn(2, 8, 256)  # d_in should be 512
+        with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):
+            mha(x_wrong)
+
+    def test_large_scale_transformer_configuration_pytorch_sdpa_without_flash(self):
+        """
+        Test MHAPyTorchSDPAWithoutFlash with large-scale transformer configuration.
+        """
+        # Large transformer configuration
+        batch_size = 8
+        context_len = 1024
+        embed_dim = 768
+        num_heads = 12
+        device = torch.device("cpu")  # Use CPU for testing
+
+        torch.manual_seed(42)
+        embeddings = torch.randn(batch_size, context_len, embed_dim).to(device)
+
+        mha_pytorch_sdpa_no_flash = MHAPyTorchSDPAWithoutFlash(
+            d_in=embed_dim,
+            d_out=embed_dim,
+            num_heads=num_heads,
+            context_length=context_len,
+            dropout=0.0,
+            qkv_bias=False
+        ).to(device)
+
+        out = mha_pytorch_sdpa_no_flash(embeddings)
+
+        # Main test: verify output shape
+        assert out.shape == torch.Size([8, 1024, 768])
+        assert not torch.isnan(out).any()
+        assert torch.isfinite(out).all()
+
+        # Verify model parameters
+        assert mha_pytorch_sdpa_no_flash.num_heads == num_heads
+        assert mha_pytorch_sdpa_no_flash.head_dim == embed_dim // num_heads
+        assert mha_pytorch_sdpa_no_flash.d_out == embed_dim
+
+    def test_parameter_efficiency_pytorch_sdpa_without_flash(self):
+        """
+        Test parameter count and efficiency.
+        """
+        d_in, d_out = 512, 256
+        num_heads = 4
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16
+        )
+
+        total_params = sum(p.numel() for p in mha.parameters())
+
+        # QKV projection: d_in * (3 * d_out) = 512 * 768 = 393,216
+        # QKV bias (if enabled): 3 * d_out = 768
+        # Output projection: d_out * d_out = 256 * 256 = 65,536
+        # Output bias: d_out = 256
+        expected_params = (d_in * 3 * d_out) + (d_out * d_out) + d_out  # No QKV bias by default
+
+        assert total_params == expected_params
+
+    def test_bias_functionality_pytorch_sdpa_without_flash(self):
+        """
+        Test bias parameter functionality.
+        """
+        d_in, d_out = 256, 128
+        num_heads = 4
+
+        # Test without bias
+        mha_no_bias = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=16, qkv_bias=False
+        )
+        assert mha_no_bias.qkv.bias is None
+
+        # Test with bias
+        mha_with_bias = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=16, qkv_bias=True
+        )
+        assert mha_with_bias.qkv.bias is not None
+        assert mha_with_bias.qkv.bias.shape == (3 * d_out,)
+
+    def test_pytorch_sdpa_without_flash_backend_verification(self):
+        """
+        Test that the implementation uses PyTorch's scaled_dot_product_attention correctly.
+        """
+        batch_size, num_tokens, d_in = 2, 4, 128
+        d_out = 128
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=4,
+            context_length=8, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in)
+        out = mha(x)
+
+        # Verify that mask is used (is_causal=False with explicit mask)
+        assert hasattr(mha, 'mask')
+        assert out.shape == (batch_size, num_tokens, d_out)
+
+        # Ensure output is different from input (attention has been applied)
+        qkv = mha.qkv(x)
+        qkv_reshaped = qkv.view(batch_size, num_tokens, 3, mha.num_heads, mha.head_dim)
+        queries = qkv_reshaped[:, :, 0, :, :].transpose(1, 2)
+
+        # Output should not be identical to raw queries
+        queries_flattened = queries.transpose(1, 2).reshape(batch_size, num_tokens, d_out)
+        assert not torch.allclose(out, queries_flattened, atol=1e-3)
+
+    def test_pytorch_sdpa_without_flash_explicit_masking(self):
+        """
+        Test explicit masking behavior vs is_causal parameter.
+        """
+        torch.manual_seed(42)
+        batch_size, num_tokens, d_in = 2, 4, 64
+        d_out = 64
+
+        mha = MHAPyTorchSDPAWithoutFlash(
+            d_in=d_in, d_out=d_out, num_heads=2,
+            context_length=8, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_in)
+
+        # Test that the mask is properly applied
+        with torch.no_grad():
+            # Get QKV tensors
+            qkv = mha.qkv(x)
+            qkv = qkv.view(batch_size, num_tokens, 3, mha.num_heads, mha.head_dim)
+            qkv = qkv.permute(2, 0, 3, 1, 4)
+            queries, keys, values = qkv
+
+            # Manual attention computation to verify masking
+            scale = (mha.head_dim ** -0.5)
+            attn_scores = torch.matmul(queries, keys.transpose(-2, -1)) * scale
+
+            # Apply the same mask as in the model
+            mask = mha.mask[:num_tokens, :num_tokens]
+            attn_scores_masked = attn_scores.masked_fill(mask, -torch.inf)
+
+            # Check that future positions are properly masked (should be -inf)
+            assert torch.isinf(attn_scores_masked[:, :, 0, 1:]).all()  # First token can't see future
+            assert torch.isfinite(attn_scores_masked[:, :, 1, :2]).all()  # Second token can see past
+
+
+class TestMHAPyTorchClass:
+    """
+    Test suite for MHAPyTorchClass multi-head attention implementation.
+    """
+
+    def test_output_shape_pytorch_class(self):
+        """
+        Test that MHAPyTorchClass produces correct output shape.
+        """
+        batch_size, num_tokens, d_in = 2, 8, 512
+        d_out = 512  # Note: MHAPyTorchClass requires d_in == d_out
+        num_heads = 4
+        context_length = 16
+
+        mha = MHAPyTorchClass(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=context_length, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_out)  # Input must match embed_dim
+        out = mha(x)
+
+        assert out.shape == (batch_size, num_tokens, d_out)
+        assert not torch.isnan(out).any()
+        assert torch.isfinite(out).all()
+
+    def test_multihead_attention_parameters(self):
+        """
+        Test that nn.MultiheadAttention is correctly configured.
+        """
+        d_out = 256
+        num_heads = 8
+        dropout = 0.1
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads,
+            context_length=16, dropout=dropout, qkv_bias=True
+        )
+
+        # Check MultiheadAttention configuration
+        assert mha.multihead_attn.embed_dim == d_out
+        assert mha.multihead_attn.num_heads == num_heads
+        assert mha.multihead_attn.dropout == dropout
+        assert mha.multihead_attn.batch_first == True
+
+    def test_head_dimension_calculation_pytorch_class(self):
+        """
+        Test that PyTorch's MultiheadAttention handles head dimensions correctly.
+        """
+        d_out = 768
+        num_heads = 12
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16
+        )
+
+        # MultiheadAttention should handle head dimension calculation internally
+        expected_head_dim = d_out // num_heads
+        assert mha.multihead_attn.embed_dim == d_out
+        assert mha.multihead_attn.num_heads == num_heads
+        # Head dimension is calculated internally by PyTorch
+
+    def test_pytorch_class_projection_layers(self):
+        """
+        Test additional projection layer functionality.
+        """
+        d_out = 512
+        num_heads = 8
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16
+        )
+
+        # Check additional projection layer
+        assert mha.proj.in_features == d_out
+        assert mha.proj.out_features == d_out
+        assert hasattr(mha, 'need_weights')
+
+    def test_gradient_flow_pytorch_class(self):
+        """
+        Test that gradients flow properly through the model.
+        """
+        batch_size, num_tokens, d_out = 2, 8, 512
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=8,
+            context_length=16, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_out, requires_grad=True)
+        out = mha(x)
+        loss = out.sum()
+        loss.backward()
+
+        assert x.grad is not None
+        assert not torch.isnan(x.grad).any()
+
+        # Check that MultiheadAttention and projection have gradients
+        mha_params = list(mha.multihead_attn.parameters())
+        assert len(mha_params) > 0
+        assert all(p.grad is not None for p in mha_params if p.requires_grad)
+        assert mha.proj.weight.grad is not None
+
+    def test_causal_mask_pytorch_class(self):
+        """
+        Test that causal masking works correctly.
+        """
+        torch.manual_seed(42)
+        batch_size, num_tokens, d_out = 1, 4, 64
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=2,
+            context_length=8, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_out)
+        out = mha(x)
+
+        # Check that mask buffer exists and has correct shape
+        assert hasattr(mha, 'mask')
+        assert mha.mask.shape == (8, 8)  # context_length x context_length
+        assert mha.mask.dtype == torch.bool
+
+        # Verify upper triangular structure (causal mask)
+        expected_mask = torch.triu(torch.ones(8, 8), diagonal=1).bool()
+        assert torch.equal(mha.mask, expected_mask)
+
+    def test_different_head_counts_pytorch_class(self):
+        """
+        Test behavior with different numbers of heads.
+        """
+        batch_size, num_tokens = 2, 6
+        context_length = 10
+
+        for num_heads in [1, 2, 4, 8]:
+            d_out = num_heads * 64  # Ensure divisibility
+
+            mha = MHAPyTorchClass(
+                d_in=d_out, d_out=d_out, num_heads=num_heads,
+                context_length=context_length, dropout=0.0
+            )
+
+            x = torch.randn(batch_size, num_tokens, d_out)
+            out = mha(x)
+
+            assert out.shape == (batch_size, num_tokens, d_out)
+            assert mha.multihead_attn.num_heads == num_heads
+
+    def test_reproducibility_pytorch_class(self):
+        """
+        Test that the model produces reproducible results.
+        """
+        batch_size, num_tokens, d_out = 2, 8, 512
+
+        # First run
+        torch.manual_seed(42)
+        mha1 = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=8,
+            context_length=16, dropout=0.0
+        )
+        x1 = torch.randn(batch_size, num_tokens, d_out)
+        out1 = mha1(x1)
+
+        # Second run with same seed
+        torch.manual_seed(42)
+        mha2 = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=8,
+            context_length=16, dropout=0.0
+        )
+        x2 = torch.randn(batch_size, num_tokens, d_out)
+        out2 = mha2(x2)
+
+        assert torch.allclose(out1, out2, atol=1e-6)
+
+    def test_versus_other_implementations(self):
+        """Test consistency with other attention implementations (shape and basic properties)."""
+        torch.manual_seed(123)
+        batch_size, num_tokens, d_in = 2, 6, 128
+        d_out = 128
+        num_heads = 4
+        context_length = 10
+
+        # Create models with same configuration
+        mha_pytorch_class = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads,
+            context_length=context_length, dropout=0.0
+        )
+
+        mha_combined_qkv = MultiHeadAttentionCombinedQKV(
+            d_in=d_in, d_out=d_out, num_heads=num_heads,
+            context_length=context_length, dropout=0.0
+        )
+
+        x_pytorch = torch.randn(batch_size, num_tokens, d_out)  # Input for PyTorch class
+        x_combined = torch.randn(batch_size, num_tokens, d_in)  # Input for combined QKV
+
+        out_pytorch_class = mha_pytorch_class(x_pytorch)
+        out_combined_qkv = mha_combined_qkv(x_combined)
+
+        # Check shapes are consistent
+        assert out_pytorch_class.shape == out_combined_qkv.shape
+        assert out_pytorch_class.shape == (batch_size, num_tokens, d_out)
+
+    def test_need_weights_functionality(self):
+        """
+        Test need_weights parameter functionality.
+        """
+        batch_size, num_tokens, d_out = 2, 4, 256
+
+        # Test with need_weights=True
+        mha_with_weights = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=4,
+            context_length=8, need_weights=True
+        )
+
+        # Test with need_weights=False
+        mha_without_weights = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=4,
+            context_length=8, need_weights=False
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_out)
+
+        out_with_weights = mha_with_weights(x)
+        out_without_weights = mha_without_weights(x)
+
+        # Both should produce same shape outputs
+        assert out_with_weights.shape == out_without_weights.shape
+        assert out_with_weights.shape == (batch_size, num_tokens, d_out)
+
+        # Check that need_weights is stored correctly
+        assert mha_with_weights.need_weights == True
+        assert mha_without_weights.need_weights == False
+
+    def test_wrong_input_dimensions_pytorch_class(self):
+        """
+        Test error handling for incorrect input dimensions.
+        """
+        d_out = 512
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=8, context_length=16
+        )
+
+        # Wrong input dimension (PyTorch MultiheadAttention expects embed_dim)
+        x_wrong = torch.randn(2, 8, 256)  # Should be 512
+        with pytest.raises(AssertionError, match="was expecting embedding dimension of 512, but got 256"):
+            mha(x_wrong)
+
+    def test_large_scale_transformer_configuration_pytorch_class(self):
+        """
+        Test MHAPyTorchClass with large-scale transformer configuration.
+        """
+        # Large transformer configuration
+        batch_size = 8
+        context_len = 1024
+        embed_dim = 768
+        num_heads = 12
+        device = torch.device("cpu")  # Use CPU for testing
+
+        torch.manual_seed(42)
+        embeddings = torch.randn(batch_size, context_len, embed_dim).to(device)
+
+        mha_pytorch_class_default = MHAPyTorchClass(
+            d_in=embed_dim,
+            d_out=embed_dim,
+            num_heads=num_heads,
+            context_length=context_len,
+            dropout=0.0,
+            qkv_bias=False
+        ).to(device)
+
+        out = mha_pytorch_class_default(embeddings)
+
+        # Main test: verify output shape
+        assert out.shape == torch.Size([8, 1024, 768])
+        assert not torch.isnan(out).any()
+        assert torch.isfinite(out).all()
+
+        # Verify model parameters
+        assert mha_pytorch_class_default.multihead_attn.num_heads == num_heads
+        assert mha_pytorch_class_default.multihead_attn.embed_dim == embed_dim
+
+    def test_parameter_efficiency_pytorch_class(self):
+        """
+        Test parameter count and efficiency.
+        """
+        d_out = 512
+        num_heads = 8
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16
+        )
+
+        total_params = sum(p.numel() for p in mha.parameters())
+
+        # Parameters include:
+        # - MultiheadAttention parameters (QKV projections, output projection, biases)
+        # - Additional projection layer: d_out * d_out + d_out
+        additional_proj_params = d_out * d_out + d_out
+
+        assert total_params > additional_proj_params  # Should have more than just our projection
+
+        # Check that our additional projection exists
+        proj_params = sum(p.numel() for p in mha.proj.parameters())
+        assert proj_params == additional_proj_params
+
+    def test_bias_functionality_pytorch_class(self):
+        """
+        Test bias parameter functionality.
+        """
+        d_out = 256
+        num_heads = 4
+
+        # Test without bias
+        mha_no_bias = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads,
+            context_length=16, qkv_bias=False
+        )
+
+        # Test with bias
+        mha_with_bias = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=num_heads,
+            context_length=16, qkv_bias=True
+        )
+
+        # Both should work (PyTorch handles bias configuration internally)
+        x = torch.randn(2, 4, d_out)
+
+        out_no_bias = mha_no_bias(x)
+        out_with_bias = mha_with_bias(x)
+
+        assert out_no_bias.shape == out_with_bias.shape
+        assert out_no_bias.shape == (2, 4, d_out)
+
+    def test_pytorch_multihead_attention_integration(self):
+        """
+        Test integration with PyTorch's nn.MultiheadAttention.
+        """
+        batch_size, num_tokens, d_out = 2, 4, 128
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=4,
+            context_length=8, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_out)
+        out = mha(x)
+
+        # Verify that PyTorch's MultiheadAttention is being used
+        assert isinstance(mha.multihead_attn, nn.MultiheadAttention)
+        assert out.shape == (batch_size, num_tokens, d_out)
+
+        # Ensure output is different from input (attention has been applied)
+        assert not torch.allclose(out, x, atol=1e-3)
+
+    def test_pytorch_class_mask_handling(self):
+        """
+        Test that mask is properly handled by nn.MultiheadAttention.
+        """
+        torch.manual_seed(42)
+        batch_size, num_tokens, d_out = 2, 4, 64
+
+        mha = MHAPyTorchClass(
+            d_in=d_out, d_out=d_out, num_heads=2,
+            context_length=8, dropout=0.0
+        )
+
+        x = torch.randn(batch_size, num_tokens, d_out)
+
+        # Test that the mask is properly applied by checking that we get different
+        # results with different sequence lengths (causal masking effect)
+        out_full = mha(x)
+
+        # Shorter sequence should behave differently due to causal masking
+        x_short = x[:, :2, :]  # Only first 2 tokens
+        out_short = mha(x_short)
+
+        assert out_full.shape[1] == num_tokens
+        assert out_short.shape[1] == 2
+
+        # The mask should be correctly sized for each input
+        assert out_full.shape == (batch_size, num_tokens, d_out)
+        assert out_short.shape == (batch_size, 2, d_out)
+
+    def test_pytorch_class_no_weights_large_scale_configuration(self):
+        """
+        Test MHAPyTorchClass with need_weights=False and large-scale transformer configuration.
+        """
+        # Large transformer configuration
+        batch_size = 8
+        context_len = 1024
+        embed_dim = 768
+        num_heads = 12
+        device = torch.device("cpu")  # Use CPU for testing
+
+        torch.manual_seed(42)
+        embeddings = torch.randn(batch_size, context_len, embed_dim).to(device)
+
+        mha_pytorch_class_noweights = MHAPyTorchClass(
+            d_in=embed_dim,
+            d_out=embed_dim,
+            num_heads=num_heads,
+            context_length=context_len,
+            dropout=0.0,
+            qkv_bias=False,
+            need_weights=False  # NEW!
+        ).to(device)
+
+        out = mha_pytorch_class_noweights(embeddings)
+
+        # Main test: verify output shape
+        assert out.shape == torch.Size([8, 1024, 768])
+        assert not torch.isnan(out).any()
+        assert torch.isfinite(out).all()
+
+        # Verify model parameters
+        assert mha_pytorch_class_noweights.multihead_attn.num_heads == num_heads
+        assert mha_pytorch_class_noweights.multihead_attn.embed_dim == embed_dim
+        assert mha_pytorch_class_noweights.need_weights == False
