@@ -2,7 +2,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from attention import (
+from src.attention import (
     SelfAttention,
     CausalAttention,
     MultiHeadAttentionWrapper,

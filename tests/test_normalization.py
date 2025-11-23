@@ -2,8 +2,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from normalization import LayerNorm
-from configurations import GptConfig
+from src.normalization import LayerNorm
+from src.configurations import GptConfig
 
 
 class TestLayerNorm:

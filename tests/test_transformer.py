@@ -2,8 +2,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from transformer import TransformerBlock
-from configurations import GptConfig, GPT_CONFIG_124M
+from src.transformer import TransformerBlock
+from src.configurations import GptConfig, GPT_CONFIG_124M
 
 
 class TestTransformerBlock:

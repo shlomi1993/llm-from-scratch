@@ -2,8 +2,8 @@ import pytest
 import torch
 import math
 
-from feed_forward import FeedForward
-from configurations import GptConfig, GPT_CONFIG_124M
+from src.feed_forward import FeedForward
+from src.configurations import GptConfig, GPT_CONFIG_124M
 
 
 class TestFeedForward:
