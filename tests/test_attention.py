@@ -63,7 +63,7 @@ class TestSelfAttention:
         sa2 = SelfAttention(d_in, d_out)
         output2 = sa2(sample_inputs)
 
-        torch.testing.assert_close(output1, output2)
+        torch.testing.assert_close(output1, output2, msg="Outputs should be identical with same random seed")
 
     def test_different_dimensions(self):
         """
@@ -120,7 +120,7 @@ class TestSelfAttention:
         # Check that each row sums to 1 (within numerical tolerance)
         row_sums = attn_weights.sum(dim=-1)
         expected = torch.ones(attn_weights.shape[0])
-        torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6)
+        torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6, msg="Attention weights should sum to 1 for each query position")
 
     def test_gradient_flow(self, sample_inputs):
         """
@@ -175,7 +175,7 @@ class TestSelfAttention:
         ])
 
         # Check that output matches expected (within tolerance for floating point)
-        torch.testing.assert_close(output, expected_output, atol=1e-4, rtol=1e-4)
+        torch.testing.assert_close(output, expected_output, atol=1e-4, rtol=1e-4, msg="Output should match expected values from original implementation")
 
     def test_word_sequence_example(self):
         """
@@ -220,7 +220,7 @@ class TestSelfAttention:
         # Check that attention weights sum to 1 for each word
         row_sums = attn_weights.sum(dim=-1)
         expected = torch.ones(6)
-        torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6)
+        torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6, msg="Attention weights should sum to 1 for each word position")
 
     def test_wrong_input_dimension_error(self):
         """
@@ -348,7 +348,7 @@ class TestCausalAttention:
         # Check that each row sums to 1 (within numerical tolerance)
         row_sums = attn_weights.sum(dim=-1)
         expected = torch.ones(batch_size, num_tokens)
-        torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6)
+        torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6, msg="Causal attention weights should sum to 1 for each query position")
 
     def test_different_sequence_lengths(self):
         """
@@ -388,7 +388,7 @@ class TestCausalAttention:
         ca2.eval()  # Disable dropout for reproducibility
         output2 = ca2(sample_batch_inputs)
 
-        torch.testing.assert_close(output1, output2)
+        torch.testing.assert_close(output1, output2, msg="Outputs should be identical with same random seed for CausalAttention")
 
     def test_dropout_effect(self, sample_batch_inputs):
         """
@@ -2393,9 +2393,9 @@ class TestMHAPyTorchSDPAWithoutFlash:
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
 
-        assert out.shape == (batch_size, num_tokens, d_out)
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
+        assert not torch.isnan(out).any(), "Output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Output should contain only finite values"
 
     def test_dimension_divisibility_assertion_pytorch_sdpa_without_flash(self):
         """Test that MHAPyTorchSDPAWithoutFlash raises error for invalid dimensions."""
@@ -2411,9 +2411,9 @@ class TestMHAPyTorchSDPAWithoutFlash:
         )
 
         expected_head_dim = d_out // num_heads
-        assert mha.head_dim == expected_head_dim
-        assert mha.num_heads == num_heads
-        assert mha.d_out == d_out
+        assert mha.head_dim == expected_head_dim, f"Expected head_dim={expected_head_dim}, got {mha.head_dim}"
+        assert mha.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha.num_heads}"
+        assert mha.d_out == d_out, f"Expected d_out={d_out}, got {mha.d_out}"
 
     def test_pytorch_sdpa_without_flash_qkv_projection(self):
         """
@@ -2426,10 +2426,10 @@ class TestMHAPyTorchSDPAWithoutFlash:
         )
 
         # Check QKV projection layer
-        assert mha.qkv.in_features == d_in
-        assert mha.qkv.out_features == 3 * d_out
-        assert mha.proj.in_features == d_out
-        assert mha.proj.out_features == d_out
+        assert mha.qkv.in_features == d_in, f"Expected QKV in_features={d_in}, got {mha.qkv.in_features}"
+        assert mha.qkv.out_features == 3 * d_out, f"Expected QKV out_features={3 * d_out}, got {mha.qkv.out_features}"
+        assert mha.proj.in_features == d_out, f"Expected proj in_features={d_out}, got {mha.proj.in_features}"
+        assert mha.proj.out_features == d_out, f"Expected proj out_features={d_out}, got {mha.proj.out_features}"
 
     def test_gradient_flow_pytorch_sdpa_without_flash(self):
         """
@@ -2448,10 +2448,10 @@ class TestMHAPyTorchSDPAWithoutFlash:
         loss = out.sum()
         loss.backward()
 
-        assert x.grad is not None
-        assert not torch.isnan(x.grad).any()
-        assert mha.qkv.weight.grad is not None
-        assert mha.proj.weight.grad is not None
+        assert x.grad is not None, "Input tensor should have gradients after backward pass"
+        assert not torch.isnan(x.grad).any(), "Input gradients should not contain NaN values"
+        assert mha.qkv.weight.grad is not None, "QKV weights should have gradients after backward pass"
+        assert mha.proj.weight.grad is not None, "Projection weights should have gradients after backward pass"
 
     def test_causal_mask_pytorch_sdpa_without_flash(self):
         """Test that causal masking works correctly."""
@@ -2468,13 +2468,13 @@ class TestMHAPyTorchSDPAWithoutFlash:
         out = mha(x)
 
         # Check that mask buffer exists and has correct shape
-        assert hasattr(mha, 'mask')
-        assert mha.mask.shape == (8, 8)  # context_length x context_length
-        assert mha.mask.dtype == torch.bool
+        assert hasattr(mha, 'mask'), "MHA should have mask attribute"
+        assert mha.mask.shape == (8, 8), "Mask should have shape (context_length, context_length)"
+        assert mha.mask.dtype == torch.bool, f"Expected mask dtype to be torch.bool, got {mha.mask.dtype}"
 
         # Verify upper triangular structure (causal mask)
         expected_mask = torch.triu(torch.ones(8, 8), diagonal=1).bool()
-        assert torch.equal(mha.mask, expected_mask)
+        assert torch.equal(mha.mask, expected_mask), "Mask should be upper triangular causal mask"
 
     def test_different_head_counts_pytorch_sdpa_without_flash(self):
         """Test behavior with different numbers of heads."""
@@ -2492,7 +2492,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
             out = mha(x)
 
             assert out.shape == (batch_size, num_tokens, d_out)
-            assert mha.head_dim == d_out // num_heads
+            assert mha.head_dim == d_out // num_heads, f"For num_heads={num_heads}, expected head_dim={d_out // num_heads}, got {mha.head_dim}"
 
     def test_reproducibility_pytorch_sdpa_without_flash(self):
         """Test that the model produces reproducible results."""
@@ -2544,7 +2544,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         out_combined_qkv = mha_combined_qkv(x)
 
         # Check shapes are consistent
-        assert out_sdpa_no_flash.shape == out_combined_qkv.shape
+        assert out_sdpa_no_flash.shape == out_combined_qkv.shape, f"Output shapes should match: SDPA {out_sdpa_no_flash.shape} vs Combined QKV {out_combined_qkv.shape}"
         assert out_sdpa_no_flash.shape == (batch_size, num_tokens, d_out)
 
     def test_training_vs_eval_mode(self):
@@ -2570,8 +2570,8 @@ class TestMHAPyTorchSDPAWithoutFlash:
 
         # Outputs should be different due to dropout behavior
         # Note: This test might be flaky, but generally dropout affects training/eval differently
-        assert out_train.shape == out_eval.shape
-        assert isinstance(mha.dropout, float)  # Confirm dropout is stored as float
+        assert out_train.shape == out_eval.shape, f"Training and eval outputs should have same shape: train {out_train.shape} vs eval {out_eval.shape}"
+        assert isinstance(mha.dropout, float), "Dropout should be stored as float"
 
     def test_wrong_input_dimensions_pytorch_sdpa_without_flash(self):
         """
@@ -2612,14 +2612,14 @@ class TestMHAPyTorchSDPAWithoutFlash:
         out = mha_pytorch_sdpa_no_flash(embeddings)
 
         # Main test: verify output shape
-        assert out.shape == torch.Size([8, 1024, 768])
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == torch.Size([8, 1024, 768]), f"Expected shape [8, 1024, 768], got {out.shape}"
+        assert not torch.isnan(out).any(), "Large scale output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Large scale output should contain only finite values"
 
         # Verify model parameters
-        assert mha_pytorch_sdpa_no_flash.num_heads == num_heads
-        assert mha_pytorch_sdpa_no_flash.head_dim == embed_dim // num_heads
-        assert mha_pytorch_sdpa_no_flash.d_out == embed_dim
+        assert mha_pytorch_sdpa_no_flash.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_sdpa_no_flash.num_heads}"
+        assert mha_pytorch_sdpa_no_flash.head_dim == embed_dim // num_heads, f"Expected head_dim={embed_dim // num_heads}, got {mha_pytorch_sdpa_no_flash.head_dim}"
+        assert mha_pytorch_sdpa_no_flash.d_out == embed_dim, f"Expected d_out={embed_dim}, got {mha_pytorch_sdpa_no_flash.d_out}"
 
     def test_parameter_efficiency_pytorch_sdpa_without_flash(self):
         """
@@ -2640,7 +2640,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         # Output bias: d_out = 256
         expected_params = (d_in * 3 * d_out) + (d_out * d_out) + d_out  # No QKV bias by default
 
-        assert total_params == expected_params
+        assert total_params == expected_params, f"Expected {expected_params} parameters, got {total_params}"
 
     def test_bias_functionality_pytorch_sdpa_without_flash(self):
         """
@@ -2654,15 +2654,15 @@ class TestMHAPyTorchSDPAWithoutFlash:
             d_in=d_in, d_out=d_out, num_heads=num_heads,
             context_length=16, qkv_bias=False
         )
-        assert mha_no_bias.qkv.bias is None
+        assert mha_no_bias.qkv.bias is None, "QKV layer should have no bias when qkv_bias=False"
 
         # Test with bias
         mha_with_bias = MHAPyTorchSDPAWithoutFlash(
             d_in=d_in, d_out=d_out, num_heads=num_heads,
             context_length=16, qkv_bias=True
         )
-        assert mha_with_bias.qkv.bias is not None
-        assert mha_with_bias.qkv.bias.shape == (3 * d_out,)
+        assert mha_with_bias.qkv.bias is not None, "QKV layer should have bias when qkv_bias=True"
+        assert mha_with_bias.qkv.bias.shape == (3 * d_out,), f"QKV bias should have shape (3 * d_out,), got {mha_with_bias.qkv.bias.shape}"
 
     def test_pytorch_sdpa_without_flash_backend_verification(self):
         """
@@ -2766,10 +2766,10 @@ class TestMHAPyTorchClass:
             d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16, dropout=dropout, qkv_bias=True)
 
         # Check MultiheadAttention configuration
-        assert mha.multihead_attn.embed_dim == d_out
-        assert mha.multihead_attn.num_heads == num_heads
-        assert mha.multihead_attn.dropout == dropout
-        assert mha.multihead_attn.batch_first == True
+        assert mha.multihead_attn.embed_dim == d_out, f"Expected embed_dim={d_out}, got {mha.multihead_attn.embed_dim}"
+        assert mha.multihead_attn.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha.multihead_attn.num_heads}"
+        assert mha.multihead_attn.dropout == dropout, f"Expected dropout={dropout}, got {mha.multihead_attn.dropout}"
+        assert mha.multihead_attn.batch_first == True, f"Expected batch_first=True, got {mha.multihead_attn.batch_first}"
 
     def test_head_dimension_calculation_pytorch_class(self):
         """
@@ -2825,9 +2825,9 @@ class TestMHAPyTorchClass:
 
         # Check that MultiheadAttention and projection have gradients
         mha_params = list(mha.multihead_attn.parameters())
-        assert len(mha_params) > 0
-        assert all(p.grad is not None for p in mha_params if p.requires_grad)
-        assert mha.proj.weight.grad is not None
+        assert len(mha_params) > 0, "Should have some parameters"
+        assert all(p.grad is not None for p in mha_params if p.requires_grad), "All trainable parameters should have gradients"
+        assert mha.proj.weight.grad is not None, "Projection layer weights should have gradients"
 
     def test_causal_mask_pytorch_class(self):
         """
@@ -2872,7 +2872,7 @@ class TestMHAPyTorchClass:
             out = mha(x)
 
             assert out.shape == (batch_size, num_tokens, d_out)
-            assert mha.multihead_attn.num_heads == num_heads
+            assert mha.multihead_attn.num_heads == num_heads, f"For num_heads={num_heads}, expected {num_heads}, got {mha.multihead_attn.num_heads}"
 
     def test_reproducibility_pytorch_class(self):
         """
@@ -2926,7 +2926,7 @@ class TestMHAPyTorchClass:
         out_combined_qkv = mha_combined_qkv(x_combined)
 
         # Check shapes are consistent
-        assert out_pytorch_class.shape == out_combined_qkv.shape
+        assert out_pytorch_class.shape == out_combined_qkv.shape, f"Output shapes should match: PyTorch class {out_pytorch_class.shape} vs Combined QKV {out_combined_qkv.shape}"
         assert out_pytorch_class.shape == (batch_size, num_tokens, d_out)
 
     def test_need_weights_functionality(self):
@@ -2953,12 +2953,12 @@ class TestMHAPyTorchClass:
         out_without_weights = mha_without_weights(x)
 
         # Both should produce same shape outputs
-        assert out_with_weights.shape == out_without_weights.shape
+        assert out_with_weights.shape == out_without_weights.shape, f"Output shapes should be same regardless of need_weights: with {out_with_weights.shape} vs without {out_without_weights.shape}"
         assert out_with_weights.shape == (batch_size, num_tokens, d_out)
 
         # Check that need_weights is stored correctly
-        assert mha_with_weights.need_weights == True
-        assert mha_without_weights.need_weights == False
+        assert mha_with_weights.need_weights == True, "MHA with weights should have need_weights=True"
+        assert mha_without_weights.need_weights == False, "MHA without weights should have need_weights=False"
 
     def test_wrong_input_dimensions_pytorch_class(self):
         """
@@ -3005,8 +3005,8 @@ class TestMHAPyTorchClass:
         assert torch.isfinite(out).all()
 
         # Verify model parameters
-        assert mha_pytorch_class_default.multihead_attn.num_heads == num_heads
-        assert mha_pytorch_class_default.multihead_attn.embed_dim == embed_dim
+        assert mha_pytorch_class_default.multihead_attn.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_class_default.multihead_attn.num_heads}"
+        assert mha_pytorch_class_default.multihead_attn.embed_dim == embed_dim, f"Expected embed_dim={embed_dim}, got {mha_pytorch_class_default.multihead_attn.embed_dim}"
 
     def test_parameter_efficiency_pytorch_class(self):
         """
@@ -3026,11 +3026,11 @@ class TestMHAPyTorchClass:
         # - Additional projection layer: d_out * d_out + d_out
         additional_proj_params = d_out * d_out + d_out
 
-        assert total_params > additional_proj_params  # Should have more than just our projection
+        assert total_params > additional_proj_params, f"Total params ({total_params}) should be greater than just projection params ({additional_proj_params})"
 
         # Check that our additional projection exists
         proj_params = sum(p.numel() for p in mha.proj.parameters())
-        assert proj_params == additional_proj_params
+        assert proj_params == additional_proj_params, f"Projection params should match expected: {proj_params} vs {additional_proj_params}"
 
     def test_bias_functionality_pytorch_class(self):
         """
@@ -3057,7 +3057,7 @@ class TestMHAPyTorchClass:
         out_no_bias = mha_no_bias(x)
         out_with_bias = mha_with_bias(x)
 
-        assert out_no_bias.shape == out_with_bias.shape
+        assert out_no_bias.shape == out_with_bias.shape, f"Outputs should have same shape regardless of bias: no bias {out_no_bias.shape} vs with bias {out_with_bias.shape}"
         assert out_no_bias.shape == (2, 4, d_out)
 
     def test_pytorch_multihead_attention_integration(self):
@@ -3103,8 +3103,8 @@ class TestMHAPyTorchClass:
         x_short = x[:, :2, :]  # Only first 2 tokens
         out_short = mha(x_short)
 
-        assert out_full.shape[1] == num_tokens
-        assert out_short.shape[1] == 2
+        assert out_full.shape[1] == num_tokens, f"Full sequence output should have {num_tokens} tokens, got {out_full.shape[1]}"
+        assert out_short.shape[1] == 2, f"Short sequence output should have 2 tokens, got {out_short.shape[1]}"
 
         # The mask should be correctly sized for each input
         assert out_full.shape == (batch_size, num_tokens, d_out)
@@ -3142,9 +3142,9 @@ class TestMHAPyTorchClass:
         assert torch.isfinite(out).all()
 
         # Verify model parameters
-        assert mha_pytorch_class_noweights.multihead_attn.num_heads == num_heads
-        assert mha_pytorch_class_noweights.multihead_attn.embed_dim == embed_dim
-        assert mha_pytorch_class_noweights.need_weights == False
+        assert mha_pytorch_class_noweights.multihead_attn.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_class_noweights.multihead_attn.num_heads}"
+        assert mha_pytorch_class_noweights.multihead_attn.embed_dim == embed_dim, f"Expected embed_dim={embed_dim}, got {mha_pytorch_class_noweights.multihead_attn.embed_dim}"
+        assert mha_pytorch_class_noweights.need_weights == False, "No weights configuration should have need_weights=False"
 
 
 class TestMHAPyTorchFlexAttention:
@@ -3162,9 +3162,9 @@ class TestMHAPyTorchFlexAttention:
                 d_in=512, d_out=256, num_heads=4, context_length=16
             )
             # Test that it can be created without errors
-            assert mha is not None
-            assert mha.num_heads == 4
-            assert mha.d_out == 256
+            assert mha is not None, "MHA instance should be created successfully"
+            assert mha.num_heads == 4, f"Expected num_heads=4, got {mha.num_heads}"
+            assert mha.d_out == 256, f"Expected d_out=256, got {mha.d_out}"
         except RuntimeError as e:
             # Only allow PyTorch version errors
             if "PyTorch 2.5+" not in str(e):
@@ -3269,7 +3269,7 @@ class TestMHAPyTorchFlexAttention:
 
         # Check that block_mask exists and has correct properties
         assert hasattr(mha, 'block_mask')
-        assert mha.block_mask is not None
+        assert mha.block_mask is not None, "Block mask should be initialized for flex attention"
 
         # Verify output shape
         assert out.shape == (batch_size, num_tokens, d_out)
@@ -3293,7 +3293,7 @@ class TestMHAPyTorchFlexAttention:
                 out = mha(x)
 
                 assert out.shape == (batch_size, num_tokens, d_out)
-                assert mha.num_heads == num_heads
+                assert mha.num_heads == num_heads, f"For num_heads={num_heads}, expected {num_heads}, got {mha.num_heads}"
 
     def test_reproducibility_pytorch_flex(self):
         """
@@ -3346,7 +3346,7 @@ class TestMHAPyTorchFlexAttention:
         out_combined_qkv = mha_combined_qkv(x)
 
         # Check shapes are consistent
-        assert out_flex.shape == out_combined_qkv.shape
+        assert out_flex.shape == out_combined_qkv.shape, f"Output shapes should match: Flex {out_flex.shape} vs Combined QKV {out_combined_qkv.shape}"
         assert out_flex.shape == (batch_size, num_tokens, d_out)
 
     def test_training_vs_eval_mode(self):
@@ -3417,9 +3417,9 @@ class TestMHAPyTorchFlexAttention:
         assert torch.isfinite(out).all()
 
         # Verify model parameters
-        assert mha_pytorch_flex.num_heads == num_heads
-        assert mha_pytorch_flex.head_dim == embed_dim // num_heads
-        assert mha_pytorch_flex.d_out == embed_dim
+        assert mha_pytorch_flex.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_flex.num_heads}"
+        assert mha_pytorch_flex.head_dim == embed_dim // num_heads, f"Expected head_dim={embed_dim // num_heads}, got {mha_pytorch_flex.head_dim}"
+        assert mha_pytorch_flex.d_out == embed_dim, f"Expected d_out={embed_dim}, got {mha_pytorch_flex.d_out}"
 
     def test_parameter_efficiency_pytorch_flex(self):
         """
@@ -3512,12 +3512,12 @@ class TestMHAPyTorchFlexAttention:
         # and the output has the expected properties
         out = mha(x)
 
-        assert out.shape == (batch_size, num_tokens, d_out)
-        assert torch.isfinite(out).all()
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
+        assert torch.isfinite(out).all(), "Flex attention causal output should contain only finite values"
 
         # Test causal function properties
-        assert causal(0, 0, 0, 0) == True   # Position 0 can attend to position 0
-        assert causal(0, 0, 1, 0) == True   # Position 1 can attend to position 0
-        assert causal(0, 0, 1, 1) == True   # Position 1 can attend to position 1
-        assert causal(0, 0, 0, 1) == False  # Position 0 cannot attend to position 1
-        assert causal(0, 0, 2, 3) == False  # Position 2 cannot attend to position 3
+        assert causal(0, 0, 0, 0) == True, "Position should be able to attend to itself"
+        assert causal(0, 0, 1, 0) == True, "Later position should be able to attend to earlier position"
+        assert causal(0, 0, 1, 1) == True, "Position should be able to attend to itself"
+        assert causal(0, 0, 0, 1) == False, "Earlier position cannot attend to later position (causal mask)"
+        assert causal(0, 0, 2, 3) == False, "Position cannot attend to future positions (causal mask)"
