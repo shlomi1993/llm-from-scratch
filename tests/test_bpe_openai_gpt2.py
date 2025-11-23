@@ -10,9 +10,9 @@ import os
 import tempfile
 import pytest
 
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import MagicMock, mock_open, patch
 
-from byte_pair_encoding import bytes_to_unicode, get_pairs, Encoder, get_encoder, download_vocab
+from bpe_openai_gpt2 import Encoder, bytes_to_unicode, get_pairs, get_encoder, download_vocab
 
 
 class TestBytesToUnicode:
