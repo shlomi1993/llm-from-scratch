@@ -12,7 +12,7 @@ import pytest
 
 from unittest.mock import patch, mock_open, MagicMock
 
-from bpe_openai_gpt2 import bytes_to_unicode, get_pairs, Encoder, get_encoder, download_vocab
+from byte_pair_encoding import bytes_to_unicode, get_pairs, Encoder, get_encoder, download_vocab
 
 
 class TestBytesToUnicode:
