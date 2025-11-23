@@ -16,8 +16,8 @@ import torch.nn as nn
 
 from torch import Tensor
 
-from activations import GELU
-from configurations import GptConfig
+from .activations import GELU
+from .configurations import GptConfig
 
 
 class FeedForward(nn.Module):

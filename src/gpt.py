@@ -11,9 +11,9 @@ import torch.nn as nn
 
 from torch import Tensor
 
-from transformer import TransformerBlock
-from normalization import LayerNorm
-from configurations import GptConfig
+from .transformer import TransformerBlock
+from .normalization import LayerNorm
+from .configurations import GptConfig
 
 
 class GptModel(nn.Module):

@@ -14,10 +14,10 @@ import torch.nn as nn
 
 from torch import Tensor
 
-from normalization import LayerNorm
-from attention import MultiHeadAttention
-from feed_forward import FeedForward
-from configurations import GptConfig
+from .normalization import LayerNorm
+from .attention import MultiHeadAttention
+from .feed_forward import FeedForward
+from .configurations import GptConfig
 
 
 class TransformerBlock(nn.Module):

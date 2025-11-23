@@ -2,8 +2,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from gpt import GptModel
-from configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M
+from src.gpt import GptModel
+from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M
 
 
 class TestGptModel:
