@@ -2,8 +2,6 @@ import pytest
 import torch
 import torch.nn as nn
 
-from unittest.mock import MagicMock, patch
-
 from gpt import GptModel
 from configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M
 
