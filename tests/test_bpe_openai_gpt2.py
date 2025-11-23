@@ -1,10 +1,3 @@
-"""
-Tests for the BPE OpenAI GPT-2 module.
-
-This module contains comprehensive tests for the Byte Pair Encoding (BPE) implementation used in GPT-2, including unit
-tests for all functions and the Encoder class.
-"""
-
 import json
 import os
 import tempfile
