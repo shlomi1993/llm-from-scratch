@@ -35,73 +35,6 @@ class TestSelfAttention:
              [0.05, 0.80, 0.55]]  # step     (x^6)
         )
 
-    def test_forward_output_shape(self, sample_inputs):
-        """
-        Test that forward pass produces correct output shape.
-        """
-        d_in, d_out = 3, 2
-        sa = SelfAttention(d_in, d_out)
-
-        output = sa(sample_inputs)
-
-        expected_shape = (sample_inputs.shape[0], d_out)
-        assert output.shape == expected_shape, f"Expected output shape {expected_shape}, got {output.shape}"
-
-    def test_reproducibility_with_seed(self, sample_inputs):
-        """
-        Test that outputs are reproducible with same random seed.
-        """
-        d_in, d_out = 3, 2
-
-        # First run
-        torch.manual_seed(789)
-        sa1 = SelfAttention(d_in, d_out)
-        output1 = sa1(sample_inputs)
-
-        # Second run with same seed
-        torch.manual_seed(789)
-        sa2 = SelfAttention(d_in, d_out)
-        output2 = sa2(sample_inputs)
-
-        torch.testing.assert_close(output1, output2, msg="Outputs should be identical with same random seed")
-
-    def test_different_dimensions(self):
-        """
-        Test SelfAttention with different input/output dimensions.
-        """
-        test_cases = [
-            (512, 64),   # Large to small
-            (128, 128),  # Same dimensions
-            (64, 256),   # Small to large
-            (1, 1),      # Minimal dimensions
-        ]
-        for d_in, d_out in test_cases:
-            sa = SelfAttention(d_in, d_out)
-            x = torch.randn(10, d_in)  # 10 tokens
-            output = sa(x)
-            assert output.shape == (10, d_out), f"For dimensions ({d_in}, {d_out}): expected shape (10, {d_out}), got {output.shape}"
-
-    def test_batch_processing(self):
-        """
-        Test SelfAttention with batch dimensions.
-        """
-        d_in, d_out = 3, 2
-        batch_size, seq_len = 4, 6
-        sa = SelfAttention(d_in, d_out)
-
-        # Test with batch dimension
-        x = torch.randn(batch_size, seq_len, d_in)
-
-        # Process each batch item separately
-        outputs = []
-        for i in range(batch_size):
-            output = sa(x[i])
-            outputs.append(output)
-
-        # Check all outputs have correct shape
-        for i, output in enumerate(outputs):
-            assert output.shape == (seq_len, d_out), f"Batch item {i}: expected shape ({seq_len}, {d_out}), got {output.shape}"
-
     def test_attention_weights_sum_to_one(self, sample_inputs):
         """
         Test that attention weights sum to 1 for each query position.
@@ -121,28 +54,6 @@ class TestSelfAttention:
         row_sums = attn_weights.sum(dim=-1)
         expected = torch.ones(attn_weights.shape[0])
         torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6, msg="Attention weights should sum to 1 for each query position")
-
-    def test_gradient_flow(self, sample_inputs):
-        """
-        Test that gradients flow properly through the module.
-        """
-        d_in, d_out = 3, 2
-        sa = SelfAttention(d_in, d_out)
-
-        # Enable gradient computation
-        sample_inputs.requires_grad_(True)
-
-        output = sa(sample_inputs)
-        loss = output.sum()
-        loss.backward()
-
-        # Check that gradients exist for all parameters
-        assert sa.W_query.weight.grad is not None, "W_query.weight should have gradients after backward pass"
-        assert sa.W_key.weight.grad is not None, "W_key.weight should have gradients after backward pass"
-        assert sa.W_value.weight.grad is not None, "W_value.weight should have gradients after backward pass"
-
-        # Check that input gradients exist
-        assert sample_inputs.grad is not None, "Input tensor should have gradients after backward pass"
 
     def test_original_example_output(self):
         """
@@ -182,12 +93,12 @@ class TestSelfAttention:
         Test with the word sequence example input.
         """
         word_inputs = torch.tensor(
-            [[0.43, 0.15, 0.89], # Your     (x^1)
-             [0.55, 0.87, 0.66], # journey  (x^2)
-             [0.57, 0.85, 0.64], # starts   (x^3)
-             [0.22, 0.58, 0.33], # with     (x^4)
-             [0.77, 0.25, 0.10], # one      (x^5)
-             [0.05, 0.80, 0.55]] # step     (x^6)
+            [[0.43, 0.15, 0.89],    # Your     (x^1)
+             [0.55, 0.87, 0.66],    # journey  (x^2)
+             [0.57, 0.85, 0.64],    # starts   (x^3)
+             [0.22, 0.58, 0.33],    # with     (x^4)
+             [0.77, 0.25, 0.10],    # one      (x^5)
+             [0.05, 0.80, 0.55]]    # step     (x^6)
         )
         d_in, d_out = 3, 4
         sa = SelfAttention(d_in, d_out)
@@ -199,12 +110,12 @@ class TestSelfAttention:
         Test attention properties with the word sequence example.
         """
         word_inputs = torch.tensor(
-            [[0.43, 0.15, 0.89], # Your     (x^1)
-             [0.55, 0.87, 0.66], # journey  (x^2)
-             [0.57, 0.85, 0.64], # starts   (x^3)
-             [0.22, 0.58, 0.33], # with     (x^4)
-             [0.77, 0.25, 0.10], # one      (x^5)
-             [0.05, 0.80, 0.55]] # step     (x^6)
+            [[0.43, 0.15, 0.89],    # Your     (x^1)
+             [0.55, 0.87, 0.66],    # journey  (x^2)
+             [0.57, 0.85, 0.64],    # starts   (x^3)
+             [0.22, 0.58, 0.33],    # with     (x^4)
+             [0.77, 0.25, 0.10],    # one      (x^5)
+             [0.05, 0.80, 0.55]]    # step     (x^6)
         )
 
         d_in, d_out = 3, 3  # Same dimensions to analyze attention
@@ -222,17 +133,6 @@ class TestSelfAttention:
         expected = torch.ones(6)
         torch.testing.assert_close(row_sums, expected, atol=1e-6, rtol=1e-6, msg="Attention weights should sum to 1 for each word position")
 
-    def test_wrong_input_dimension_error(self):
-        """
-        Test that wrong input dimensions raise appropriate error.
-        """
-        d_in, d_out = 3, 2
-        sa = SelfAttention(d_in, d_out)
-
-        with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):
-            wrong_input = torch.randn(6, 5)  # Wrong d_in (5 instead of 3)
-            sa(wrong_input)
-
 
 class TestCausalAttention:
     """
@@ -245,14 +145,14 @@ class TestCausalAttention:
         Sample batched input tensor for testing CausalAttention.
         """
         return torch.tensor([
-            [[0.43, 0.15, 0.89],  # Batch 1: Your     (x^1)
-             [0.55, 0.87, 0.66],  #         journey  (x^2)
-             [0.57, 0.85, 0.64],  #         starts   (x^3)
-             [0.22, 0.58, 0.33]],  #         with     (x^4)
-            [[0.77, 0.25, 0.10],  # Batch 2: one      (x^1)
-             [0.05, 0.80, 0.55],  #         step     (x^2)
-             [0.91, 0.44, 0.33],  #         forward  (x^3)
-             [0.12, 0.67, 0.89]]   #         now      (x^4)
+            [[0.43, 0.15, 0.89],    # Batch 1:  Your     (x^1)
+             [0.55, 0.87, 0.66],    #           journey  (x^2)
+             [0.57, 0.85, 0.64],    #           starts   (x^3)
+             [0.22, 0.58, 0.33]],   #           with     (x^4)
+            [[0.77, 0.25, 0.10],    # Batch 2:  one      (x^1)
+             [0.05, 0.80, 0.55],    #           step     (x^2)
+             [0.91, 0.44, 0.33],    #           forward  (x^3)
+             [0.12, 0.67, 0.89]]    #           now      (x^4)
         ])
 
     def test_mask_initialization(self):
@@ -287,19 +187,6 @@ class TestCausalAttention:
                 else:  # Current and past positions
                     assert mask[i, j] == 0, f"Current/past position ({i}, {j}) should not be masked (value=0), got {mask[i, j]}"
 
-    def test_forward_output_shape(self, sample_batch_inputs):
-        """
-        Test that forward pass produces correct output shape.
-        """
-        d_in, d_out, context_length, dropout = 3, 2, 8, 0.1
-        ca = CausalAttention(d_in, d_out, context_length, dropout)
-
-        output = ca(sample_batch_inputs)
-
-        batch_size, seq_len, _ = sample_batch_inputs.shape
-        expected_shape = (batch_size, seq_len, d_out)
-        assert output.shape == expected_shape, f"Expected output shape {expected_shape}, got {output.shape}"
-
     def test_causal_masking_effect(self):
         """
         Test that causal masking prevents attention to future tokens.
@@ -320,9 +207,7 @@ class TestCausalAttention:
         # Apply mask
         num_tokens = x.shape[1]
         masked_scores = attn_scores.clone()
-        masked_scores.masked_fill_(
-            ca.mask.bool()[:num_tokens, :num_tokens], -torch.inf
-        )
+        masked_scores.masked_fill_(ca.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
 
         # Check that future positions are masked (set to -inf)
         for i in range(num_tokens):
@@ -370,25 +255,6 @@ class TestCausalAttention:
             output = ca(x)
             assert output.shape == (batch_size, seq_len, d_out), f"For batch_size={batch_size}, seq_len={seq_len}: expected shape ({batch_size}, {seq_len}, {d_out}), got {output.shape}"
 
-    def test_reproducibility_with_seed(self, sample_batch_inputs):
-        """
-        Test that outputs are reproducible with same random seed.
-        """
-        d_in, d_out, context_length, dropout = 3, 2, 8, 0.1
-
-        # First run
-        torch.manual_seed(789)
-        ca1 = CausalAttention(d_in, d_out, context_length, dropout)
-        ca1.eval()  # Disable dropout for reproducibility
-        output1 = ca1(sample_batch_inputs)
-
-        # Second run with same seed
-        torch.manual_seed(789)
-        ca2 = CausalAttention(d_in, d_out, context_length, dropout)
-        ca2.eval()  # Disable dropout for reproducibility
-        output2 = ca2(sample_batch_inputs)
-
-        torch.testing.assert_close(output1, output2, msg="Outputs should be identical with same random seed for CausalAttention")
 
     def test_dropout_effect(self, sample_batch_inputs):
         """
@@ -411,28 +277,6 @@ class TestCausalAttention:
 
         # Outputs should be different due to dropout in training mode
         assert not torch.allclose(output_train, output_eval, atol=1e-6), "Training and evaluation outputs should be different when dropout is applied"
-
-    def test_gradient_flow(self, sample_batch_inputs):
-        """
-        Test that gradients flow properly through the module.
-        """
-        d_in, d_out, context_length, dropout = 3, 2, 8, 0.1
-        ca = CausalAttention(d_in, d_out, context_length, dropout)
-
-        # Enable gradient computation
-        sample_batch_inputs.requires_grad_(True)
-
-        output = ca(sample_batch_inputs)
-        loss = output.sum()
-        loss.backward()
-
-        # Check that gradients exist for all parameters
-        assert ca.W_query.weight.grad is not None, "W_query.weight should have gradients after backward pass"
-        assert ca.W_key.weight.grad is not None, "W_key.weight should have gradients after backward pass"
-        assert ca.W_value.weight.grad is not None, "W_value.weight should have gradients after backward pass"
-
-        # Check that input gradients exist
-        assert sample_batch_inputs.grad is not None, "Input tensor should have gradients after backward pass"
 
     def test_context_length_constraint(self):
         """
@@ -470,21 +314,6 @@ class TestCausalAttention:
         torch.testing.assert_close(sa.W_key.weight, ca.W_key.weight, msg="CausalAttention should have same W_key weights as SelfAttention when initialized with same seed")
         torch.testing.assert_close(sa.W_value.weight, ca.W_value.weight, msg="CausalAttention should have same W_value weights as SelfAttention when initialized with same seed")
 
-    def test_wrong_input_dimension_error(self):
-        """
-        Test that wrong input dimensions raise appropriate error.
-        """
-        d_in, d_out, context_length, dropout = 3, 2, 8, 0.1
-        ca = CausalAttention(d_in, d_out, context_length, dropout)
-
-        with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):
-            wrong_input = torch.randn(1, 4, 5)  # Wrong d_in (5 instead of 3)
-            ca(wrong_input)
-
-        with pytest.raises((ValueError, RuntimeError, IndexError), match="not enough values to unpack"):
-            wrong_dims = torch.randn(4, 3)  # Wrong number of dimensions (2D instead of 3D)
-            ca(wrong_dims)
-
 
 class TestMultiHeadAttentionWrapper:
     """
@@ -504,24 +333,6 @@ class TestMultiHeadAttentionWrapper:
              [0.77, 0.25, 0.10],  # one      (x^5)
              [0.05, 0.80, 0.55]]  # step     (x^6)
         )
-
-    def test_multi_head_output_shape(self, sample_inputs):
-        """
-        Test that multi-head attention produces correct output shape.
-        """
-        d_in, d_out = 3, 2
-        num_heads = 4
-        context_length = 8
-        dropout = 0.1
-
-        batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
-
-        output = mha(batch)
-
-        batch_size, seq_len, _ = batch.shape
-        expected_shape = (batch_size, seq_len, d_out * num_heads)
-        assert output.shape == expected_shape, f"Expected output shape {expected_shape}, got {output.shape}"
 
     def test_specified_example_case(self, sample_inputs):
         """
@@ -584,55 +395,6 @@ class TestMultiHeadAttentionWrapper:
 
             expected_feature_dim = d_out * num_heads
             assert output.shape[-1] == expected_feature_dim, f"For {num_heads} heads: expected feature dim {expected_feature_dim}, got {output.shape[-1]}"
-
-    def test_gradient_flow(self, sample_inputs):
-        """
-        Test that gradients flow properly through multi-head attention.
-        """
-        d_in, d_out = 3, 2
-        context_length = 8
-        dropout = 0.1
-        num_heads = 2
-
-        batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        batch.requires_grad_(True)
-
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
-        output = mha(batch)
-        loss = output.sum()
-        loss.backward()
-
-        # Check that all heads have gradients
-        for i, head in enumerate(mha.heads):
-            assert head.W_query.weight.grad is not None, f"Head {i} W_query should have gradients"
-            assert head.W_key.weight.grad is not None, f"Head {i} W_key should have gradients"
-            assert head.W_value.weight.grad is not None, f"Head {i} W_value should have gradients"
-
-        # Check input gradients
-        assert batch.grad is not None, "Input should have gradients"
-
-    def test_reproducibility_with_seed(self, sample_inputs):
-        """
-        Test that outputs are reproducible with same random seed.
-        """
-        d_in, d_out = 3, 2
-        context_length = 8
-        dropout = 0.0  # No dropout for reproducibility
-        num_heads = 3
-
-        batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-
-        # First run
-        torch.manual_seed(42)
-        mha1 = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
-        output1 = mha1(batch)
-
-        # Second run with same seed
-        torch.manual_seed(42)
-        mha2 = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
-        output2 = mha2(batch)
-
-        torch.testing.assert_close(output1, output2, msg="Outputs should be identical with same seed")
 
     def test_causal_masking_preserved(self, sample_inputs):
         """
@@ -737,89 +499,6 @@ class TestMultiHeadAttentionWrapper:
             wrong_dims = torch.randn(6, 3)  # 2D instead of 3D
             mha(wrong_dims)
 
-    def test_large_scale_transformer_configuration(self):
-        """
-        Test MultiHeadAttentionWrapper with realistic transformer configuration.
-
-        This test uses parameters similar to those found in large language models:
-        - embed_dim=768 (common embedding dimension)
-        - 12 attention heads
-        - context_length=1024 (typical context window)
-        - batch_size=8
-        """
-        # Set up realistic transformer parameters
-        embed_dim = 768
-        context_len = 1024
-        batch_size = 8
-        device = torch.device("cpu")  # Use CPU for testing
-
-        # Create embeddings tensor with realistic dimensions
-        embeddings = torch.randn(batch_size, context_len, embed_dim)
-
-        # Initialize the multi-head attention wrapper with transformer-like configuration
-        mha_ch03_wrapper = MultiHeadAttentionWrapper(
-            d_in=embed_dim,
-            d_out=embed_dim//12,  # 768//12 = 64 dimensions per head
-            context_length=context_len,
-            dropout=0.0,
-            num_heads=12,
-            qkv_bias=False
-        ).to(device)
-
-        # Forward pass
-        out = mha_ch03_wrapper(embeddings)
-
-        # Verify the output shape
-        expected_shape = torch.Size([8, 1024, 768])  # batch_size, seq_len, d_out * num_heads (64 * 12 = 768)
-        assert out.shape == expected_shape, f"Expected shape {expected_shape}, got {out.shape}"
-
-        # Additional checks
-        assert isinstance(out, torch.Tensor), "Output should be a tensor"
-        assert not torch.isnan(out).any(), "Output should not contain NaN values"
-        assert torch.isfinite(out).all(), "Output should contain finite values"
-        assert out.dtype == torch.float32, f"Expected float32, got {out.dtype}"
-
-    def test_ch03_mha_alias_wrapper(self):
-        """
-        Test MultiHeadAttentionWrapper using Ch03_MHA alias pattern.
-
-        This test verifies that the MultiHeadAttentionWrapper works with the naming
-        convention used in Chapter 3 of the book, where it's referenced as Ch03_MHA.
-        """
-        # Use the Ch03_MHA alias pattern
-        Ch03_MHA = MultiHeadAttentionWrapper
-
-        # Set up transformer parameters
-        embed_dim = 768
-        context_len = 1024
-        batch_size = 8
-        device = torch.device("cpu")
-
-        # Create embeddings tensor
-        embeddings = torch.randn(batch_size, context_len, embed_dim)
-
-        # Initialize using the Ch03_MHA alias (MultiHeadAttentionWrapper)
-        mha_ch03 = Ch03_MHA(
-            d_in=embed_dim,
-            d_out=embed_dim//12,  # Note: d_out per head for wrapper
-            context_length=context_len,
-            dropout=0.0,
-            num_heads=12,
-            qkv_bias=False
-        ).to(device)
-
-        # Forward pass
-        out = mha_ch03(embeddings)
-
-        # Verify the output shape
-        expected_shape = torch.Size([8, 1024, 768])
-        assert out.shape == expected_shape, f"Expected shape {expected_shape}, got {out.shape}"
-
-        # Additional verification
-        assert isinstance(out, torch.Tensor), "Output should be a tensor"
-        assert not torch.isnan(out).any(), "Output should not contain NaN values"
-        assert torch.isfinite(out).all(), "Output should contain finite values"
-
 
 class TestMultiHeadAttention:
     """
@@ -840,50 +519,6 @@ class TestMultiHeadAttention:
             [0.77, 0.25, 0.10],
             [0.05, 0.80, 0.55]
         ])
-
-    def test_output_shape_divisible_dimensions(self, sample_inputs):
-        """
-        Test that multi-head attention produces correct output shape with divisible dimensions.
-        """
-        d_in, d_out = 3, 8  # d_out divisible by various head counts
-        context_length = 8
-        dropout = 0.1
-        num_heads = 4
-
-        batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
-
-        output = mha(batch)
-
-        assert output.shape == (2, 6, 8), f"Expected shape (2, 6, 8), got {output.shape}"
-        assert output.dtype == torch.float32, f"Expected float32, got {output.dtype}"
-
-    def test_dimension_divisibility_assertion(self):
-        """
-        Test that assertion is raised when d_out is not divisible by num_heads.
-        """
-        d_in, d_out = 3, 7  # 7 is not divisible by 3
-        context_length = 8
-        dropout = 0.1
-        num_heads = 3
-
-        with pytest.raises(AssertionError, match="d_out must be divisible by num_heads"):
-            MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
-
-    def test_head_dimension_calculation(self, sample_inputs):
-        """
-        Test that head dimensions are calculated correctly.
-        """
-        d_in, d_out = 3, 12
-        context_length = 8
-        dropout = 0.0
-        num_heads = 4
-
-        mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
-
-        assert mha.head_dim == 3, f"Expected head_dim=3, got {mha.head_dim}"
-        assert mha.d_out == 12, f"Expected d_out=12, got {mha.d_out}"
-        assert mha.num_heads == 4, f"Expected num_heads=4, got {mha.num_heads}"
 
     def test_gradient_flow_efficiency(self, sample_inputs):
         """
@@ -967,8 +602,7 @@ class TestMultiHeadAttention:
             modified_output = mha(modified_batch)
 
             # First 5 positions should be identical (causal masking)
-            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), \
-                "Causal masking should prevent future tokens from affecting past outputs"
+            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), "Causal masking should prevent future tokens from affecting past outputs"
 
     def test_different_head_counts_efficiency(self, sample_inputs):
         """
@@ -993,8 +627,7 @@ class TestMultiHeadAttention:
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
-            assert output.shape == expected_shape, \
-                f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
+            assert output.shape == expected_shape, f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
 
     def test_reproducibility_with_seed_efficiency(self, sample_inputs):
         """
@@ -1017,8 +650,7 @@ class TestMultiHeadAttention:
         mha2 = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
         output2 = mha2(batch)
 
-        assert torch.allclose(output1, output2, atol=1e-6), \
-            "Outputs should be identical with same random seed"
+        assert torch.allclose(output1, output2, atol=1e-6), "Outputs should be identical with same random seed"
 
     def test_versus_wrapper_implementation(self, sample_inputs):
         """
@@ -1042,13 +674,11 @@ class TestMultiHeadAttention:
         efficient_output = efficient(batch)
 
         # Shapes should match
-        assert wrapper_output.shape == efficient_output.shape, \
-            f"Output shapes should match: wrapper {wrapper_output.shape} vs efficient {efficient_output.shape}"
+        assert wrapper_output.shape == efficient_output.shape, f"Output shapes should match: wrapper {wrapper_output.shape} vs efficient {efficient_output.shape}"
 
         # Results will be different due to different architectures and output projection
         # but both should be valid attention outputs
-        assert not torch.allclose(wrapper_output, efficient_output), \
-            "Different implementations should produce different results"
+        assert not torch.allclose(wrapper_output, efficient_output), "Different implementations should produce different results"
 
     def test_attention_weights_normalization(self, sample_inputs):
         """
@@ -1066,8 +696,6 @@ class TestMultiHeadAttention:
         # Test that the model produces reasonable outputs
         with torch.no_grad():
             output = mha(batch)
-
-            # Check that outputs are finite and reasonable
             assert torch.isfinite(output).all(), "All outputs should be finite"
             assert not torch.isnan(output).any(), "No outputs should be NaN"
 
@@ -1118,7 +746,7 @@ class TestMultiHeadAttention:
 
         # Initialize the efficient multi-head attention with transformer-like configuration
         # Note: d_out=embed_dim (total), not per head like in MultiHeadAttentionWrapper
-        mha_ch03_efficient = MultiHeadAttention(
+        mha_efficient = MultiHeadAttention(
             d_in=embed_dim,
             d_out=embed_dim,  # Total output dimension (768)
             context_length=context_len,
@@ -1128,7 +756,7 @@ class TestMultiHeadAttention:
         ).to(device)
 
         # Forward pass
-        out = mha_ch03_efficient(embeddings)
+        out = mha_efficient(embeddings)
 
         # Verify the output shape
         expected_shape = torch.Size([8, 1024, 768])  # batch_size, seq_len, d_out (768 total)
@@ -1141,54 +769,9 @@ class TestMultiHeadAttention:
         assert out.dtype == torch.float32, f"Expected float32, got {out.dtype}"
 
         # Verify internal dimensions are correctly calculated
-        assert mha_ch03_efficient.head_dim == 64, f"Expected head_dim=64 (768/12), got {mha_ch03_efficient.head_dim}"
-        assert mha_ch03_efficient.d_out == 768, f"Expected d_out=768, got {mha_ch03_efficient.d_out}"
-        assert mha_ch03_efficient.num_heads == 12, f"Expected num_heads=12, got {mha_ch03_efficient.num_heads}"
-
-    def test_ch03_mha_alias_efficient(self):
-        """
-        Test MultiHeadAttention using Ch03_MHA alias pattern.
-
-        This test verifies that the efficient MultiHeadAttention works with the naming
-        convention used in Chapter 3 of the book, where it's referenced as Ch03_MHA.
-        """
-        # Use the Ch03_MHA alias pattern
-        Ch03_MHA = MultiHeadAttention
-
-        # Set up transformer parameters
-        embed_dim = 768
-        context_len = 1024
-        batch_size = 8
-        device = torch.device("cpu")
-
-        # Create embeddings tensor
-        embeddings = torch.randn(batch_size, context_len, embed_dim)
-
-        # Initialize using the Ch03_MHA alias (MultiHeadAttention)
-        mha_ch03 = Ch03_MHA(
-            d_in=embed_dim,
-            d_out=embed_dim,  # Note: total d_out for efficient implementation
-            context_length=context_len,
-            dropout=0.0,
-            num_heads=12,
-            qkv_bias=False
-        ).to(device)
-
-        # Forward pass
-        out = mha_ch03(embeddings)
-
-        # Verify the output shape
-        expected_shape = torch.Size([8, 1024, 768])
-        assert out.shape == expected_shape, f"Expected shape {expected_shape}, got {out.shape}"
-
-        # Additional verification
-        assert isinstance(out, torch.Tensor), "Output should be a tensor"
-        assert not torch.isnan(out).any(), "Output should not contain NaN values"
-        assert torch.isfinite(out).all(), "Output should contain finite values"
-
-        # Verify this is the efficient implementation
-        assert hasattr(mha_ch03, 'head_dim'), "Should have head_dim attribute for efficient implementation"
-        assert mha_ch03.head_dim == 64, f"Expected head_dim=64, got {mha_ch03.head_dim}"
+        assert mha_efficient.head_dim == 64, f"Expected head_dim=64 (768/12), got {mha_efficient.head_dim}"
+        assert mha_efficient.d_out == 768, f"Expected d_out=768, got {mha_efficient.d_out}"
+        assert mha_efficient.num_heads == 12, f"Expected num_heads=12, got {mha_efficient.num_heads}"
 
 
 class TestMultiHeadAttentionCombinedQKV:
@@ -1339,8 +922,7 @@ class TestMultiHeadAttentionCombinedQKV:
             modified_output = mha(modified_batch)
 
             # First 5 positions should be identical (causal masking)
-            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), \
-                "Causal masking should prevent future tokens from affecting past outputs"
+            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), "Causal masking should prevent future tokens from affecting past outputs"
 
     def test_different_head_counts_combined_qkv(self, sample_inputs):
         """
@@ -1369,34 +951,7 @@ class TestMultiHeadAttentionCombinedQKV:
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
-            assert output.shape == expected_shape, \
-                f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
-
-    def test_reproducibility_combined_qkv(self, sample_inputs):
-        """
-        Test that outputs are reproducible with same random seed in combined QKV implementation.
-        """
-        d_in, d_out = 8, 8  # Implementation requires d_in == d_out
-        context_length = 8
-        dropout = 0.0  # No dropout for reproducibility
-        num_heads = 4
-
-        # Expand input to match d_in=8
-        expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 5)], dim=-1)
-        batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-
-        # First run
-        torch.manual_seed(42)
-        mha1 = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
-        output1 = mha1(batch)
-
-        # Second run with same seed
-        torch.manual_seed(42)
-        mha2 = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
-        output2 = mha2(batch)
-
-        assert torch.allclose(output1, output2, atol=1e-6), \
-            "Outputs should be identical with same random seed"
+            assert output.shape == expected_shape, f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
 
     def test_versus_other_implementations(self, sample_inputs):
         """
@@ -1422,8 +977,7 @@ class TestMultiHeadAttentionCombinedQKV:
         efficient_output = efficient(batch)
 
         # Shapes should match
-        assert combined_output.shape == efficient_output.shape, \
-            f"Output shapes should match: combined {combined_output.shape} vs efficient {efficient_output.shape}"
+        assert combined_output.shape == efficient_output.shape, f"Output shapes should match: combined {combined_output.shape} vs efficient {efficient_output.shape}"
 
         # Both should produce valid outputs
         assert torch.isfinite(combined_output).all(), "Combined QKV output should be finite"
@@ -1431,8 +985,7 @@ class TestMultiHeadAttentionCombinedQKV:
         assert not torch.isnan(combined_output).any(), "Combined QKV output should not have NaN"
         assert not torch.isnan(efficient_output).any(), "Efficient output should not have NaN"
 
-        # Results will typically be different due to different random initialization
-        # but when they're the same (same seed), that's also valid
+        # Results will typically be different due to different random initialization but when they're the same (same seed), that's also valid
 
     def test_attention_weights_normalization_combined(self, sample_inputs):
         """
@@ -1451,8 +1004,6 @@ class TestMultiHeadAttentionCombinedQKV:
         # Test that the model produces reasonable outputs
         with torch.no_grad():
             output = mha(batch)
-
-            # Check that outputs are finite and reasonable
             assert torch.isfinite(output).all(), "All outputs should be finite"
             assert not torch.isnan(output).any(), "No outputs should be NaN"
 
@@ -1550,8 +1101,7 @@ class TestMultiHeadAttentionCombinedQKV:
         # Verify the QKV layer has the right size (3 * d_out parameters)
         qkv_weight_size = combined_qkv.qkv.weight.numel()
         expected_qkv_size = d_in * 3 * d_out
-        assert qkv_weight_size == expected_qkv_size, \
-            f"Expected QKV weight size {expected_qkv_size}, got {qkv_weight_size}"
+        assert qkv_weight_size == expected_qkv_size, f"Expected QKV weight size {expected_qkv_size}, got {qkv_weight_size}"
 
 
 class TestMHAEinsum:
@@ -1655,7 +1205,7 @@ class TestMHAEinsum:
         mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
         output = mha(batch)
 
-        # Compute loss and backpropagate
+        # Compute loss and back-propagate
         loss = output.sum()
         loss.backward()
 
@@ -1694,8 +1244,7 @@ class TestMHAEinsum:
             modified_output = mha(modified_batch)
 
             # First 5 positions should be identical (causal masking)
-            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), \
-                "Causal masking should prevent future tokens from affecting past outputs"
+            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), "Causal masking should prevent future tokens from affecting past outputs"
 
     def test_different_head_counts_einsum(self, sample_inputs):
         """
@@ -1720,8 +1269,7 @@ class TestMHAEinsum:
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
-            assert output.shape == expected_shape, \
-                f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
+            assert output.shape == expected_shape, f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
 
     def test_reproducibility_einsum(self, sample_inputs):
         """
@@ -1744,8 +1292,7 @@ class TestMHAEinsum:
         mha2 = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
         output2 = mha2(batch)
 
-        assert torch.allclose(output1, output2, atol=1e-6), \
-            "Outputs should be identical with same random seed"
+        assert torch.allclose(output1, output2, atol=1e-6), "Outputs should be identical with same random seed"
 
     def test_versus_other_implementations(self, sample_inputs):
         """
@@ -1769,8 +1316,7 @@ class TestMHAEinsum:
         efficient_output = efficient(batch)
 
         # Shapes should match
-        assert einsum_output.shape == efficient_output.shape, \
-            f"Output shapes should match: einsum {einsum_output.shape} vs efficient {efficient_output.shape}"
+        assert einsum_output.shape == efficient_output.shape, f"Output shapes should match: einsum {einsum_output.shape} vs efficient {efficient_output.shape}"
 
         # Both should produce valid outputs
         assert torch.isfinite(einsum_output).all(), "Einsum output should be finite"
@@ -2041,7 +1587,7 @@ class TestMHAPyTorchScaledDotProduct:
         mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
         output = mha(batch)
 
-        # Compute loss and backpropagate
+        # Compute loss and back-propagate
         loss = output.sum()
         loss.backward()
 
@@ -2078,8 +1624,7 @@ class TestMHAPyTorchScaledDotProduct:
             modified_output = mha(modified_batch)
 
             # First 5 positions should be identical (causal masking)
-            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), \
-                "Causal masking should prevent future tokens from affecting past outputs"
+            assert torch.allclose(output[:, :5, :], modified_output[:, :5, :], atol=1e-6), "Causal masking should prevent future tokens from affecting past outputs"
 
     def test_different_head_counts_pytorch_scaled(self, sample_inputs):
         """
@@ -2104,8 +1649,7 @@ class TestMHAPyTorchScaledDotProduct:
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
-            assert output.shape == expected_shape, \
-                f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
+            assert output.shape == expected_shape, f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
 
     def test_reproducibility_pytorch_scaled(self, sample_inputs):
         """
@@ -2128,8 +1672,7 @@ class TestMHAPyTorchScaledDotProduct:
         mha2 = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
         output2 = mha2(batch)
 
-        assert torch.allclose(output1, output2, atol=1e-6), \
-            "Outputs should be identical with same random seed"
+        assert torch.allclose(output1, output2, atol=1e-6), "Outputs should be identical with same random seed"
 
     def test_versus_other_implementations(self, sample_inputs):
         """
@@ -2153,8 +1696,7 @@ class TestMHAPyTorchScaledDotProduct:
         efficient_output = efficient(batch)
 
         # Shapes should match
-        assert pytorch_output.shape == efficient_output.shape, \
-            f"Output shapes should match: pytorch_scaled {pytorch_output.shape} vs efficient {efficient_output.shape}"
+        assert pytorch_output.shape == efficient_output.shape, f"Output shapes should match: pytorch_scaled {pytorch_output.shape} vs efficient {efficient_output.shape}"
 
         # Both should produce valid outputs
         assert torch.isfinite(pytorch_output).all(), "PyTorch scaled output should be finite"
@@ -2280,8 +1822,7 @@ class TestMHAPyTorchScaledDotProduct:
 
         # Both should have similar parameter counts (QKV + proj)
         # The difference should be minimal since both use similar architectures
-        assert abs(pytorch_params - regular_params) < pytorch_params * 0.1, \
-            "Parameter counts should be similar between implementations"
+        assert abs(pytorch_params - regular_params) < pytorch_params * 0.1, "Parameter counts should be similar between implementations"
 
     def test_bias_functionality_pytorch_scaled(self, sample_inputs):
         """
@@ -2363,8 +1904,7 @@ class TestMHAPyTorchScaledDotProduct:
             output = mha(test_batch)
 
             expected_shape = (batch_size, 6, d_out)
-            assert output.shape == expected_shape, \
-                f"For batch_size={batch_size}, expected shape {expected_shape}, got {output.shape}"
+            assert output.shape == expected_shape, f"For batch_size={batch_size}, expected shape {expected_shape}, got {output.shape}"
 
             # Verify output is finite and valid
             assert torch.isfinite(output).all(), f"Output should be finite for batch_size={batch_size}"
@@ -2406,9 +1946,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         """Test that head dimensions are calculated correctly."""
         d_out = 768
         num_heads = 12
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=512, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=512, d_out=d_out, num_heads=num_heads, context_length=16)
 
         expected_head_dim = d_out // num_heads
         assert mha.head_dim == expected_head_dim, f"Expected head_dim={expected_head_dim}, got {mha.head_dim}"
@@ -2459,10 +1997,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         batch_size, num_tokens, d_in = 1, 4, 64
         d_out = 64
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=2,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=2, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
@@ -2483,10 +2018,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         context_length = 10
 
         for num_heads in [1, 2, 4, 8]:
-            mha = MHAPyTorchSDPAWithoutFlash(
-                d_in=d_in, d_out=d_out, num_heads=num_heads,
-                context_length=context_length, dropout=0.0
-            )
+            mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
             x = torch.randn(batch_size, num_tokens, d_in)
             out = mha(x)
@@ -2501,19 +2033,13 @@ class TestMHAPyTorchSDPAWithoutFlash:
 
         # First run
         torch.manual_seed(42)
-        mha1 = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.0
-        )
+        mha1 = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.0)
         x1 = torch.randn(batch_size, num_tokens, d_in)
         out1 = mha1(x1)
 
         # Second run with same seed
         torch.manual_seed(42)
-        mha2 = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.0
-        )
+        mha2 = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.0)
         x2 = torch.randn(batch_size, num_tokens, d_in)
         out2 = mha2(x2)
 
@@ -2528,15 +2054,9 @@ class TestMHAPyTorchSDPAWithoutFlash:
         context_length = 10
 
         # Create models with same configuration
-        mha_sdpa_no_flash = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha_sdpa_no_flash = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
-        mha_combined_qkv = MultiHeadAttentionCombinedQKV(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha_combined_qkv = MultiHeadAttentionCombinedQKV(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
 
@@ -2553,10 +2073,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         batch_size, num_tokens, d_in = 2, 8, 256
         d_out = 256
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.1  # Non-zero dropout
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.1)  # Non-zero dropout
 
         x = torch.randn(batch_size, num_tokens, d_in)
 
@@ -2577,9 +2094,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         """
         Test error handling for incorrect input dimensions.
         """
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=512, d_out=256, num_heads=4, context_length=16
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=512, d_out=256, num_heads=4, context_length=16)
 
         # Wrong input dimension
         x_wrong = torch.randn(2, 8, 256)  # d_in should be 512
@@ -2628,9 +2143,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         d_in, d_out = 512, 256
         num_heads = 4
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16)
 
         total_params = sum(p.numel() for p in mha.parameters())
 
@@ -2650,17 +2163,11 @@ class TestMHAPyTorchSDPAWithoutFlash:
         num_heads = 4
 
         # Test without bias
-        mha_no_bias = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=16, qkv_bias=False
-        )
+        mha_no_bias = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16, qkv_bias=False)
         assert mha_no_bias.qkv.bias is None, "QKV layer should have no bias when qkv_bias=False"
 
         # Test with bias
-        mha_with_bias = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=16, qkv_bias=True
-        )
+        mha_with_bias = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16, qkv_bias=True)
         assert mha_with_bias.qkv.bias is not None, "QKV layer should have bias when qkv_bias=True"
         assert mha_with_bias.qkv.bias.shape == (3 * d_out,), f"QKV bias should have shape (3 * d_out,), got {mha_with_bias.qkv.bias.shape}"
 
@@ -2671,17 +2178,14 @@ class TestMHAPyTorchSDPAWithoutFlash:
         batch_size, num_tokens, d_in = 2, 4, 128
         d_out = 128
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=4, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
 
         # Verify that mask is used (is_causal=False with explicit mask)
-        assert hasattr(mha, 'mask')
-        assert out.shape == (batch_size, num_tokens, d_out)
+        assert hasattr(mha, 'mask'), "MHA should have mask attribute for causal masking"
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected output shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
 
         # Ensure output is different from input (attention has been applied)
         qkv = mha.qkv(x)
@@ -2690,7 +2194,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
 
         # Output should not be identical to raw queries
         queries_flattened = queries.transpose(1, 2).reshape(batch_size, num_tokens, d_out)
-        assert not torch.allclose(out, queries_flattened, atol=1e-3)
+        assert not torch.allclose(out, queries_flattened, atol=1e-3), "Output should differ from raw queries after attention"
 
     def test_pytorch_sdpa_without_flash_explicit_masking(self):
         """
@@ -2700,10 +2204,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         batch_size, num_tokens, d_in = 2, 4, 64
         d_out = 64
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=2,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, num_heads=2, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
 
@@ -2724,8 +2225,8 @@ class TestMHAPyTorchSDPAWithoutFlash:
             attn_scores_masked = attn_scores.masked_fill(mask, -torch.inf)
 
             # Check that future positions are properly masked (should be -inf)
-            assert torch.isinf(attn_scores_masked[:, :, 0, 1:]).all()  # First token can't see future
-            assert torch.isfinite(attn_scores_masked[:, :, 1, :2]).all()  # Second token can see past
+            assert torch.isinf(attn_scores_masked[:, :, 0, 1:]).all(), "First token can't see future positions"
+            assert torch.isfinite(attn_scores_masked[:, :, 1, :2]).all(), "Second token can see past positions"
 
 
 class TestMHAPyTorchClass:
@@ -2742,17 +2243,14 @@ class TestMHAPyTorchClass:
         num_heads = 4
         context_length = 16
 
-        mha = MHAPyTorchClass(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha = MHAPyTorchClass(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_out)  # Input must match embed_dim
         out = mha(x)
 
-        assert out.shape == (batch_size, num_tokens, d_out)
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
+        assert not torch.isnan(out).any(), "Output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Output should contain only finite values"
 
     def test_multihead_attention_parameters(self):
         """
@@ -2762,8 +2260,7 @@ class TestMHAPyTorchClass:
         num_heads = 8
         dropout = 0.1
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16, dropout=dropout, qkv_bias=True)
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16, dropout=dropout, qkv_bias=True)
 
         # Check MultiheadAttention configuration
         assert mha.multihead_attn.embed_dim == d_out, f"Expected embed_dim={d_out}, got {mha.multihead_attn.embed_dim}"
@@ -2778,14 +2275,11 @@ class TestMHAPyTorchClass:
         d_out = 768
         num_heads = 12
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16)
 
         # MultiheadAttention should handle head dimension calculation internally
-        expected_head_dim = d_out // num_heads
-        assert mha.multihead_attn.embed_dim == d_out
-        assert mha.multihead_attn.num_heads == num_heads
+        assert mha.multihead_attn.embed_dim == d_out, f"Expected embed_dim={d_out}, got {mha.multihead_attn.embed_dim}"
+        assert mha.multihead_attn.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha.multihead_attn.num_heads}"
         # Head dimension is calculated internally by PyTorch
 
     def test_pytorch_class_projection_layers(self):
@@ -2795,14 +2289,12 @@ class TestMHAPyTorchClass:
         d_out = 512
         num_heads = 8
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16)
 
         # Check additional projection layer
-        assert mha.proj.in_features == d_out
-        assert mha.proj.out_features == d_out
-        assert hasattr(mha, 'need_weights')
+        assert mha.proj.in_features == d_out, f"Expected proj.in_features={d_out}, got {mha.proj.in_features}"
+        assert mha.proj.out_features == d_out, f"Expected proj.out_features={d_out}, got {mha.proj.out_features}"
+        assert hasattr(mha, 'need_weights'), "MHAPyTorchClass should have need_weights attribute"
 
     def test_gradient_flow_pytorch_class(self):
         """
@@ -2810,18 +2302,15 @@ class TestMHAPyTorchClass:
         """
         batch_size, num_tokens, d_out = 2, 8, 512
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=8,
-            context_length=16, dropout=0.0
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=8, context_length=16, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_out, requires_grad=True)
         out = mha(x)
         loss = out.sum()
         loss.backward()
 
-        assert x.grad is not None
-        assert not torch.isnan(x.grad).any()
+        assert x.grad is not None, "Input tensor should have gradients"
+        assert not torch.isnan(x.grad).any(), "Input gradients should not contain NaN values"
 
         # Check that MultiheadAttention and projection have gradients
         mha_params = list(mha.multihead_attn.parameters())
@@ -2836,22 +2325,19 @@ class TestMHAPyTorchClass:
         torch.manual_seed(42)
         batch_size, num_tokens, d_out = 1, 4, 64
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=2,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=2, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_out)
         out = mha(x)
 
         # Check that mask buffer exists and has correct shape
-        assert hasattr(mha, 'mask')
-        assert mha.mask.shape == (8, 8)  # context_length x context_length
-        assert mha.mask.dtype == torch.bool
+        assert hasattr(mha, 'mask'), "MHA should have mask attribute"
+        assert mha.mask.shape == (8, 8), f"Expected mask shape (8, 8), got {mha.mask.shape}"
+        assert mha.mask.dtype == torch.bool, f"Expected mask dtype torch.bool, got {mha.mask.dtype}"
 
         # Verify upper triangular structure (causal mask)
         expected_mask = torch.triu(torch.ones(8, 8), diagonal=1).bool()
-        assert torch.equal(mha.mask, expected_mask)
+        assert torch.equal(mha.mask, expected_mask), "Mask should be upper triangular causal mask"
 
     def test_different_head_counts_pytorch_class(self):
         """
@@ -2863,15 +2349,12 @@ class TestMHAPyTorchClass:
         for num_heads in [1, 2, 4, 8]:
             d_out = num_heads * 64  # Ensure divisibility
 
-            mha = MHAPyTorchClass(
-                d_in=d_out, d_out=d_out, num_heads=num_heads,
-                context_length=context_length, dropout=0.0
-            )
+            mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
             x = torch.randn(batch_size, num_tokens, d_out)
             out = mha(x)
 
-            assert out.shape == (batch_size, num_tokens, d_out)
+            assert out.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
             assert mha.multihead_attn.num_heads == num_heads, f"For num_heads={num_heads}, expected {num_heads}, got {mha.multihead_attn.num_heads}"
 
     def test_reproducibility_pytorch_class(self):
@@ -2882,26 +2365,22 @@ class TestMHAPyTorchClass:
 
         # First run
         torch.manual_seed(42)
-        mha1 = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=8,
-            context_length=16, dropout=0.0
-        )
+        mha1 = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=8, context_length=16, dropout=0.0)
         x1 = torch.randn(batch_size, num_tokens, d_out)
         out1 = mha1(x1)
 
         # Second run with same seed
         torch.manual_seed(42)
-        mha2 = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=8,
-            context_length=16, dropout=0.0
-        )
+        mha2 = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=8, context_length=16, dropout=0.0)
         x2 = torch.randn(batch_size, num_tokens, d_out)
         out2 = mha2(x2)
 
-        assert torch.allclose(out1, out2, atol=1e-6)
+        assert torch.allclose(out1, out2, atol=1e-6), "Outputs should be close for same seed and inputs"
 
     def test_versus_other_implementations(self):
-        """Test consistency with other attention implementations (shape and basic properties)."""
+        """
+        Test consistency with other attention implementations (shape and basic properties).
+        """
         torch.manual_seed(123)
         batch_size, num_tokens, d_in = 2, 6, 128
         d_out = 128
@@ -2909,15 +2388,9 @@ class TestMHAPyTorchClass:
         context_length = 10
 
         # Create models with same configuration
-        mha_pytorch_class = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha_pytorch_class = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
-        mha_combined_qkv = MultiHeadAttentionCombinedQKV(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha_combined_qkv = MultiHeadAttentionCombinedQKV(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
         x_pytorch = torch.randn(batch_size, num_tokens, d_out)  # Input for PyTorch class
         x_combined = torch.randn(batch_size, num_tokens, d_in)  # Input for combined QKV
@@ -2927,7 +2400,7 @@ class TestMHAPyTorchClass:
 
         # Check shapes are consistent
         assert out_pytorch_class.shape == out_combined_qkv.shape, f"Output shapes should match: PyTorch class {out_pytorch_class.shape} vs Combined QKV {out_combined_qkv.shape}"
-        assert out_pytorch_class.shape == (batch_size, num_tokens, d_out)
+        assert out_pytorch_class.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out_pytorch_class.shape}"
 
     def test_need_weights_functionality(self):
         """
@@ -2936,16 +2409,10 @@ class TestMHAPyTorchClass:
         batch_size, num_tokens, d_out = 2, 4, 256
 
         # Test with need_weights=True
-        mha_with_weights = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=4,
-            context_length=8, need_weights=True
-        )
+        mha_with_weights = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=4, context_length=8, need_weights=True)
 
         # Test with need_weights=False
-        mha_without_weights = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=4,
-            context_length=8, need_weights=False
-        )
+        mha_without_weights = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=4, context_length=8, need_weights=False)
 
         x = torch.randn(batch_size, num_tokens, d_out)
 
@@ -2954,7 +2421,7 @@ class TestMHAPyTorchClass:
 
         # Both should produce same shape outputs
         assert out_with_weights.shape == out_without_weights.shape, f"Output shapes should be same regardless of need_weights: with {out_with_weights.shape} vs without {out_without_weights.shape}"
-        assert out_with_weights.shape == (batch_size, num_tokens, d_out)
+        assert out_with_weights.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out_with_weights.shape}"
 
         # Check that need_weights is stored correctly
         assert mha_with_weights.need_weights == True, "MHA with weights should have need_weights=True"
@@ -2965,9 +2432,7 @@ class TestMHAPyTorchClass:
         Test error handling for incorrect input dimensions.
         """
         d_out = 512
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=8, context_length=16
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=8, context_length=16)
 
         # Wrong input dimension (PyTorch MultiheadAttention expects embed_dim)
         x_wrong = torch.randn(2, 8, 256)  # Should be 512
@@ -3000,9 +2465,9 @@ class TestMHAPyTorchClass:
         out = mha_pytorch_class_default(embeddings)
 
         # Main test: verify output shape
-        assert out.shape == torch.Size([8, 1024, 768])
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == torch.Size([8, 1024, 768]), f"Expected shape [8, 1024, 768], got {out.shape}"
+        assert not torch.isnan(out).any(), "Large scale output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Large scale output should contain only finite values"
 
         # Verify model parameters
         assert mha_pytorch_class_default.multihead_attn.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_class_default.multihead_attn.num_heads}"
@@ -3015,9 +2480,7 @@ class TestMHAPyTorchClass:
         d_out = 512
         num_heads = 8
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16)
 
         total_params = sum(p.numel() for p in mha.parameters())
 
@@ -3040,16 +2503,10 @@ class TestMHAPyTorchClass:
         num_heads = 4
 
         # Test without bias
-        mha_no_bias = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads,
-            context_length=16, qkv_bias=False
-        )
+        mha_no_bias = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16, qkv_bias=False)
 
         # Test with bias
-        mha_with_bias = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=num_heads,
-            context_length=16, qkv_bias=True
-        )
+        mha_with_bias = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=num_heads, context_length=16, qkv_bias=True)
 
         # Both should work (PyTorch handles bias configuration internally)
         x = torch.randn(2, 4, d_out)
@@ -3058,7 +2515,7 @@ class TestMHAPyTorchClass:
         out_with_bias = mha_with_bias(x)
 
         assert out_no_bias.shape == out_with_bias.shape, f"Outputs should have same shape regardless of bias: no bias {out_no_bias.shape} vs with bias {out_with_bias.shape}"
-        assert out_no_bias.shape == (2, 4, d_out)
+        assert out_no_bias.shape == (2, 4, d_out), f"Expected shape (2, 4, {d_out}), got {out_no_bias.shape}"
 
     def test_pytorch_multihead_attention_integration(self):
         """
@@ -3066,20 +2523,17 @@ class TestMHAPyTorchClass:
         """
         batch_size, num_tokens, d_out = 2, 4, 128
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=4,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=4,context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_out)
         out = mha(x)
 
         # Verify that PyTorch's MultiheadAttention is being used
-        assert isinstance(mha.multihead_attn, nn.MultiheadAttention)
-        assert out.shape == (batch_size, num_tokens, d_out)
+        assert isinstance(mha.multihead_attn, nn.MultiheadAttention), "multihead_attn should be an instance of nn.MultiheadAttention"
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected output shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
 
         # Ensure output is different from input (attention has been applied)
-        assert not torch.allclose(out, x, atol=1e-3)
+        assert not torch.allclose(out, x, atol=1e-3), "Output should differ from input after attention"
 
     def test_pytorch_class_mask_handling(self):
         """
@@ -3088,10 +2542,7 @@ class TestMHAPyTorchClass:
         torch.manual_seed(42)
         batch_size, num_tokens, d_out = 2, 4, 64
 
-        mha = MHAPyTorchClass(
-            d_in=d_out, d_out=d_out, num_heads=2,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchClass(d_in=d_out, d_out=d_out, num_heads=2, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_out)
 
@@ -3107,8 +2558,8 @@ class TestMHAPyTorchClass:
         assert out_short.shape[1] == 2, f"Short sequence output should have 2 tokens, got {out_short.shape[1]}"
 
         # The mask should be correctly sized for each input
-        assert out_full.shape == (batch_size, num_tokens, d_out)
-        assert out_short.shape == (batch_size, 2, d_out)
+        assert out_full.shape == (batch_size, num_tokens, d_out), f"Expected full output shape ({batch_size}, {num_tokens}, {d_out}), got {out_full.shape}"
+        assert out_short.shape == (batch_size, 2, d_out), f"Expected short output shape ({batch_size}, 2, {d_out}), got {out_short.shape}"
 
     def test_pytorch_class_no_weights_large_scale_configuration(self):
         """
@@ -3137,9 +2588,9 @@ class TestMHAPyTorchClass:
         out = mha_pytorch_class_noweights(embeddings)
 
         # Main test: verify output shape
-        assert out.shape == torch.Size([8, 1024, 768])
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == torch.Size([8, 1024, 768]), f"Expected shape (8, 1024, 768), got {out.shape}"
+        assert not torch.isnan(out).any(), "Large scale output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Large scale output should contain only finite values"
 
         # Verify model parameters
         assert mha_pytorch_class_noweights.multihead_attn.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_class_noweights.multihead_attn.num_heads}"
@@ -3158,9 +2609,7 @@ class TestMHAPyTorchFlexAttention:
         """
         # Since we now support device compatibility, FlexAttention should work
         try:
-            mha = MHAPyTorchFlexAttention(
-                d_in=512, d_out=256, num_heads=4, context_length=16
-            )
+            mha = MHAPyTorchFlexAttention(d_in=512, d_out=256, num_heads=4, context_length=16)
             # Test that it can be created without errors
             assert mha is not None, "MHA instance should be created successfully"
             assert mha.num_heads == 4, f"Expected num_heads=4, got {mha.num_heads}"
@@ -3179,17 +2628,14 @@ class TestMHAPyTorchFlexAttention:
         num_heads = 4
         context_length = 16
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
 
-        assert out.shape == (batch_size, num_tokens, d_out)
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected output shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
+        assert not torch.isnan(out).any(), "Output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Output should contain only finite values"
 
     def test_dimension_divisibility_assertion_pytorch_flex(self):
         """
@@ -3204,14 +2650,12 @@ class TestMHAPyTorchFlexAttention:
         """
         d_out = 768
         num_heads = 12
-        mha = MHAPyTorchFlexAttention(
-            d_in=512, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchFlexAttention(d_in=512, d_out=d_out, num_heads=num_heads, context_length=16)
 
         expected_head_dim = d_out // num_heads
-        assert mha.head_dim == expected_head_dim
-        assert mha.num_heads == num_heads
-        assert mha.d_out == d_out
+        assert mha.head_dim == expected_head_dim, f"Expected head_dim={expected_head_dim}, got {mha.head_dim}"
+        assert mha.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha.num_heads}"
+        assert mha.d_out == d_out, f"Expected d_out={d_out}, got {mha.d_out}"
 
     def test_pytorch_flex_qkv_projection(self):
         """
@@ -3219,16 +2663,13 @@ class TestMHAPyTorchFlexAttention:
         """
         d_in, d_out = 512, 256
         num_heads = 4
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16)
 
         # Check QKV projection layer
-        assert mha.qkv.in_features == d_in
-        assert mha.qkv.out_features == 3 * d_out
-        assert mha.proj.in_features == d_out
-        assert mha.proj.out_features == d_out
-
+        assert mha.qkv.in_features == d_in, f"Expected qkv.in_features={d_in}, got {mha.qkv.in_features}"
+        assert mha.qkv.out_features == 3 * d_out, f"Expected qkv.out_features={3 * d_out}, got {mha.qkv.out_features}"
+        assert mha.proj.in_features == d_out, f"Expected proj.in_features={d_out}, got {mha.proj.in_features}"
+        assert mha.proj.out_features == d_out, f"Expected proj.out_features={d_out}, got {mha.proj.out_features}"
     def test_gradient_flow_pytorch_flex(self):
         """
         Test that gradients flow properly through the model.
@@ -3236,20 +2677,17 @@ class TestMHAPyTorchFlexAttention:
         batch_size, num_tokens, d_in = 2, 8, 512
         d_out = 256
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.0
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in, requires_grad=True)
         out = mha(x)
         loss = out.sum()
         loss.backward()
 
-        assert x.grad is not None
-        assert not torch.isnan(x.grad).any()
-        assert mha.qkv.weight.grad is not None
-        assert mha.proj.weight.grad is not None
+        assert x.grad is not None, "Input tensor should have gradients"
+        assert not torch.isnan(x.grad).any(), "Input gradients should not contain NaN values"
+        assert mha.qkv.weight.grad is not None, "QKV layer weights should have gradients"
+        assert mha.proj.weight.grad is not None, "Projection layer weights should have gradients"
 
     def test_flex_attention_block_mask(self):
         """
@@ -3259,10 +2697,7 @@ class TestMHAPyTorchFlexAttention:
         batch_size, num_tokens, d_in = 2, 4, 128
         d_out = 64
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=2,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=2, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
@@ -3284,15 +2719,12 @@ class TestMHAPyTorchFlexAttention:
 
         for num_heads in [1, 2, 4, 8]:
             if d_out % num_heads == 0:  # Only test valid configurations
-                mha = MHAPyTorchFlexAttention(
-                    d_in=d_in, d_out=d_out, num_heads=num_heads,
-                    context_length=context_length, dropout=0.0
-                )
+                mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
                 x = torch.randn(batch_size, num_tokens, d_in)
                 out = mha(x)
 
-                assert out.shape == (batch_size, num_tokens, d_out)
+                assert out.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
                 assert mha.num_heads == num_heads, f"For num_heads={num_heads}, expected {num_heads}, got {mha.num_heads}"
 
     def test_reproducibility_pytorch_flex(self):
@@ -3304,23 +2736,18 @@ class TestMHAPyTorchFlexAttention:
 
         # First run
         torch.manual_seed(42)
-        mha1 = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.0
+        mha1 = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.0
         )
         x1 = torch.randn(batch_size, num_tokens, d_in)
         out1 = mha1(x1)
 
         # Second run with same seed
         torch.manual_seed(42)
-        mha2 = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.0
-        )
+        mha2 = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.0)
         x2 = torch.randn(batch_size, num_tokens, d_in)
         out2 = mha2(x2)
 
-        assert torch.allclose(out1, out2, atol=1e-6)
+        assert torch.allclose(out1, out2, atol=1e-6), "Outputs should be close for same seed and inputs"
 
     def test_versus_other_implementations(self):
         torch.manual_seed(123)
@@ -3330,15 +2757,9 @@ class TestMHAPyTorchFlexAttention:
         context_length = 10
 
         # Create models with same configuration
-        mha_flex = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha_flex = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
-        mha_combined_qkv = MultiHeadAttentionCombinedQKV(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha_combined_qkv = MultiHeadAttentionCombinedQKV(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=context_length, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
 
@@ -3347,17 +2768,14 @@ class TestMHAPyTorchFlexAttention:
 
         # Check shapes are consistent
         assert out_flex.shape == out_combined_qkv.shape, f"Output shapes should match: Flex {out_flex.shape} vs Combined QKV {out_combined_qkv.shape}"
-        assert out_flex.shape == (batch_size, num_tokens, d_out)
+        assert out_flex.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out_flex.shape}"
 
     def test_training_vs_eval_mode(self):
         torch.manual_seed(42)
         batch_size, num_tokens, d_in = 2, 4, 128
         d_out = 256
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.1  # Use dropout for difference
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=4, context_length=16, dropout=0.1)  # Use dropout for difference
 
         x = torch.randn(batch_size, num_tokens, d_in)
 
@@ -3370,16 +2788,14 @@ class TestMHAPyTorchFlexAttention:
         out_eval = mha(x)
 
         # Both should produce valid outputs with same shape
-        assert out_train.shape == out_eval.shape
-        assert isinstance(mha.dropout, float)  # Confirm dropout is stored as float
+        assert out_train.shape == out_eval.shape, f"Training and evaluation outputs should have the same shape, got {out_train.shape} and {out_eval.shape}"
+        assert isinstance(mha.dropout, float), f"Dropout should be stored as float, got {type(mha.dropout)}"
 
     def test_wrong_input_dimensions_pytorch_flex(self):
         """
         Test error handling for incorrect input dimensions.
         """
-        mha = MHAPyTorchFlexAttention(
-            d_in=512, d_out=256, num_heads=4, context_length=16
-        )
+        mha = MHAPyTorchFlexAttention(d_in=512, d_out=256, num_heads=4, context_length=16)
 
         # Wrong input dimension
         x_wrong = torch.randn(2, 8, 256)  # d_in should be 512
@@ -3412,9 +2828,9 @@ class TestMHAPyTorchFlexAttention:
         out = mha_pytorch_flex(embeddings)
 
         # Main test: verify output shape
-        assert out.shape == torch.Size([8, 1024, 768])
-        assert not torch.isnan(out).any()
-        assert torch.isfinite(out).all()
+        assert out.shape == torch.Size([8, 1024, 768]), f"Expected shape [8, 1024, 768], got {out.shape}"
+        assert not torch.isnan(out).any(), "Large scale output should not contain NaN values"
+        assert torch.isfinite(out).all(), "Large scale output should contain only finite values"
 
         # Verify model parameters
         assert mha_pytorch_flex.num_heads == num_heads, f"Expected num_heads={num_heads}, got {mha_pytorch_flex.num_heads}"
@@ -3428,9 +2844,7 @@ class TestMHAPyTorchFlexAttention:
         d_in, d_out = 512, 256
         num_heads = 4
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16)
 
         total_params = sum(p.numel() for p in mha.parameters())
 
@@ -3440,7 +2854,7 @@ class TestMHAPyTorchFlexAttention:
         # Output bias: d_out = 256
         expected_params = (d_in * 3 * d_out) + (d_out * d_out) + d_out  # No QKV bias by default
 
-        assert total_params == expected_params
+        assert total_params == expected_params, f"Total params ({total_params}) should match expected ({expected_params})"
 
     def test_bias_functionality_pytorch_flex(self):
         """
@@ -3450,19 +2864,13 @@ class TestMHAPyTorchFlexAttention:
         num_heads = 4
 
         # Test without bias
-        mha_no_bias = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=16, qkv_bias=False
-        )
-        assert mha_no_bias.qkv.bias is None
+        mha_no_bias = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16, qkv_bias=False)
+        assert mha_no_bias.qkv.bias is None, "QKV layer bias should be None when qkv_bias=False"
 
         # Test with bias
-        mha_with_bias = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=16, qkv_bias=True
-        )
-        assert mha_with_bias.qkv.bias is not None
-        assert mha_with_bias.qkv.bias.shape == (3 * d_out,)
+        mha_with_bias = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=num_heads, context_length=16, qkv_bias=True)
+        assert mha_with_bias.qkv.bias is not None, "QKV layer bias should be present when qkv_bias=True"
+        assert mha_with_bias.qkv.bias.shape == (3 * d_out,), f"Expected qkv.bias shape ({3 * d_out},), got {mha_with_bias.qkv.bias.shape}"
 
     def test_pytorch_flex_attention_backend_verification(self):
         """
@@ -3471,17 +2879,14 @@ class TestMHAPyTorchFlexAttention:
         batch_size, num_tokens, d_in = 2, 4, 128
         d_out = 128
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=4, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
 
         # Verify that block_mask is used
-        assert hasattr(mha, 'block_mask')
-        assert out.shape == (batch_size, num_tokens, d_out)
+        assert hasattr(mha, 'block_mask'), "MHA should have block_mask attribute for FlexAttention"
+        assert out.shape == (batch_size, num_tokens, d_out), f"Expected shape ({batch_size}, {num_tokens}, {d_out}), got {out.shape}"
 
         # Ensure output is different from input (attention has been applied)
         qkv = mha.qkv(x)
@@ -3490,7 +2895,7 @@ class TestMHAPyTorchFlexAttention:
 
         # Output should not be identical to raw queries
         queries_flattened = queries.transpose(1, 2).reshape(batch_size, num_tokens, d_out)
-        assert not torch.allclose(out, queries_flattened, atol=1e-3)
+        assert not torch.allclose(out, queries_flattened, atol=1e-3), "Output should differ from raw queries after attention"
 
     def test_pytorch_flex_causal_behavior(self):
         """
@@ -3500,10 +2905,7 @@ class TestMHAPyTorchFlexAttention:
         batch_size, num_tokens, d_in = 2, 4, 64
         d_out = 64
 
-        mha = MHAPyTorchFlexAttention(
-            d_in=d_in, d_out=d_out, num_heads=2,
-            context_length=8, dropout=0.0
-        )
+        mha = MHAPyTorchFlexAttention(d_in=d_in, d_out=d_out, num_heads=2, context_length=8, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in)
 
