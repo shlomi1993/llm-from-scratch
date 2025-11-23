@@ -1,11 +1,3 @@
-"""
-Test Suite for Layer Normalization Module
-
-This module contains comprehensive tests for the LayerNorm implementation,
-testing mathematical correctness, numerical stability, gradient behavior,
-and compatibility with transformer architectures.
-"""
-
 import pytest
 import torch
 import torch.nn as nn
