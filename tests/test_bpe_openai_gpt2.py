@@ -339,7 +339,7 @@ class TestDownloadVocab:
         download_vocab()
 
         # Verify calls
-        mock_makedirs.assert_called_once_with("gpt2_model"), "Should create gpt2_model directory"
+        mock_makedirs.assert_called_once_with("tokenizers"), "Should create tokenizers directory"
         assert mock_requests_get.call_count == 2, "Should download two files"
         assert mock_file.call_count == 2, "Should open two files for writing"
 
