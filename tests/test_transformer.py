@@ -2,8 +2,9 @@ import pytest
 import torch
 import torch.nn as nn
 
+from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 from src.transformer import TransformerBlock
-from src.configurations import GptConfig, GPT_CONFIG_124M
+from src.gpt import GptModel
 
 
 class TestTransformerBlock:
@@ -310,3 +311,90 @@ class TestTransformerBlock:
         assert x.shape == input_tensor.shape, "Final output should match input shape"
         assert torch.isfinite(x).all(), "Final output should be finite"
         assert not torch.allclose(x, input_tensor), "Stacked blocks should transform input"
+
+    def test_transformer_block_structure(self):
+        """
+        Exercise 4.1 from notebook chapters/ch04/01_main-chapter-code/exercise-solutions.ipynb
+        """
+        block = TransformerBlock(GPT_CONFIG_124M)
+
+        # Test the structure of the TransformerBlock
+        assert isinstance(block.att, torch.nn.Module), "att should be a Module"
+        assert isinstance(block.ff, torch.nn.Module), "ff should be a Module"
+        assert isinstance(block.norm1, torch.nn.Module), "norm1 should be a Module"
+        assert isinstance(block.norm2, torch.nn.Module), "norm2 should be a Module"
+        assert isinstance(block.drop_shortcut, torch.nn.Dropout), "drop_shortcut should be Dropout"
+
+        # Test that the string representation contains expected components
+        block_str = str(block)
+        assert "MultiHeadAttention" in block_str, "Should contain MultiHeadAttention"
+        assert "FeedForward" in block_str, "Should contain FeedForward"
+        assert "LayerNorm" in block_str, "Should contain LayerNorm"
+        assert "Dropout" in block_str, "Should contain Dropout"
+
+        # Test attention module structure
+        att_str = str(block.att)
+        assert "W_query" in att_str, "Attention should have W_query"
+        assert "W_key" in att_str, "Attention should have W_key"
+        assert "W_value" in att_str, "Attention should have W_value"
+        assert "out_proj" in att_str, "Attention should have out_proj"
+        assert "Linear(in_features=768, out_features=768, bias=False)" in att_str, "Should have QKV projections"
+        assert "Linear(in_features=768, out_features=768, bias=True)" in att_str, "Should have output projection"
+        assert "Dropout(p=0.1" in att_str, "Should have dropout with p=0.1"
+
+        # Test feed-forward module structure
+        ff_str = str(block.ff)
+        assert "Sequential" in ff_str, "FeedForward should use Sequential"
+        assert "Linear(in_features=768, out_features=3072, bias=True)" in ff_str, "Should expand to 4x dimension"
+        assert "GELU" in ff_str, "Should use GELU activation"
+        assert "Linear(in_features=3072, out_features=768, bias=True)" in ff_str, "Should contract back to original dimension"
+
+        # Test parameter counts
+        total_ff_params = sum(p.numel() for p in block.ff.parameters())
+        assert total_ff_params == 4_722_432, f"FeedForward should have 4,722,432 parameters, got {total_ff_params:,}"
+
+        total_att_params = sum(p.numel() for p in block.att.parameters())
+        assert total_att_params == 2_360_064, f"Attention should have 2,360,064 parameters, got {total_att_params:,}"
+
+        # Test overall functionality
+        input_tensor = torch.randn(1, 10, GPT_CONFIG_124M.emb_dim)
+        output = block(input_tensor)
+        assert output.shape == input_tensor.shape, "Output should match input shape"
+        assert torch.isfinite(output).all(), "Output should be finite"
+
+    @pytest.mark.parametrize("config,expected_total,expected_tied,expected_size_mb,model_name", [
+        (GPT_CONFIG_124M, 163_009_536, 124_412_160, 621.83, "gpt2-small"),
+        (GPT_CONFIG_355M, 406_212_608, 354_749_440, 1549.58, "gpt2-medium"),
+        (GPT_CONFIG_774M, 838_220_800, 773_891_840, 3197.56, "gpt2-large"),
+        (GPT_CONFIG_1558M, 1_637_792_000, 1_557_380_800, 6247.68, "gpt2-xl"),
+    ])
+    def test_gpt_model_parameter_counts(self, config, expected_total, expected_tied, expected_size_mb, model_name):
+        """
+        Test parameter counts and model sizes for different GPT-2 configurations.
+
+        Verifies that the model architectures match the expected parameter counts from the GPT-2 paper specifications.
+        """
+        model = GptModel(config)
+
+        # Calculate total parameters
+        total_params = sum(p.numel() for p in model.parameters())
+        assert total_params == expected_total, f"{model_name}: Expected {expected_total:,} total parameters, got {total_params:,}"
+
+        # Calculate parameters excluding output head (simulating weight tying)
+        params_without_output_head = total_params - sum(p.numel() for p in model.out_head.parameters())
+        assert params_without_output_head == expected_tied, f"{model_name}: Expected {expected_tied:,} parameters with weight tying, got {params_without_output_head:,}"
+
+        # Calculate model size in MB (assuming float32, 4 bytes per parameter)
+        total_size_bytes = total_params * 4
+        total_size_mb = total_size_bytes / (1024 * 1024)
+        assert abs(total_size_mb - expected_size_mb) < 0.01, f"{model_name}: Expected {expected_size_mb:.2f} MB, got {total_size_mb:.2f} MB"
+
+        # Test that the model can perform forward pass
+        batch_size, seq_len = 1, 8
+        input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len))
+
+        with torch.no_grad():
+            output = model(input_ids)
+            expected_shape = (batch_size, seq_len, config.vocab_size)
+            assert output.shape == expected_shape, f"{model_name}: Expected output shape {expected_shape}, got {output.shape}"
+            assert torch.isfinite(output).all(), f"{model_name}: Output should be finite"
