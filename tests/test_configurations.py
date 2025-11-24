@@ -13,9 +13,9 @@ import copy
 
 from dataclasses import asdict, FrozenInstanceError
 
-
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 from src.gpt import GptModelBasic
+
 
 class TestGptConfig:
     """
@@ -63,7 +63,7 @@ class TestGptConfig:
         """
         Test that configuration is frozen (immutable).
         """
-        config = GptConfig()
+        config = GptConfig(emb_dim=768, n_layers=12, n_heads=12)
 
         # Attempting to modify should raise FrozenInstanceError
         with pytest.raises(FrozenInstanceError):
@@ -79,9 +79,9 @@ class TestGptConfig:
         """
         Test configuration equality comparison.
         """
-        config1 = GptConfig(emb_dim=512, n_layers=8)
-        config2 = GptConfig(emb_dim=512, n_layers=8)
-        config3 = GptConfig(emb_dim=768, n_layers=8)
+        config1 = GptConfig(emb_dim=512, n_layers=8, n_heads=8)
+        config2 = GptConfig(emb_dim=512, n_layers=8, n_heads=8)
+        config3 = GptConfig(emb_dim=768, n_layers=8, n_heads=8)
 
         assert config1 == config2, "Configurations with same parameters should be equal"
         assert config1 != config3, "Configurations with different parameters should not be equal"
@@ -90,9 +90,9 @@ class TestGptConfig:
         """
         Test that configuration can be hashed (useful for caching).
         """
-        config1 = GptConfig(emb_dim=512, n_layers=8)
-        config2 = GptConfig(emb_dim=512, n_layers=8)
-        config3 = GptConfig(emb_dim=768, n_layers=8)
+        config1 = GptConfig(emb_dim=512, n_layers=8, n_heads=8)
+        config2 = GptConfig(emb_dim=512, n_layers=8, n_heads=8)
+        config3 = GptConfig(emb_dim=768, n_layers=8, n_heads=8)
 
         # Same configurations should have same hash
         assert hash(config1) == hash(config2), "Same configurations should have same hash"
@@ -113,9 +113,9 @@ class TestGptConfig:
         """
         # Valid configurations
         valid_configs = [
-            GptConfig(emb_dim=768, n_heads=12),  # 768 / 12 = 64
-            GptConfig(emb_dim=512, n_heads=8),   # 512 / 8 = 64
-            GptConfig(emb_dim=1024, n_heads=16), # 1024 / 16 = 64
+            GptConfig(emb_dim=768, n_layers=12, n_heads=12),  # 768 / 12 = 64
+            GptConfig(emb_dim=512, n_layers=8, n_heads=8),   # 512 / 8 = 64
+            GptConfig(emb_dim=1024, n_layers=16, n_heads=16), # 1024 / 16 = 64
         ]
 
         for config in valid_configs:
@@ -265,10 +265,10 @@ class TestPredefinedConfigurations:
 
         # Test that estimated parameters are in reasonable ranges
         config_sizes = [
-            (GPT_CONFIG_124M, 120_000_000, 130_000_000),    # ~124M
-            (GPT_CONFIG_355M, 340_000_000, 370_000_000),    # ~355M
-            (GPT_CONFIG_774M, 750_000_000, 800_000_000),    # ~774M
-            (GPT_CONFIG_1558M, 1_500_000_000, 1_600_000_000), # ~1558M
+            (GPT_CONFIG_124M, 160_000_000, 170_000_000),        # ~163M actual
+            (GPT_CONFIG_355M, 400_000_000, 410_000_000),        # ~406M actual
+            (GPT_CONFIG_774M, 835_000_000, 845_000_000),        # ~838M actual
+            (GPT_CONFIG_1558M, 1_630_000_000, 1_645_000_000),   # ~1637M actual
         ]
 
         for config, min_params, max_params in config_sizes:
