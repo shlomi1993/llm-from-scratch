@@ -2,7 +2,7 @@ import torch
 
 from importlib.metadata import version
 
-from dataloader import create_dataloader_v1
+from src.dataloader import create_dataloader_v1
 
 
 def test_torch_version():

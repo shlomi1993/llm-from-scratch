@@ -14,8 +14,8 @@ import copy
 from dataclasses import asdict, FrozenInstanceError
 
 
-from configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
-from gpt import GptModelBasic
+from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
+from src.gpt import GptModelBasic
 
 class TestGptConfig:
     """
