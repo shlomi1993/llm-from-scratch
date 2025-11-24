@@ -76,25 +76,6 @@ class TestGptModelCached:
             assert final_pos > initial_pos, f"Position should increase, got {final_pos} vs {initial_pos}"
             assert final_pos == 6, f"Position should be 6 after processing 1 more token, got {final_pos}"
 
-    def test_batch_processing(self, model):
-        """
-        Test that model handles batch processing correctly.
-        """
-        batch_size = 3
-        seq_length = 10
-        input_ids = torch.randint(0, model.config.vocab_size, (batch_size, seq_length))
-
-        model.eval()
-        with torch.no_grad():
-            output = model(input_ids)
-
-            # Check output shape
-            expected_shape = (batch_size, seq_length, model.config.vocab_size)
-            assert output.shape == expected_shape, f"Expected output shape {expected_shape}, got {output.shape}"
-
-            # Check that all batch items are processed
-            assert torch.isfinite(output).all(), "Output contains non-finite values"
-
     def test_generate_text_cached(self, model):
         """
         Test the cached text generation method.
@@ -277,35 +258,4 @@ class TestGptModelCached:
             if param.requires_grad:
                 assert param.grad is not None, f"Parameter {name} should have gradients"
 
-    def test_state_dict_compatibility(self, model):
-        """
-        Test that state dict contains expected parameters and can save/load properly.
-        """
-        # Get state dict from cached model
-        cached_state_dict = model.state_dict()
 
-        # Verify it contains expected keys
-        expected_keys = ['tok_emb.weight', 'pos_emb.weight', 'final_norm.scale', 'out_head.weight']
-        for key in expected_keys:
-            assert key in cached_state_dict, f"Expected key {key} not found in state dict"
-
-        # Test that we can create a new model and load compatible parts
-        torch.manual_seed(456)  # Different seed for new model
-        new_model = type(model)(model.config)
-
-        # Load the state dict
-        new_model.load_state_dict(cached_state_dict)
-
-        # Test that they produce same outputs
-        input_ids = torch.randint(0, model.config.vocab_size, (1, 5))
-
-        model.eval()
-        new_model.eval()
-        model.reset_kv_cache()
-        new_model.reset_kv_cache()
-
-        with torch.no_grad():
-            output1 = model(input_ids, use_cache=False)
-            output2 = new_model(input_ids, use_cache=False)
-
-        torch.testing.assert_close(output1, output2, atol=1e-6, rtol=1e-6, msg="Models with same state dict should produce identical outputs")

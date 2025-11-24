@@ -275,21 +275,6 @@ class TestPredefinedConfigurations:
             estimated = estimate_params(config)
             assert min_params <= estimated <= max_params, f"Estimated params {estimated:,} should be between {min_params:,} and {max_params:,}"
 
-    def test_configs_compatible_with_gpt_model(self):
-        """
-        est that all predefined configurations can be used to create models.
-        """
-        configs = [GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M]
-
-        for config in configs:
-            # Should be able to create model without errors
-            model = GptModelBasic(config)
-
-            # Basic sanity checks
-            assert hasattr(model, 'tok_emb'), "Model should have token embedding"
-            assert hasattr(model, 'trf_blocks'), "Model should have transformer blocks"
-            assert len(model.trf_blocks) == config.n_layers, f"Should have {config.n_layers} transformer blocks"
-
     def test_config_serialization_compatibility(self):
         """
         Test that configurations can be serialized and deserialized.

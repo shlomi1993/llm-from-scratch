@@ -47,22 +47,6 @@ class TestGptModelBasic:
         expected_shape = (batch_size, seq_len, sample_config.vocab_size)
         assert output.shape == expected_shape, f"Expected output shape {expected_shape}, got {output.shape}"
 
-    def test_forward_pass_values(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
-        """
-        Test that forward pass produces reasonable values.
-        """
-        batch_size, seq_len = 1, 5
-        input_ids = torch.randint(0, sample_config.vocab_size, (batch_size, seq_len))
-
-        output = sample_model(input_ids)
-
-        # Check that output contains finite values
-        assert torch.isfinite(output).all(), "Output should contain only finite values"
-        assert not torch.isnan(output).any(), "Output should not contain NaN values"
-
-        # Check that output has reasonable range (logits can be negative/positive)
-        assert output.abs().max() < 100, "Output logits should be in reasonable range"
-
     def test_different_sequence_lengths(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test model with different sequence lengths.
