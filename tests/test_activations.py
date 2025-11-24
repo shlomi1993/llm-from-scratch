@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import math
 
-from src.activations import GELU
+from activations import GELU
 
 
 class TestGELU:

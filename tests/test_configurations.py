@@ -7,11 +7,15 @@ configuration instantiation, and preset model configurations.
 """
 
 import pytest
+import pickle
+import json
+import copy
 
-from dataclasses import FrozenInstanceError
+from dataclasses import asdict, FrozenInstanceError
 
-from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 
+from configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
+from gpt import GptModelBasic
 
 class TestGptConfig:
     """
@@ -19,7 +23,9 @@ class TestGptConfig:
     """
 
     def test_default_config_creation(self):
-        """Test creating a configuration with standard values."""
+        """
+        Test creating a configuration with standard values.
+        """
         config = GPT_CONFIG_124M
 
         # Check standard GPT-2 124M values
@@ -32,7 +38,9 @@ class TestGptConfig:
         assert config.qkv_bias is False, "GPT-124M qkv_bias should be False"
 
     def test_custom_config_creation(self):
-        """Test creating a configuration with custom values."""
+        """
+        Test creating a configuration with custom values.
+        """
         config = GptConfig(
             emb_dim=512,
             n_layers=8,
@@ -52,7 +60,9 @@ class TestGptConfig:
         assert config.qkv_bias is True, "Custom qkv_bias should be True"
 
     def test_config_immutability(self):
-        """Test that configuration is frozen (immutable)."""
+        """
+        Test that configuration is frozen (immutable).
+        """
         config = GptConfig()
 
         # Attempting to modify should raise FrozenInstanceError
@@ -66,7 +76,9 @@ class TestGptConfig:
             config.vocab_size = 60000
 
     def test_config_equality(self):
-        """Test configuration equality comparison."""
+        """
+        Test configuration equality comparison.
+        """
         config1 = GptConfig(emb_dim=512, n_layers=8)
         config2 = GptConfig(emb_dim=512, n_layers=8)
         config3 = GptConfig(emb_dim=768, n_layers=8)
@@ -75,7 +87,9 @@ class TestGptConfig:
         assert config1 != config3, "Configurations with different parameters should not be equal"
 
     def test_config_hash(self):
-        """Test that configuration can be hashed (useful for caching)."""
+        """
+        Test that configuration can be hashed (useful for caching).
+        """
         config1 = GptConfig(emb_dim=512, n_layers=8)
         config2 = GptConfig(emb_dim=512, n_layers=8)
         config3 = GptConfig(emb_dim=768, n_layers=8)
@@ -94,7 +108,9 @@ class TestGptConfig:
         assert len(config_dict) == 2, "Dictionary should accept configurations as keys"
 
     def test_attention_head_dimension_consistency(self):
-        """Test that embedding dimension is divisible by number of attention heads."""
+        """
+        Test that embedding dimension is divisible by number of attention heads.
+        """
         # Valid configurations
         valid_configs = [
             GptConfig(emb_dim=768, n_heads=12),  # 768 / 12 = 64
@@ -108,19 +124,15 @@ class TestGptConfig:
             assert head_dim > 0, f"Head dimension should be positive, got {head_dim}"
 
 
-
-
-
-
-
-
 class TestPredefinedConfigurations:
     """
     Test suite for predefined GPT model configurations.
     """
 
     def test_gpt_config_124m(self):
-        """Test GPT-2 124M parameter configuration."""
+        """
+        Test GPT-2 124M parameter configuration.
+        """
         config = GPT_CONFIG_124M
 
         assert config.emb_dim == 768, "GPT-124M should have 768 embedding dimensions"
@@ -132,7 +144,9 @@ class TestPredefinedConfigurations:
         assert config.qkv_bias is False, "GPT-124M should have no QKV bias"
 
     def test_gpt_config_355m(self):
-        """Test GPT-2 355M parameter configuration."""
+        """
+        Test GPT-2 355M parameter configuration.
+        """
         config = GPT_CONFIG_355M
 
         assert config.emb_dim == 1024, "GPT-355M should have 1024 embedding dimensions"
@@ -144,7 +158,9 @@ class TestPredefinedConfigurations:
         assert config.qkv_bias is False, "GPT-355M should have no QKV bias"
 
     def test_gpt_config_774m(self):
-        """Test GPT-2 774M parameter configuration."""
+        """
+        Test GPT-2 774M parameter configuration.
+        """
         config = GPT_CONFIG_774M
 
         assert config.emb_dim == 1280, "GPT-774M should have 1280 embedding dimensions"
@@ -156,7 +172,9 @@ class TestPredefinedConfigurations:
         assert config.qkv_bias is False, "GPT-774M should have no QKV bias"
 
     def test_gpt_config_1558m(self):
-        """Test GPT-2 1558M parameter configuration."""
+        """
+        Test GPT-2 1558M parameter configuration.
+        """
         config = GPT_CONFIG_1558M
 
         assert config.emb_dim == 1600, "GPT-1558M should have 1600 embedding dimensions"
@@ -168,7 +186,9 @@ class TestPredefinedConfigurations:
         assert config.qkv_bias is False, "GPT-1558M should have no QKV bias"
 
     def test_all_configs_immutable(self):
-        """Test that all predefined configurations are immutable."""
+        """
+        Test that all predefined configurations are immutable.
+        """
         configs = [GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M]
 
         for i, config in enumerate(configs):
@@ -178,7 +198,9 @@ class TestPredefinedConfigurations:
                 config.n_layers = 999
 
     def test_configs_head_dimension_consistency(self):
-        """Test that all predefined configurations have consistent head dimensions."""
+        """
+        Test that all predefined configurations have consistent head dimensions.
+        """
         configs = [
             ("GPT_CONFIG_124M", GPT_CONFIG_124M),
             ("GPT_CONFIG_355M", GPT_CONFIG_355M),
@@ -192,7 +214,9 @@ class TestPredefinedConfigurations:
             assert head_dim >= 32, f"{name}: head dimension {head_dim} should be at least 32 for good performance"
 
     def test_configs_scale_progression(self):
-        """Test that configurations scale appropriately from small to large."""
+        """
+        Test that configurations scale appropriately from small to large.
+        """
         configs = [GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M]
 
         # Check that embedding dimensions increase
@@ -219,7 +243,9 @@ class TestPredefinedConfigurations:
         assert len(set(qkv_biases)) == 1, "All configs should have same qkv_bias setting"
 
     def test_config_parameter_estimation(self):
-        """Test approximate parameter count estimation for configurations."""
+        """
+        Test approximate parameter count estimation for configurations.
+        """
         def estimate_params(config):
             """Rough parameter estimation for GPT model."""
             # Token embedding: vocab_size * emb_dim
@@ -250,9 +276,9 @@ class TestPredefinedConfigurations:
             assert min_params <= estimated <= max_params, f"Estimated params {estimated:,} should be between {min_params:,} and {max_params:,}"
 
     def test_configs_compatible_with_gpt_model(self):
-        """Test that all predefined configurations can be used to create models."""
-        from src.gpt import GptModelBasic
-
+        """
+        est that all predefined configurations can be used to create models.
+        """
         configs = [GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M]
 
         for config in configs:
@@ -265,10 +291,9 @@ class TestPredefinedConfigurations:
             assert len(model.trf_blocks) == config.n_layers, f"Should have {config.n_layers} transformer blocks"
 
     def test_config_serialization_compatibility(self):
-        """Test that configurations can be serialized and deserialized."""
-        import pickle
-        import json
-        from dataclasses import asdict
+        """
+        Test that configurations can be serialized and deserialized.
+        """
 
         config = GPT_CONFIG_124M
 
@@ -285,17 +310,16 @@ class TestPredefinedConfigurations:
         assert reconstructed == config, "JSON-reconstructed config should be identical"
 
     def test_config_copy_behavior(self):
-        """Test configuration copying behavior."""
-        import copy
-
-        config = GPT_CONFIG_124M
+        """
+        Test configuration copying behavior.
+        """
 
         # Shallow copy
-        shallow_copy = copy.copy(config)
-        assert shallow_copy == config, "Shallow copy should be equal"
-        assert shallow_copy is not config, "Shallow copy should be different object"
+        shallow_copy = copy.copy(GPT_CONFIG_124M)
+        assert shallow_copy == GPT_CONFIG_124M, "Shallow copy should be equal"
+        assert shallow_copy is not GPT_CONFIG_124M, "Shallow copy should be different object"
 
         # Deep copy
-        deep_copy = copy.deepcopy(config)
-        assert deep_copy == config, "Deep copy should be equal"
-        assert deep_copy is not config, "Deep copy should be different object"
+        deep_copy = copy.deepcopy(GPT_CONFIG_124M)
+        assert deep_copy == GPT_CONFIG_124M, "Deep copy should be equal"
+        assert deep_copy is not GPT_CONFIG_124M, "Deep copy should be different object"
