@@ -5,7 +5,7 @@ import pytest
 
 from unittest.mock import MagicMock, mock_open, patch
 
-from bpe_openai_gpt2 import Encoder, bytes_to_unicode, get_pairs, get_encoder, download_vocab
+from src.bpe_openai_gpt2 import Encoder, bytes_to_unicode, get_pairs, get_encoder, download_vocab
 
 
 class TestBytesToUnicode:
