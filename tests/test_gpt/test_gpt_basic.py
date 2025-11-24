@@ -1,6 +1,7 @@
 import pytest
 import torch
 import torch.nn as nn
+import tiktoken
 
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M
 from src.gpt import GptModelBasic
@@ -341,8 +342,6 @@ class TestGptModelBasic:
         """
         pytest.importorskip("tiktoken", reason="tiktoken library required for tokenization")
 
-        import tiktoken
-
         torch.manual_seed(123)
         model = GptModelBasic(GPT_CONFIG_124M)
         model.eval()  # disable dropout
@@ -359,11 +358,7 @@ class TestGptModelBasic:
 
         # Generate text
         with torch.no_grad():
-            out = model.generate_text(
-                idx=encoded_tensor,
-                max_new_tokens=10,
-                context_size=GPT_CONFIG_124M.context_length
-            )
+            out = model.generate_text(idx=encoded_tensor, max_new_tokens=10, context_size=GPT_CONFIG_124M.context_length)
 
         # Verify output
         assert out.shape == (1, len(encoded) + 10), f"Expected output length {len(encoded) + 10}, got {out.shape[1]}"
@@ -381,10 +376,6 @@ class TestGptModelBasic:
         model2 = GptModelBasic(GPT_CONFIG_124M)
         model2.eval()
         with torch.no_grad():
-            out2 = model2.generate_text(
-                idx=encoded_tensor,
-                max_new_tokens=10,
-                context_size=GPT_CONFIG_124M.context_length
-            )
+            out2 = model2.generate_text(idx=encoded_tensor, max_new_tokens=10, context_size=GPT_CONFIG_124M.context_length)
 
         assert torch.equal(out, out2), "Generation should be deterministic with same seed"

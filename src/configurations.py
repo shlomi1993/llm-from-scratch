@@ -13,7 +13,7 @@ References:
 
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(frozen=True)
 class GptConfig:
     """
     Configuration class for GPT model hyperparameters.
