@@ -2,13 +2,13 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.gpt import GptModel
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M
+from src.gpt import GptModelBasic
 
 
-class TestGptModel:
+class TestGptModelBasic:
     """
-    Test suite for the GptModel class.
+    Test suite for the GptModelBasic class.
     """
 
     @pytest.fixture
@@ -27,14 +27,14 @@ class TestGptModel:
         )
 
     @pytest.fixture
-    def sample_model(self, sample_config: GptConfig) -> GptModel:
+    def sample_model(self, sample_config: GptConfig) -> GptModelBasic:
         """
-        Create a GptModel instance for testing.
+        Create a GptModelBasic instance for testing.
         """
         torch.manual_seed(42)
-        return GptModel(sample_config)
+        return GptModelBasic(sample_config)
 
-    def test_forward_pass_shape(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_forward_pass_shape(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that forward pass produces correct output shape.
         """
@@ -46,7 +46,7 @@ class TestGptModel:
         expected_shape = (batch_size, seq_len, sample_config.vocab_size)
         assert output.shape == expected_shape, f"Expected output shape {expected_shape}, got {output.shape}"
 
-    def test_forward_pass_values(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_forward_pass_values(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that forward pass produces reasonable values.
         """
@@ -62,7 +62,7 @@ class TestGptModel:
         # Check that output has reasonable range (logits can be negative/positive)
         assert output.abs().max() < 100, "Output logits should be in reasonable range"
 
-    def test_different_sequence_lengths(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_different_sequence_lengths(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test model with different sequence lengths.
         """
@@ -77,7 +77,7 @@ class TestGptModel:
                 expected_shape = (batch_size, seq_len, sample_config.vocab_size)
                 assert output.shape == expected_shape, f"Failed for seq_len={seq_len}: expected {expected_shape}, got {output.shape}"
 
-    def test_generate_text_simple(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_generate_text_simple(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test the greedy text generation method.
         """
@@ -85,7 +85,7 @@ class TestGptModel:
         max_new_tokens = 5
 
         with torch.no_grad():
-            generated = sample_model.generate_text_simple(
+            generated = sample_model.generate_text(
                 idx=initial_context,
                 max_new_tokens=max_new_tokens,
                 context_size=sample_config.context_length
@@ -101,7 +101,7 @@ class TestGptModel:
         new_tokens = generated[:, initial_context.shape[1]:]
         assert (new_tokens >= 0).all() and (new_tokens < sample_config.vocab_size).all(), "Generated tokens should be within vocabulary range"
 
-    def test_generate_text_simple_softmax(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_generate_text_simple_softmax(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test the softmax-based text generation method.
         """
@@ -109,10 +109,11 @@ class TestGptModel:
         max_new_tokens = 5
 
         with torch.no_grad():
-            generated = sample_model.generate_text_simple_softmax(
+            generated = sample_model.generate_text(
                 idx=initial_context,
                 max_new_tokens=max_new_tokens,
-                context_size=sample_config.context_length
+                context_size=sample_config.context_length,
+                use_softmax=True
             )
 
         expected_length = initial_context.shape[1] + max_new_tokens
@@ -121,7 +122,7 @@ class TestGptModel:
         # Check that initial context is preserved
         assert torch.equal(generated[:, :initial_context.shape[1]], initial_context), "Initial context should be preserved"
 
-    def test_generation_methods_equivalence(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_generation_methods_equivalence(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that both generation methods produce same results for greedy sampling.
         """
@@ -132,7 +133,7 @@ class TestGptModel:
         with torch.no_grad():
             # Generate with first method
             torch.manual_seed(456)
-            generated1 = sample_model.generate_text_simple(
+            generated1 = sample_model.generate_text(
                 idx=initial_context.clone(),
                 max_new_tokens=max_new_tokens,
                 context_size=sample_config.context_length
@@ -140,16 +141,17 @@ class TestGptModel:
 
             # Generate with second method
             torch.manual_seed(456)
-            generated2 = sample_model.generate_text_simple_softmax(
+            generated2 = sample_model.generate_text(
                 idx=initial_context.clone(),
                 max_new_tokens=max_new_tokens,
-                context_size=sample_config.context_length
+                context_size=sample_config.context_length,
+                use_softmax=True
             )
 
         # Both methods should produce identical results for greedy sampling
         assert torch.equal(generated1, generated2), "Both generation methods should produce identical results"
 
-    def test_context_length_cropping(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_context_length_cropping(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that context is properly cropped when it exceeds context_size.
         """
@@ -159,7 +161,7 @@ class TestGptModel:
         context_size = sample_config.context_length
 
         with torch.no_grad():
-            generated = sample_model.generate_text_simple(
+            generated = sample_model.generate_text(
                 idx=long_context,
                 max_new_tokens=max_new_tokens,
                 context_size=context_size
@@ -168,7 +170,7 @@ class TestGptModel:
         # Should generate new tokens successfully
         assert generated.shape[1] == long_context.shape[1] + max_new_tokens, "Should generate requested number of tokens"
 
-    def test_batch_generation(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_batch_generation(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test text generation with batch size > 1.
         """
@@ -177,7 +179,7 @@ class TestGptModel:
         max_new_tokens = 3
 
         with torch.no_grad():
-            generated = sample_model.generate_text_simple(
+            generated = sample_model.generate_text(
                 idx=initial_context,
                 max_new_tokens=max_new_tokens,
                 context_size=sample_config.context_length
@@ -195,7 +197,7 @@ class TestGptModel:
         Test parameter counting matches expected values for standard configs.
         """
         # Test with GPT_CONFIG_124M
-        model = GptModel(GPT_CONFIG_124M)
+        model = GptModelBasic(GPT_CONFIG_124M)
         total_params = sum(p.numel() for p in model.parameters())
 
         # Expected parameters for GPT-2 124M without weight tying
@@ -209,7 +211,7 @@ class TestGptModel:
 
 
 
-    def test_gradient_flow(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_gradient_flow(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that gradients flow properly through the model.
         """
@@ -229,7 +231,7 @@ class TestGptModel:
             assert param.grad is not None, f"Parameter {name} should have gradients"
             assert not torch.isnan(param.grad).any(), f"Parameter {name} should not have NaN gradients"
 
-    def test_eval_mode(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_eval_mode(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that eval mode affects model behavior (dropout).
         """
@@ -255,14 +257,14 @@ class TestGptModel:
         configs = [GPT_CONFIG_124M, GPT_CONFIG_355M]
 
         for config in configs:
-            model = GptModel(config)
+            model = GptModelBasic(config)
             input_ids = torch.randint(0, config.vocab_size, (1, 10))
 
             output = model(input_ids)
             expected_shape = (1, 10, config.vocab_size)
             assert output.shape == expected_shape, f"Failed for config with {config.emb_dim} emb_dim: expected {expected_shape}, got {output.shape}"
 
-    def test_device_compatibility(self, sample_model: GptModel, sample_config: GptConfig) -> None:
+    def test_device_compatibility(self, sample_model: GptModelBasic, sample_config: GptConfig) -> None:
         """
         Test that model works on different devices.
         """
@@ -278,7 +280,7 @@ class TestGptModel:
             output_cuda = sample_model(input_ids)
             assert output_cuda.device.type == 'cuda', "Output should be on CUDA"
 
-    def test_model_state_dict_serialization(self, sample_model: GptModel) -> None:
+    def test_model_state_dict_serialization(self, sample_model: GptModelBasic) -> None:
         """
         Test that model can be saved and loaded correctly.
         """
@@ -295,7 +297,7 @@ class TestGptModel:
             drop_rate=0.1,
             qkv_bias=False
         )
-        new_model = GptModel(sample_config)
+        new_model = GptModelBasic(sample_config)
         new_model.load_state_dict(original_state_dict)
 
         # Test that they produce same outputs
@@ -318,14 +320,14 @@ class TestGptModel:
 
         # First run
         torch.manual_seed(42)
-        model1 = GptModel(sample_config)
+        model1 = GptModelBasic(sample_config)
         model1.eval()
         with torch.no_grad():
             output1 = model1(input_ids)
 
         # Second run with same seed
         torch.manual_seed(42)
-        model2 = GptModel(sample_config)
+        model2 = GptModelBasic(sample_config)
         model2.eval()
         with torch.no_grad():
             output2 = model2(input_ids)
@@ -342,7 +344,7 @@ class TestGptModel:
         import tiktoken
 
         torch.manual_seed(123)
-        model = GptModel(GPT_CONFIG_124M)
+        model = GptModelBasic(GPT_CONFIG_124M)
         model.eval()  # disable dropout
 
         start_context = "Hello, I am"
@@ -357,7 +359,7 @@ class TestGptModel:
 
         # Generate text
         with torch.no_grad():
-            out = model.generate_text_simple(
+            out = model.generate_text(
                 idx=encoded_tensor,
                 max_new_tokens=10,
                 context_size=GPT_CONFIG_124M.context_length
@@ -376,10 +378,10 @@ class TestGptModel:
 
         # Verify that generation is deterministic with same seed
         torch.manual_seed(123)
-        model2 = GptModel(GPT_CONFIG_124M)
+        model2 = GptModelBasic(GPT_CONFIG_124M)
         model2.eval()
         with torch.no_grad():
-            out2 = model2.generate_text_simple(
+            out2 = model2.generate_text(
                 idx=encoded_tensor,
                 max_new_tokens=10,
                 context_size=GPT_CONFIG_124M.context_length
