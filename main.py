@@ -1,13 +1,13 @@
 import torch
 import tiktoken
 
-from src.gpt import GptModel
+from src.gpt import GptModelBasic
 from src.configurations import GPT_CONFIG_124M
 
 
 def main():
     torch.manual_seed(123)
-    model = GptModel(GPT_CONFIG_124M)
+    model = GptModelBasic(GPT_CONFIG_124M)
     model.eval()  # disable dropout
 
     start_context = "Hello, I am"
@@ -21,7 +21,7 @@ def main():
     print("Encoded input text:", encoded)
     print("encoded_tensor.shape:", encoded_tensor.shape)
 
-    out = model.generate_text_simple(
+    out = model.generate_text(
         idx=encoded_tensor,
         max_new_tokens=10,
         context_size=GPT_CONFIG_124M.context_length
