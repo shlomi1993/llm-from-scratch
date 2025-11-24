@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
-from src.transformer import TransformerBlock
-from src.gpt import GptModel
+from src.gpt import GptModelBasic
+from src.transformer import TransformerBlock, TransformerBlockCached
 
 
 class TestTransformerBlock:
@@ -374,7 +374,7 @@ class TestTransformerBlock:
 
         Verifies that the model architectures match the expected parameter counts from the GPT-2 paper specifications.
         """
-        model = GptModel(config)
+        model = GptModelBasic(config)
 
         # Calculate total parameters
         total_params = sum(p.numel() for p in model.parameters())
@@ -398,3 +398,106 @@ class TestTransformerBlock:
             expected_shape = (batch_size, seq_len, config.vocab_size)
             assert output.shape == expected_shape, f"{model_name}: Expected output shape {expected_shape}, got {output.shape}"
             assert torch.isfinite(output).all(), f"{model_name}: Output should be finite"
+
+
+class TestTransformerBlockCached:
+    """
+    Test suite for the TransformerBlockCached implementation with KV cache support.
+    """
+
+    @pytest.fixture
+    def sample_config(self):
+        """
+        Create a small test configuration for faster testing.
+        """
+        return GptConfig(
+            emb_dim=128,
+            n_layers=2,
+            n_heads=4,
+            vocab_size=1000,
+            context_length=32,
+            drop_rate=0.1,
+            qkv_bias=False
+        )
+
+    @pytest.fixture
+    def cached_transformer_block(self, sample_config):
+        """
+        Create a TransformerBlockCached for testing.
+        """
+        return TransformerBlockCached(sample_config)
+
+    def test_cached_forward_pass_shape(self, cached_transformer_block, sample_config):
+        """
+        Test that cached transformer block produces correct output shape.
+        """
+        batch_size, seq_len = 4, 10
+        input_tensor = torch.randn(batch_size, seq_len, sample_config.emb_dim)
+
+        # Test uncached forward pass
+        output_uncached = cached_transformer_block(input_tensor, use_cache=False)
+        expected_shape = (batch_size, seq_len, sample_config.emb_dim)
+        assert output_uncached.shape == expected_shape, f"Expected output shape {expected_shape}, got {output_uncached.shape}"
+
+        # Test cached forward pass
+        output_cached = cached_transformer_block(input_tensor, use_cache=True)
+        assert output_cached.shape == expected_shape, f"Expected output shape {expected_shape}, got {output_cached.shape}"
+
+    def test_inheritance_from_transformer_block(self, cached_transformer_block):
+        """
+        Test that TransformerBlockCached properly inherits from TransformerBlock.
+        """
+        assert isinstance(cached_transformer_block, TransformerBlock)
+
+    def test_cached_vs_uncached_consistency(self, cached_transformer_block, sample_config):
+        """
+        Test that cached and uncached outputs are consistent for single forward passes.
+        """
+        batch_size, seq_len = 2, 4
+        input_tensor = torch.randn(batch_size, seq_len, sample_config.emb_dim)
+
+        cached_transformer_block.eval()
+
+        with torch.no_grad():
+            # Reset attention cache
+            cached_transformer_block.att.reset_cache()
+            output_uncached = cached_transformer_block(input_tensor, use_cache=False)
+
+            # Reset attention cache
+            cached_transformer_block.att.reset_cache()
+            output_cached = cached_transformer_block(input_tensor, use_cache=True)
+
+            # Outputs should be very close (small numerical differences expected)
+            torch.testing.assert_close(output_uncached, output_cached, atol=1e-6, rtol=1e-6, msg="Cached and uncached outputs should be close")
+
+    def test_kv_cache_propagation(self, cached_transformer_block, sample_config):
+        """
+        Test that the use_cache parameter properly propagates to the attention layer.
+        """
+        batch_size, seq_len = 2, 4
+        input_tensor = torch.randn(batch_size, seq_len, sample_config.emb_dim)
+
+        # Forward pass with cache enabled
+        cached_transformer_block.att.reset_cache()
+        cached_transformer_block(input_tensor, use_cache=True)
+
+        # Verify that cache was populated
+        assert cached_transformer_block.att.cache_k is not None, "Cache K should exist after cached forward pass"
+        assert cached_transformer_block.att.cache_v is not None, "Cache V should exist after cached forward pass"
+        assert cached_transformer_block.att.ptr_cur == seq_len, "Pointer current should be equal to sequence length after cached forward pass"
+
+        # Store cache state before uncached forward pass
+        cache_k_before = cached_transformer_block.att.cache_k.clone() if cached_transformer_block.att.cache_k is not None else None
+        cache_v_before = cached_transformer_block.att.cache_v.clone() if cached_transformer_block.att.cache_v is not None else None
+
+        # Forward pass without cache should reset ptr_cur but preserve cache tensors
+        cached_transformer_block(input_tensor, use_cache=False)
+
+        # Cache tensors should remain but ptr_cur is reset when use_cache=False
+        assert cached_transformer_block.att.cache_k is not None, "Cache K should exist after uncached forward pass"
+        assert cached_transformer_block.att.cache_v is not None, "Cache V should exist after uncached forward pass"
+        assert cached_transformer_block.att.ptr_cur == 0, "Pointer current should be reset to 0 after uncached forward pass"
+
+        # Cache tensors should still exist (not cleared)
+        if cache_k_before is not None:
+            torch.testing.assert_close(cached_transformer_block.att.cache_k, cache_k_before, msg="Cache K should remain unchanged after uncached forward pass")
