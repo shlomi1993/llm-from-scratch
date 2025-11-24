@@ -1,13 +1,13 @@
 import torch
 import tiktoken
 
-from src.gpt import GptModelBasic
+from src.gpt import GptModel
 from src.configurations import GPT_CONFIG_124M
 
 
 def main():
     torch.manual_seed(123)
-    model = GptModelBasic(GPT_CONFIG_124M)
+    model = GptModel(GPT_CONFIG_124M)
     model.eval()  # disable dropout
 
     start_context = "Hello, I am"

@@ -14,7 +14,7 @@ from .mha_einsum import MHAEinsum
 from .mha_pytorch_scaled_dot_product import MHAPyTorchScaledDotProduct
 from .mha_pytorch_sdpa_without_flash import MHAPyTorchSDPAWithoutFlash
 from .mha_pytorch_class import MHAPyTorchClass
-from .mha_pytorch_flex_attention import MHAPyTorchFlexAttention
+from .mha_pytorch_flex_attention import MHAPyTorchFlexAttention, causal
 from .multihead_attention_cached import MultiHeadAttentionCached
 
 __all__ = [
@@ -27,6 +27,6 @@ __all__ = [
     "MHAPyTorchScaledDotProduct",
     "MHAPyTorchSDPAWithoutFlash",
     "MHAPyTorchClass",
-    "MHAPyTorchFlexAttention",
-    "MultiHeadAttentionCached"
+    "MHAPyTorchFlexAttention", "causal",
+    "MultiHeadAttentionCached",
 ]
