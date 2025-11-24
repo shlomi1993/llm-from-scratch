@@ -304,12 +304,12 @@ def download_vocab() -> None:
     Download GPT-2 vocabulary files from OpenAI's public storage.
 
     Downloads the encoder.json and vocab.bpe files required for GPT-2 tokenization and saves them to a local directory
-    named 'gpt2_model'. Creates the directory if it doesn't exist.
+    named 'tokenizers'. Creates the directory if it doesn't exist.
 
     The files are downloaded with progress bars showing download status.
     """
     # Create directory for model files
-    model_dir = "gpt2_model"
+    model_dir = "tokenizers"
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
