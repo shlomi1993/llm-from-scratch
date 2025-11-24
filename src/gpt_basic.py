@@ -64,7 +64,7 @@ class GptModelBasic(nn.Module):
         logits = self.out_head(x)
         return logits
 
-    def generate_text_simple(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
+    def _generate_text_simple(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
         """
         Generate text using greedy sampling (argmax) strategy.
 
@@ -104,7 +104,7 @@ class GptModelBasic(nn.Module):
 
         return idx
 
-    def generate_text_simple_softmax(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
+    def _generate_text_softmax(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
         """
         Generate text using softmax-based sampling strategy.
 
@@ -145,3 +145,25 @@ class GptModelBasic(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1)  # (batch, n_tokens+1)
 
         return idx
+
+    def generate_text(self, idx: Tensor, max_new_tokens: int, context_size: int, softmax: bool = False) -> Tensor:
+        """
+        Generate text using either greedy or softmax-based sampling strategy.
+
+        This method allows the user to choose between two text generation strategies: greedy sampling (argmax) or
+        softmax-based sampling. The context is cropped if it exceeds the specified context size to maintain computational
+        efficiency.
+
+        Args:
+            idx (Tensor): Initial context tokens of shape [batch_size, seq_len]
+            max_new_tokens (int): Maximum number of new tokens to generate
+            context_size (int): Maximum context length to consider for generation
+            softmax (bool): If True, use softmax-based sampling; otherwise, use greedy sampling (default: False)
+
+        Returns:
+            Tensor: Extended sequence with generated tokens of shape [batch_size, seq_len + max_new_tokens]
+        """
+        if softmax == False:
+            return self._generate_text_simple(idx, max_new_tokens, context_size)
+        else:
+            return self._generate_text_softmax(idx, max_new_tokens, context_size)

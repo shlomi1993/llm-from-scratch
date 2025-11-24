@@ -12,8 +12,10 @@ from src.attention import (
     MHAPyTorchScaledDotProduct,
     MHAPyTorchSDPAWithoutFlash,
     MHAPyTorchClass,
-    MHAPyTorchFlexAttention, causal
+    MHAPyTorchFlexAttention, causal,
+    MultiHeadAttentionCached
 )
+from src.configurations import GptConfig
 
 
 class TestSelfAttention:
@@ -2923,3 +2925,101 @@ class TestMHAPyTorchFlexAttention:
         assert causal(0, 0, 1, 1) == True, "Position should be able to attend to itself"
         assert causal(0, 0, 0, 1) == False, "Earlier position cannot attend to later position (causal mask)"
         assert causal(0, 0, 2, 3) == False, "Position cannot attend to future positions (causal mask)"
+
+
+class TestMultiHeadAttentionCached:
+    """
+    Test suite for the MultiHeadAttentionCached module with KV cache support.
+    """
+
+    @pytest.fixture
+    def sample_config(self):
+        """
+        Create a small test configuration for faster testing.
+        """
+        return GptConfig(
+            emb_dim=64,
+            n_layers=2,
+            n_heads=4,
+            vocab_size=100,
+            context_length=16,
+            drop_rate=0.1,
+            qkv_bias=False
+        )
+
+    @pytest.fixture
+    def optimized_attention(self, sample_config):
+        """
+        Create a MultiHeadAttentionCached for testing.
+        """
+        return MultiHeadAttentionCached(sample_config)
+
+    def test_kv_cache_functionality(self, optimized_attention, sample_config):
+        """
+        Test that KV cache properly stores and reuses key-value pairs.
+        """
+        batch_size, seq_len = 2, 4
+        input_tensor = torch.randn(batch_size, seq_len, sample_config.emb_dim)
+
+        # Reset cache and forward pass with cache
+        optimized_attention.reset_cache()
+        optimized_attention.eval()
+
+        with torch.no_grad():
+            output1 = optimized_attention(input_tensor, use_cache=True)
+
+            # Cache should now contain keys and values
+            assert optimized_attention.cache_k is not None, "Cache for keys should be populated"
+            assert optimized_attention.cache_v is not None, "Cache for values should be populated"
+            assert optimized_attention.ptr_cur == seq_len, f"Cache pointer should be at {seq_len}, got {optimized_attention.ptr_cur}"
+
+            # Forward pass with additional tokens
+            new_input = torch.randn(batch_size, 2, sample_config.emb_dim)
+            output2 = optimized_attention(new_input, use_cache=True)
+
+            # Cache pointer should be updated
+            assert optimized_attention.ptr_cur == seq_len + 2, f"Cache pointer should be at {seq_len + 2}, got {optimized_attention.ptr_cur}"
+
+    def test_cached_vs_uncached_consistency(self, optimized_attention, sample_config):
+        """
+        Test that cached and uncached outputs are consistent for single forward passes.
+        """
+        batch_size, seq_len = 2, 4
+        input_tensor = torch.randn(batch_size, seq_len, sample_config.emb_dim)
+
+        optimized_attention.eval()
+
+        with torch.no_grad():
+            # Uncached forward pass
+            optimized_attention.reset_cache()
+            output_uncached = optimized_attention(input_tensor, use_cache=False)
+
+            # Cached forward pass with same input
+            optimized_attention.reset_cache()
+            output_cached = optimized_attention(input_tensor, use_cache=True)
+
+            # Outputs should be very close (small numerical differences expected)
+            torch.testing.assert_close(output_uncached, output_cached, atol=1e-6, rtol=1e-6, msg="Cached and uncached outputs should be close")
+
+    def test_cache_reset(self, optimized_attention, sample_config):
+        """
+        Test that cache reset properly clears stored key-value pairs.
+        """
+        batch_size, seq_len = 2, 4
+        input_tensor = torch.randn(batch_size, seq_len, sample_config.emb_dim)
+
+        # Forward pass with cache
+        optimized_attention(input_tensor, use_cache=True)
+
+        # Verify cache is populated
+        assert optimized_attention.cache_k is not None, "Cache for keys should be populated"
+        assert optimized_attention.cache_v is not None, "Cache for values should be populated"
+        assert optimized_attention.ptr_cur > 0, f"Cache pointer should be greater than 0, got {optimized_attention.ptr_cur}"
+
+        # Reset cache
+        optimized_attention.reset_cache()
+
+        # Verify cache is cleared
+        assert optimized_attention.cache_k is None, "Cache for keys should be cleared"
+        assert optimized_attention.cache_v is None, "Cache for values should be cleared"
+        assert optimized_attention.ptr_cur == 0, f"Cache pointer should be reset to 0, got {optimized_attention.ptr_cur}"

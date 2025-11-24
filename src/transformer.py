@@ -15,7 +15,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from .normalization import LayerNorm
-from .attention import MultiHeadAttention
+from .attention import MultiHeadAttention, MultiHeadAttentionCached
 from .feed_forward import FeedForward
 from .configurations import GptConfig
 
@@ -84,5 +84,53 @@ class TransformerBlock(nn.Module):
         x = self.ff(x)
         x = self.drop_shortcut(x)
         x = x + shortcut  # Add the original input back
+
+        return x
+
+
+class TransformerBlockCached(TransformerBlock):
+    """
+    Transformer block with KV cache support.
+
+    Inherits from TransformerBlock and replaces the attention mechanism with an optimized version that supports KV
+    caching for efficient autoregressive inference.
+    """
+
+    def __init__(self, config: GptConfig) -> None:
+        """
+        Initialize the optimized transformer block.
+
+        Args:
+            config (GptConfig): Model configuration
+        """
+        super().__init__(config)
+
+        # Replace the attention layer with the optimized version
+        self.att = MultiHeadAttentionCached(config)
+
+    def forward(self, x: Tensor, use_cache: bool = False) -> Tensor:
+        """
+        Forward pass with optional caching.
+
+        Args:
+            x (Tensor): Input tensor
+            use_cache (bool): Whether to use KV caching
+
+        Returns:
+            Tensor: Output tensor
+        """
+        # Attention block with residual connection
+        shortcut = x
+        x = self.norm1(x)
+        x = self.att(x, use_cache=use_cache)
+        x = self.drop_shortcut(x)
+        x = x + shortcut
+
+        # Feed-forward block with residual connection
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = self.drop_shortcut(x)
+        x = x + shortcut
 
         return x
