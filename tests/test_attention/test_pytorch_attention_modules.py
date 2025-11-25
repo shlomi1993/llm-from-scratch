@@ -7,7 +7,6 @@ from src.attention import (
     MHAPyTorchFlexAttention,
     MultiHeadAttentionCached
 )
-from src.configurations import GptConfig
 
 
 class TestMHAPyTorchSDPAWithoutFlash:
