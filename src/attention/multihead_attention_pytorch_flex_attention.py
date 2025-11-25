@@ -29,7 +29,7 @@ def causal(b: int, h: int, q_idx: int, kv_idx: int) -> bool:
     return q_idx >= kv_idx
 
 
-class MHAPyTorchFlexAttention(nn.Module):
+class MultiheadAttentionPyTorchFlexAttention(nn.Module):
     """
     Multi-Head Attention implementation using PyTorch's FlexAttention.
 

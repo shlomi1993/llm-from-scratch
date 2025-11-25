@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor
 
 
-class MultiHeadAttention(nn.Module):
+class MultiheadAttention(nn.Module):
     """
     Efficient Multi-Head Attention implementation with unified QKV projections.
 

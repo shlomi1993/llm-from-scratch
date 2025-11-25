@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor
 
 
-class MultiHeadAttentionCombinedQKV(nn.Module):
+class MultiheadAttentionCombinedQKV(nn.Module):
     """
     Efficient Multi-Head Attention implementation with combined QKV projections.
 

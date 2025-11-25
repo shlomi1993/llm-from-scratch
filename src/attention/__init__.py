@@ -7,28 +7,28 @@ Each attention class is implemented in its own file for better organization and 
 
 from .self_attention import SelfAttention
 from .causal_attention import CausalAttention
-from .multihead_attention_wrapper import MultiHeadAttentionWrapper
-from .multihead_attention import MultiHeadAttention
-from .multihead_attention_combined_qkv import MultiHeadAttentionCombinedQKV
-from .mha_einsum import MHAEinsum
-from .mha_pytorch_scaled_dot_product import MHAPyTorchScaledDotProduct
-from .mha_pytorch_sdpa_without_flash import MHAPyTorchSDPAWithoutFlash
-from .mha_pytorch_class import MHAPyTorchClass
-from .mha_pytorch_flex_attention import MHAPyTorchFlexAttention, causal
-from .multihead_attention_cached import MultiHeadAttentionCached
+from .multihead_attention_wrapper import MultiheadAttentionWrapper
+from .multihead_attention import MultiheadAttention
+from .multihead_attention_combined_qkv import MultiheadAttentionCombinedQKV
+from .multihead_attention_einsum import MultiheadAttentionEinsum
+from .multihead_attention_pytorch_sdpa import MultiheadAttentionPyTorchSdpa
+from .multihead_attention_pytorch_sdpa_without_flash import MultiheadAttentionPyTorchSdpaWithoutFlash
+from .multihead_attention_pytorch_class import MultiheadAttentionPyTorchClass
+from .multihead_attention_pytorch_flex_attention import MultiheadAttentionPyTorchFlexAttention, causal
+from .multihead_attention_cached import MultiheadAttentionCached
 from .grouped_query_attention import GroupedQueryAttention
 
 __all__ = [
     "SelfAttention",
     "CausalAttention",
-    "MultiHeadAttentionWrapper",
-    "MultiHeadAttention",
-    "MultiHeadAttentionCombinedQKV",
-    "MHAEinsum",
-    "MHAPyTorchScaledDotProduct",
-    "MHAPyTorchSDPAWithoutFlash",
-    "MHAPyTorchClass",
-    "MHAPyTorchFlexAttention", "causal",
-    "MultiHeadAttentionCached",
+    "MultiheadAttentionWrapper",
+    "MultiheadAttention",
+    "MultiheadAttentionCombinedQKV",
+    "MultiheadAttentionEinsum",
+    "MultiheadAttentionPyTorchSdpa",
+    "MultiheadAttentionPyTorchSdpaWithoutFlash",
+    "MultiheadAttentionPyTorchClass",
+    "MultiheadAttentionPyTorchFlexAttention", "causal",
+    "MultiheadAttentionCached",
     "GroupedQueryAttention",
 ]

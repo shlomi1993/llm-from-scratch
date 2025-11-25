@@ -9,7 +9,7 @@ from torch import nn, Tensor
 from .causal_attention import CausalAttention
 
 
-class MultiHeadAttentionWrapper(nn.Module):
+class MultiheadAttentionWrapper(nn.Module):
     """
     Multi-Head Attention wrapper for parallel attention computation.
 

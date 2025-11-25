@@ -1,18 +1,18 @@
 import pytest
 import torch
 
-from src.attention import MHAEinsum, MultiHeadAttention
+from src.attention import MultiheadAttentionEinsum, MultiheadAttention
 
 
-class TestMHAEinsum:
+class TestMultiheadAttentionEinsum:
     """
-    Test suite for the MHAEinsum module (einsum-based multi-head attention).
+    Test suite for the MultiheadAttentionEinsum module (einsum-based multi-head attention).
     """
 
     @pytest.fixture
     def sample_inputs(self):
         """
-        Sample input tensor for testing MHAEinsum.
+        Sample input tensor for testing MultiheadAttentionEinsum.
         """
         torch.manual_seed(42)
         return torch.tensor([
@@ -34,7 +34,7 @@ class TestMHAEinsum:
         num_heads = 4
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
         output = mha(batch)
 
@@ -51,7 +51,7 @@ class TestMHAEinsum:
         num_heads = 3
 
         with pytest.raises(AssertionError, match="d_out must be divisible by n_heads"):
-            MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+            MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
     def test_head_dimension_calculation_einsum(self, sample_inputs):
         """
@@ -62,7 +62,7 @@ class TestMHAEinsum:
         dropout = 0.0
         num_heads = 4
 
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
         assert mha.head_dim == 3, f"Expected head_dim=3, got {mha.head_dim}"
         assert mha.d_out == 12, f"Expected d_out=12, got {mha.d_out}"
@@ -78,13 +78,13 @@ class TestMHAEinsum:
         num_heads = 2
 
         # Test without bias
-        mha_no_bias = MHAEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=False)
+        mha_no_bias = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=False)
         assert mha_no_bias.bias_q is None, "bias_q should be None when qkv_bias=False"
         assert mha_no_bias.bias_k is None, "bias_k should be None when qkv_bias=False"
         assert mha_no_bias.bias_v is None, "bias_v should be None when qkv_bias=False"
 
         # Test with bias
-        mha_with_bias = MHAEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=True)
+        mha_with_bias = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=True)
         assert mha_with_bias.bias_q is not None, "bias_q should be initialized when qkv_bias=True"
         assert mha_with_bias.bias_k is not None, "bias_k should be initialized when qkv_bias=True"
         assert mha_with_bias.bias_v is not None, "bias_v should be initialized when qkv_bias=True"
@@ -102,7 +102,7 @@ class TestMHAEinsum:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
         output = mha(batch)
 
         # Compute loss and back-propagate
@@ -129,7 +129,7 @@ class TestMHAEinsum:
         num_heads = 3
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
         # Test with eval mode to ensure consistent behavior
         mha.eval()
@@ -165,7 +165,7 @@ class TestMHAEinsum:
         ]
 
         for num_heads, d_out in test_configs:
-            mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+            mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
@@ -184,12 +184,12 @@ class TestMHAEinsum:
 
         # First run
         torch.manual_seed(42)
-        mha1 = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha1 = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
         output1 = mha1(batch)
 
         # Second run with same seed
         torch.manual_seed(42)
-        mha2 = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha2 = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
         output2 = mha2(batch)
 
         assert torch.allclose(output1, output2, atol=1e-6), "Outputs should be identical with same random seed"
@@ -207,16 +207,17 @@ class TestMHAEinsum:
 
         # Einsum implementation
         torch.manual_seed(789)
-        einsum_mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        einsum_mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
         einsum_output = einsum_mha(batch)
 
         # Efficient implementation for comparison (different seed to show they can differ)
         torch.manual_seed(456)
-        efficient = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        efficient = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
         efficient_output = efficient(batch)
 
         # Shapes should match
-        assert einsum_output.shape == efficient_output.shape, f"Output shapes should match: einsum {einsum_output.shape} vs efficient {efficient_output.shape}"
+        assert einsum_output.shape == efficient_output.shape, \
+            f"Output shapes should match: einsum {einsum_output.shape} vs efficient {efficient_output.shape}"
 
         # Both should produce valid outputs
         assert torch.isfinite(einsum_output).all(), "Einsum output should be finite"
@@ -234,7 +235,7 @@ class TestMHAEinsum:
         num_heads = 2
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
         # Test that the model produces reasonable outputs
         with torch.no_grad():
@@ -253,7 +254,7 @@ class TestMHAEinsum:
         dropout = 0.1
         num_heads = 2
 
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
         # Test with wrong input dimension (should be 3D)
         wrong_input_2d = torch.randn(6, 3)  # Missing batch dimension
@@ -282,7 +283,7 @@ class TestMHAEinsum:
         embeddings = torch.randn(batch_size, context_len, embed_dim)
 
         # Initialize the einsum multi-head attention with transformer-like configuration
-        mha_einsum = MHAEinsum(
+        mha_einsum = MultiheadAttentionEinsum(
             d_in=embed_dim,
             d_out=embed_dim,
             context_length=context_len,
@@ -319,10 +320,10 @@ class TestMHAEinsum:
         num_heads = 2
 
         # Einsum implementation
-        einsum_mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads)
+        einsum_mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads)
 
         # Regular implementation for comparison
-        regular = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        regular = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Count parameters
         einsum_params = sum(p.numel() for p in einsum_mha.parameters())
@@ -348,11 +349,11 @@ class TestMHAEinsum:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
         # Test with bias
-        mha_with_bias = MHAEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=True)
+        mha_with_bias = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=True)
         output_with_bias = mha_with_bias(batch)
 
         # Test without bias
-        mha_no_bias = MHAEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=False)
+        mha_no_bias = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=False)
         output_no_bias = mha_no_bias(batch)
 
         # Both should produce valid outputs
@@ -370,7 +371,7 @@ class TestMHAEinsum:
         num_heads = 2
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=False)
+        mha = MultiheadAttentionEinsum(d_in, d_out, context_length, dropout, num_heads, qkv_bias=False)
 
         # Extract components for manual verification
         b, n, _ = batch.shape

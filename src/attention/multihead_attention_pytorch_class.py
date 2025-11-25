@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor
 
 
-class MHAPyTorchClass(nn.Module):
+class MultiheadAttentionPyTorchClass(nn.Module):
     """
     Multi-Head Attention implementation using PyTorch's built-in MultiheadAttention module.
 

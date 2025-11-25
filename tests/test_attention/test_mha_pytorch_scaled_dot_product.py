@@ -1,18 +1,18 @@
 import pytest
 import torch
 
-from src.attention import MHAPyTorchScaledDotProduct, MultiHeadAttention
+from src.attention import MultiheadAttentionPyTorchSdpa, MultiheadAttention
 
 
-class TestMHAPyTorchScaledDotProduct:
+class TestMultiheadAttentionPyTorchSdpa:
     """
-    Test suite for the MHAPyTorchScaledDotProduct module (PyTorch built-in scaled dot-product attention).
+    Test suite for the MultiheadAttentionPyTorchSdpa module (PyTorch built-in scaled dot-product attention).
     """
 
     @pytest.fixture
     def sample_inputs(self):
         """
-        Sample input tensor for testing MHAPyTorchScaledDotProduct.
+        Sample input tensor for testing MultiheadAttentionPyTorchSdpa.
         """
         torch.manual_seed(42)
         return torch.tensor([
@@ -34,7 +34,7 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 4
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         output = mha(batch)
 
@@ -51,7 +51,7 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 3
 
         with pytest.raises(AssertionError, match="d_out.*divisible.*n_heads"):
-            MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+            MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
     def test_head_dimension_calculation_pytorch_scaled(self, sample_inputs):
         """
@@ -62,7 +62,7 @@ class TestMHAPyTorchScaledDotProduct:
         dropout = 0.0
         num_heads = 4
 
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         assert mha.head_dim == 3, f"Expected head_dim=3, got {mha.head_dim}"
         assert mha.d_out == 12, f"Expected d_out=12, got {mha.d_out}"
@@ -78,7 +78,7 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 2
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         # Test the QKV projection creates correct shape
         qkv_output = mha.qkv(batch)
@@ -101,7 +101,7 @@ class TestMHAPyTorchScaledDotProduct:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
         output = mha(batch)
 
         # Compute loss and back-propagate
@@ -126,7 +126,7 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 3
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         # Test with eval mode to ensure consistent behavior
         mha.eval()
@@ -162,7 +162,7 @@ class TestMHAPyTorchScaledDotProduct:
         ]
 
         for num_heads, d_out in test_configs:
-            mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+            mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
@@ -181,12 +181,12 @@ class TestMHAPyTorchScaledDotProduct:
 
         # First run
         torch.manual_seed(42)
-        mha1 = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha1 = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
         output1 = mha1(batch)
 
         # Second run with same seed
         torch.manual_seed(42)
-        mha2 = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha2 = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
         output2 = mha2(batch)
 
         assert torch.allclose(output1, output2, atol=1e-6), "Outputs should be identical with same random seed"
@@ -204,12 +204,12 @@ class TestMHAPyTorchScaledDotProduct:
 
         # PyTorch scaled implementation
         torch.manual_seed(789)
-        pytorch_scaled = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        pytorch_scaled = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
         pytorch_output = pytorch_scaled(batch)
 
         # Efficient implementation for comparison (different seed to show they can differ)
         torch.manual_seed(456)
-        efficient = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        efficient = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
         efficient_output = efficient(batch)
 
         # Shapes should match
@@ -231,7 +231,7 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 2
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         # Training mode
         mha.train()
@@ -259,7 +259,7 @@ class TestMHAPyTorchScaledDotProduct:
         dropout = 0.1
         num_heads = 2
 
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         # Test with wrong input dimension (should be 3D)
         wrong_input_2d = torch.randn(6, 3)  # Missing batch dimension
@@ -288,7 +288,7 @@ class TestMHAPyTorchScaledDotProduct:
         embeddings = torch.randn(batch_size, context_len, embed_dim)
 
         # Initialize the PyTorch scaled attention with transformer-like configuration
-        mha_pytorch_scaled = MHAPyTorchScaledDotProduct(
+        mha_pytorch_scaled = MultiheadAttentionPyTorchSdpa(
             d_in=embed_dim,
             d_out=embed_dim,
             n_heads=12,
@@ -325,10 +325,10 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 2
 
         # PyTorch scaled implementation
-        pytorch_scaled = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        pytorch_scaled = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         # Regular implementation for comparison
-        regular = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        regular = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Count parameters
         pytorch_params = sum(p.numel() for p in pytorch_scaled.parameters())
@@ -353,11 +353,11 @@ class TestMHAPyTorchScaledDotProduct:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
         # Test with bias
-        mha_with_bias = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout, qkv_bias=True)
+        mha_with_bias = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout, qkv_bias=True)
         output_with_bias = mha_with_bias(batch)
 
         # Test without bias
-        mha_no_bias = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout, qkv_bias=False)
+        mha_no_bias = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout, qkv_bias=False)
         output_no_bias = mha_no_bias(batch)
 
         # Both should produce valid outputs
@@ -379,7 +379,7 @@ class TestMHAPyTorchScaledDotProduct:
         num_heads = 2
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
-        mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
 
         # Test that we can successfully run the forward pass
         # (implicitly testing that scaled_dot_product_attention is working)
@@ -417,7 +417,7 @@ class TestMHAPyTorchScaledDotProduct:
             # Create batch of the specified size
             test_batch = torch.stack([sample_inputs] * batch_size, dim=0)
 
-            mha = MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
+            mha = MultiheadAttentionPyTorchSdpa(d_in, d_out, num_heads, context_length, dropout)
             output = mha(test_batch)
 
             expected_shape = (batch_size, 6, d_out)
