@@ -10,7 +10,7 @@ import pickle
 import json
 import copy
 
-from dataclasses import FrozenInstanceError, asdict
+from dataclasses import FrozenInstanceError
 
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 
@@ -285,8 +285,8 @@ class TestPredefinedConfigurations:
         unpickled = pickle.loads(pickled)
         assert unpickled == config, "Pickled config should be identical"
 
-        # Test JSON serialization via asdict
-        config_dict = asdict(config)
+        # Test JSON serialization
+        config_dict = vars(config)
         json_str = json.dumps(config_dict)
         loaded_dict = json.loads(json_str)
         reconstructed = GptConfig(**loaded_dict)
