@@ -16,6 +16,7 @@ from .mha_pytorch_sdpa_without_flash import MHAPyTorchSDPAWithoutFlash
 from .mha_pytorch_class import MHAPyTorchClass
 from .mha_pytorch_flex_attention import MHAPyTorchFlexAttention, causal
 from .multihead_attention_cached import MultiHeadAttentionCached
+from .grouped_query_attention import GroupedQueryAttention
 
 __all__ = [
     "SelfAttention",
@@ -29,4 +30,5 @@ __all__ = [
     "MHAPyTorchClass",
     "MHAPyTorchFlexAttention", "causal",
     "MultiHeadAttentionCached",
+    "GroupedQueryAttention",
 ]
