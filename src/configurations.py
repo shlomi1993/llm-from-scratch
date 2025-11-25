@@ -40,6 +40,8 @@ class GptConfig:
     context_length: int = 1024  # Context length
     drop_rate: float = 0.1      # Dropout rate
     qkv_bias: bool = False      # Query-Key-Value bias
+    kv_window_size: int = None  # KV cache window size
+    n_kv_groups: int = 1        # Number of KV groups for Grouped Query Attention
 
 
 # GPT2-Small (124M parameters)

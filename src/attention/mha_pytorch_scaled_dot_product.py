@@ -2,8 +2,6 @@
 Multi-Head Attention implementation using PyTorch's built-in scaled_dot_product_attention.
 """
 
-import torch
-
 from torch import nn, Tensor
 
 

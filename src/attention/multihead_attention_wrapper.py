@@ -6,7 +6,7 @@ import torch
 
 from torch import nn, Tensor
 
-from attention import CausalAttention
+from .causal_attention import CausalAttention
 
 
 class MultiHeadAttentionWrapper(nn.Module):

@@ -1,9 +1,8 @@
 """
 Test Suite for GPT Configuration Module
 
-This module contains comprehensive tests for the GptConfig dataclass
-and predefined model configurations, testing parameter validation,
-configuration instantiation, and preset model configurations.
+This module contains comprehensive tests for the GptConfig dataclass and predefined model configurations, testing
+parameter validation, configuration instantiation, and preset model configurations.
 """
 
 import pytest
@@ -11,10 +10,9 @@ import pickle
 import json
 import copy
 
-from dataclasses import asdict, FrozenInstanceError
+from dataclasses import FrozenInstanceError, asdict
 
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
-from src.gpt import GptModelBasic
 
 
 class TestGptConfig:
