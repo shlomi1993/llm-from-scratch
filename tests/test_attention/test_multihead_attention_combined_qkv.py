@@ -45,14 +45,14 @@ class TestMultiHeadAttentionCombinedQKV:
 
     def test_dimension_divisibility_assertion_combined(self):
         """
-        Test that assertion is raised when d_out is not divisible by num_heads.
+        Test that assertion is raised when d_out is not divisible by n_heads.
         """
         d_in, d_out = 3, 7  # 7 is not divisible by 3
         context_length = 8
         dropout = 0.1
         num_heads = 3
 
-        with pytest.raises(AssertionError, match="d_out is indivisible by num_heads"):
+        with pytest.raises(AssertionError, match="d_out.*divisible.*n_heads"):
             MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
     def test_head_dimension_calculation_combined(self, sample_inputs):
@@ -68,9 +68,9 @@ class TestMultiHeadAttentionCombinedQKV:
 
         assert mha.head_dim == 3, f"Expected head_dim=3, got {mha.head_dim}"
         # Note: Implementation doesn't store d_out as attribute
-        assert mha.num_heads == 4, f"Expected num_heads=4, got {mha.num_heads}"
+        assert mha.n_heads == 4, f"Expected n_heads=4, got {mha.n_heads}"
         # Verify correct calculation: d_out = num_heads * head_dim
-        calculated_d_out = mha.num_heads * mha.head_dim
+        calculated_d_out = mha.n_heads * mha.head_dim
         assert calculated_d_out == d_out, f"Expected calculated d_out={d_out}, got {calculated_d_out}"
 
     def test_combined_qkv_projection_efficiency(self, sample_inputs):
@@ -280,7 +280,7 @@ class TestMultiHeadAttentionCombinedQKV:
             d_out=embed_dim,
             context_length=context_len,
             dropout=0.0,
-            num_heads=12,
+            n_heads=12,
             qkv_bias=False
         ).to(device)
 
@@ -300,9 +300,9 @@ class TestMultiHeadAttentionCombinedQKV:
         # Verify internal dimensions are correctly calculated
         assert mha_combined_qkv.head_dim == 64, f"Expected head_dim=64 (768/12), got {mha_combined_qkv.head_dim}"
         # Note: Implementation doesn't store d_out as attribute, but we can verify the calculation
-        calculated_d_out = mha_combined_qkv.num_heads * mha_combined_qkv.head_dim
+        calculated_d_out = mha_combined_qkv.n_heads * mha_combined_qkv.head_dim
         assert calculated_d_out == 768, f"Expected calculated d_out=768, got {calculated_d_out}"
-        assert mha_combined_qkv.num_heads == 12, f"Expected num_heads=12, got {mha_combined_qkv.num_heads}"
+        assert mha_combined_qkv.n_heads == 12, f"Expected n_heads=12, got {mha_combined_qkv.n_heads}"
 
     def test_parameter_efficiency_combined_qkv(self, sample_inputs):
         """

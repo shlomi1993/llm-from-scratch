@@ -28,10 +28,7 @@ class TestGroupedQueryAttention:
         dropout = 0.1
 
         # Create GQA with 2 KV groups (4x reduction in KV parameters)
-        gqa = GroupedQueryAttention(
-            d_in=d_in, d_out=d_out, dropout=dropout,
-            num_heads=num_heads, num_kv_groups=2
-        )
+        gqa = GroupedQueryAttention(d_in=d_in, d_out=d_out, dropout=dropout, n_heads=num_heads, num_kv_groups=2)
 
         # Simulate equivalent MHA (would have num_kv_groups = num_heads)
         mha_kv_params = num_heads * (d_in * (d_out // num_heads))  # K and V projections
@@ -57,10 +54,8 @@ class TestGroupedQueryAttention:
         num_heads = 4
         num_kv_groups = 2
 
-        gqa = GroupedQueryAttention(
-            d_in=sample_inputs.shape[-1], d_out=d_out, dropout=0.0,
-            num_heads=num_heads, num_kv_groups=num_kv_groups
-        )
+        gqa = GroupedQueryAttention(d_in=sample_inputs.shape[-1], d_out=d_out, dropout=0.0, n_heads=num_heads,
+                                    num_kv_groups=num_kv_groups)
 
         gqa.eval()  # Disable dropout for deterministic comparison
 
@@ -94,10 +89,8 @@ class TestGroupedQueryAttention:
 
         # Create model with identifiable inputs
         torch.manual_seed(123)
-        gqa = GroupedQueryAttention(
-            d_in=sample_inputs.shape[-1], d_out=d_out, dropout=0.0,
-            num_heads=num_heads, num_kv_groups=num_kv_groups
-        )
+        gqa = GroupedQueryAttention(d_in=sample_inputs.shape[-1], d_out=d_out, dropout=0.0, n_heads=num_heads,
+                                    num_kv_groups=num_kv_groups)
 
         # Create input where later tokens have distinct patterns
         test_input = torch.zeros(1, 4, sample_inputs.shape[-1])
@@ -138,10 +131,8 @@ class TestGroupedQueryAttention:
         input_tensor = torch.randn(batch_size, seq_len, d_in)
 
         for num_kv_groups in group_configs:
-            gqa = GroupedQueryAttention(
-                d_in=d_in, d_out=d_out, dropout=0.1,
-                num_heads=num_heads, num_kv_groups=num_kv_groups
-            )
+            gqa = GroupedQueryAttention(d_in=d_in, d_out=d_out, dropout=0.1, n_heads=num_heads,
+                                        num_kv_groups=num_kv_groups)
 
             # Verify group_size calculation
             expected_group_size = num_heads // num_kv_groups
@@ -168,10 +159,8 @@ class TestGroupedQueryAttention:
         num_heads = 8
         num_kv_groups = 2
 
-        gqa = GroupedQueryAttention(
-            d_in=sample_inputs.shape[-1], d_out=d_out, dropout=0.1,
-            num_heads=num_heads, num_kv_groups=num_kv_groups
-        )
+        gqa = GroupedQueryAttention(d_in=sample_inputs.shape[-1], d_out=d_out, dropout=0.1,
+                                   n_heads=num_heads, num_kv_groups=num_kv_groups)
 
         # Enable training mode
         gqa.train()

@@ -24,10 +24,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         num_heads = 4
         context_length = 16
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=num_heads,
-            context_length=context_length, dropout=0.0
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, n_heads=num_heads, context_length=context_length)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
@@ -40,8 +37,8 @@ class TestMHAPyTorchSDPAWithoutFlash:
         """
         Test that MHAPyTorchSDPAWithoutFlash raises error for invalid dimensions.
         """
-        with pytest.raises(AssertionError, match="d_out is indivisible by num_heads"):
-            MHAPyTorchSDPAWithoutFlash(d_in=512, d_out=257, num_heads=4, context_length=16)
+        with pytest.raises(AssertionError, match="d_out.*divisible.*n_heads"):
+            MHAPyTorchSDPAWithoutFlash(d_in=512, d_out=257, n_heads=4, context_length=16)
 
     def test_gradient_flow_pytorch_sdpa_without_flash(self):
         """
@@ -50,10 +47,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         batch_size, num_tokens, d_in = 2, 8, 512
         d_out = 256
 
-        mha = MHAPyTorchSDPAWithoutFlash(
-            d_in=d_in, d_out=d_out, num_heads=4,
-            context_length=16, dropout=0.0
-        )
+        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, n_heads=4, context_length=16, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in, requires_grad=True)
         out = mha(x)

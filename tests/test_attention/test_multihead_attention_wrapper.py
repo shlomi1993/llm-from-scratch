@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from attention import MultiHeadAttentionWrapper
+from src.attention import MultiHeadAttentionWrapper
 
 
 class TestMultiHeadAttentionWrapper:
@@ -31,9 +31,7 @@ class TestMultiHeadAttentionWrapper:
         torch.manual_seed(123)
         context_length = batch.shape[1]  # This is the number of tokens
         d_in, d_out = 3, 2
-        mha = MultiHeadAttentionWrapper(
-            d_in, d_out, context_length, 0.0, num_heads=2
-        )
+        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, 0.0, n_heads=2)
         context_vecs = mha(batch)
 
         # Verify output shape
@@ -56,11 +54,11 @@ class TestMultiHeadAttentionWrapper:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
         # Single head attention
-        single_head = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads=1)
+        single_head = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, n_heads=1)
         single_output = single_head(batch)
 
         # Multi head attention
-        multi_head = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads=3)
+        multi_head = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, n_heads=3)
         multi_output = multi_head(batch)
 
         # Multi-head should have 3x the feature dimension of single head
