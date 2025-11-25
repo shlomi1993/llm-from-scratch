@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from attention import MultiHeadAttention, MultiHeadAttentionWrapper
+from src.attention import MultiHeadAttention, MultiHeadAttentionWrapper
 
 
 class TestMultiHeadAttention:
@@ -255,7 +255,7 @@ class TestMultiHeadAttention:
             d_out=embed_dim,  # Total output dimension (768)
             context_length=context_len,
             dropout=0.0,
-            num_heads=12,
+            n_heads=12,
             qkv_bias=False
         ).to(device)
 
@@ -275,4 +275,4 @@ class TestMultiHeadAttention:
         # Verify internal dimensions are correctly calculated
         assert mha_efficient.head_dim == 64, f"Expected head_dim=64 (768/12), got {mha_efficient.head_dim}"
         assert mha_efficient.d_out == 768, f"Expected d_out=768, got {mha_efficient.d_out}"
-        assert mha_efficient.num_heads == 12, f"Expected num_heads=12, got {mha_efficient.num_heads}"
+        assert mha_efficient.n_heads == 12, f"Expected n_heads=12, got {mha_efficient.n_heads}"

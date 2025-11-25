@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from attention import MHAPyTorchScaledDotProduct, MultiHeadAttention
+from src.attention import MHAPyTorchScaledDotProduct, MultiHeadAttention
 
 
 class TestMHAPyTorchScaledDotProduct:
@@ -43,14 +43,14 @@ class TestMHAPyTorchScaledDotProduct:
 
     def test_dimension_divisibility_assertion_pytorch_scaled(self):
         """
-        Test that assertion is raised when d_out is not divisible by num_heads.
+        Test that assertion is raised when d_out is not divisible by n_heads.
         """
         d_in, d_out = 3, 7  # 7 is not divisible by 3
         context_length = 8
         dropout = 0.1
         num_heads = 3
 
-        with pytest.raises(AssertionError, match="d_out is indivisible by num_heads"):
+        with pytest.raises(AssertionError, match="d_out.*divisible.*n_heads"):
             MHAPyTorchScaledDotProduct(d_in, d_out, num_heads, context_length, dropout)
 
     def test_head_dimension_calculation_pytorch_scaled(self, sample_inputs):
@@ -66,7 +66,7 @@ class TestMHAPyTorchScaledDotProduct:
 
         assert mha.head_dim == 3, f"Expected head_dim=3, got {mha.head_dim}"
         assert mha.d_out == 12, f"Expected d_out=12, got {mha.d_out}"
-        assert mha.num_heads == 4, f"Expected num_heads=4, got {mha.num_heads}"
+        assert mha.n_heads == 4, f"Expected n_heads=4, got {mha.n_heads}"
 
     def test_pytorch_scaled_qkv_projection(self, sample_inputs):
         """
@@ -291,7 +291,7 @@ class TestMHAPyTorchScaledDotProduct:
         mha_pytorch_scaled = MHAPyTorchScaledDotProduct(
             d_in=embed_dim,
             d_out=embed_dim,
-            num_heads=12,
+            n_heads=12,
             context_length=context_len,
             dropout=0.0,
             qkv_bias=False
@@ -313,7 +313,7 @@ class TestMHAPyTorchScaledDotProduct:
         # Verify internal dimensions are correctly calculated
         assert mha_pytorch_scaled.head_dim == 64, f"Expected head_dim=64 (768/12), got {mha_pytorch_scaled.head_dim}"
         assert mha_pytorch_scaled.d_out == 768, f"Expected d_out=768, got {mha_pytorch_scaled.d_out}"
-        assert mha_pytorch_scaled.num_heads == 12, f"Expected num_heads=12, got {mha_pytorch_scaled.num_heads}"
+        assert mha_pytorch_scaled.n_heads == 12, f"Expected n_heads=12, got {mha_pytorch_scaled.n_heads}"
 
     def test_parameter_efficiency_pytorch_scaled(self, sample_inputs):
         """
