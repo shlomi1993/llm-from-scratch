@@ -1,13 +1,16 @@
 """
-TODO
-"""
+GPT model implementation.
 
+This module defines the GPTModel class, which implements a GPT-style autoregressive language model with token and
+position embeddings, multiple transformer blocks, and an output head for generating vocabulary logits. The model
+supports both standard and cached generation modes for efficient text generation.
+"""
 import torch
 import torch.nn as nn
 
 from torch import Tensor
 
-from .transformer import TransformerBlockCached
+from .transformer import TransformerBlock
 from .normalization import LayerNorm
 from .configurations import GptConfig
 
@@ -25,7 +28,7 @@ class GptModel(nn.Module):
         self.drop_emb = nn.Dropout(config.drop_rate)
 
         # Transformer blocks
-        self.trf_blocks = nn.ModuleList([TransformerBlockCached(config) for _ in range(config.n_layers)])
+        self.trf_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
         self.current_pos = 0
 
         # Final normalization and output head

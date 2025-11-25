@@ -12,15 +12,17 @@ import torch.nn as nn
 
 from torch import Tensor
 
+from src.attention.multihead_latent_attention import MultiheadLatentAttention
+
 from .normalization import LayerNorm
 from .attention import MultiheadAttention, MultiheadAttentionCached, GroupedQueryAttention
 from .feed_forward import FeedForward
 from .configurations import GptConfig
 
 
-class TransformerBlock(nn.Module):
+class SimpleTransformerBlock(nn.Module):
     """
-    Standard Transformer block with multi-head attention.
+    A simple Transformer block with multi-head attention.
 
     Implements the Pre-LN (Pre-Layer Normalization) transformer architecture which applies layer normalization before
     the attention and feed-forward sub-layers rather than after. This design choice improves training stability and
@@ -86,7 +88,7 @@ class TransformerBlock(nn.Module):
         return x
 
 
-class TransformerBlockCached(nn.Module):
+class TransformerBlock(nn.Module):
     """
     Advanced Transformer block with KV-cache support and multiple attention types.
 
@@ -121,6 +123,9 @@ class TransformerBlockCached(nn.Module):
             The cache-enabled attention mechanisms support efficient autoregressive generation by reusing previously
             computed key-value pairs, reducing computational complexity from O(n²) to O(n) for new token generation.
         """
+        if config.n_kv_groups > 1 and config.latent_dim is not None:
+            raise ValueError("GQA and latent attention cannot be used together.")
+
         super().__init__()
         if config.n_kv_groups > 1:
             self.att = GroupedQueryAttention(
@@ -129,17 +134,27 @@ class TransformerBlockCached(nn.Module):
                 n_heads=config.n_heads,
                 num_kv_groups=config.n_kv_groups,
                 dropout=config.drop_rate,
-                qkv_bias=config.qkv_bias)
+                qkv_bias=config.qkv_bias
+            )
+        elif config.latent_dim is not None:
+            self.att = MultiheadLatentAttention(
+                d_in=config.emb_dim,
+                d_out=config.emb_dim,
+                num_heads=config.n_heads,
+                dropout=config.drop_rate,
+                qkv_bias=config.qkv_bias,
+                latent_dim=config.latent_dim
+            )
         else:
             self.att = MultiheadAttentionCached(
                 d_in=config.emb_dim,
                 d_out=config.emb_dim,
                 context_length=config.context_length,
                 n_heads=config.n_heads,
-            dropout=config.drop_rate,
-            qkv_bias=config.qkv_bias,
-            window_size=config.kv_window_size or config.context_length
-        )
+                dropout=config.drop_rate,
+                qkv_bias=config.qkv_bias,
+                window_size=config.kv_window_size or config.context_length
+            )
         self.ff = FeedForward(config)
         self.norm1 = LayerNorm(config.emb_dim)
         self.norm2 = LayerNorm(config.emb_dim)
