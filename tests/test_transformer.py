@@ -242,7 +242,7 @@ class TestTransformerBlock:
 
         # Verify string representation contains expected components
         block_str = str(block)
-        assert "MultiHeadAttention" in block_str, "Should contain MultiHeadAttention"
+        assert "MultiheadAttention" in block_str, "Should contain MultiheadAttention"
         assert "FeedForward" in block_str, "Should contain FeedForward"
         assert "LayerNorm" in block_str, "Should contain LayerNorm"
         assert "Dropout" in block_str, "Should contain Dropout"
@@ -500,8 +500,8 @@ class TestTransformerBlockCached:
             n_kv_groups=1
         )
         mha_block = TransformerBlockCached(mha_config)
-        assert "MultiHeadAttentionCached" in str(type(mha_block.att).__name__), \
-            "Should use MultiHeadAttentionCached when n_kv_groups == 1"
+        assert "MultiheadAttentionCached" in str(type(mha_block.att).__name__), \
+            "Should use MultiheadAttentionCached when n_kv_groups == 1"
 
         # Test GQA selection (n_kv_groups > 1)
         gqa_config = GptConfig(
