@@ -149,7 +149,7 @@ class MultiHeadAttentionCached(nn.Module):
         attn_weights = self.dropout(attn_weights)
 
         # Compute output
-        context_vec = (attn_weights @ values).transpose(1, 2)  # Shape: (b, num_tokens, num_heads, head_dim)
+        context_vec = (attn_weights @ values).transpose(1, 2)  # Shape: (b, num_tokens, n_heads, head_dim)
         context_vec = context_vec.contiguous().view(batch_size, n_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)  # optional projection
 

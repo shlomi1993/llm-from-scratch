@@ -27,31 +27,31 @@ class GroupedQueryAttention(nn.Module):
 
     Args:
         d_in (int): Input dimension.
-        d_out (int): Output dimension (must be divisible by num_heads).
+        d_out (int): Output dimension (must be divisible by n_heads).
         dropout (float): Dropout probability for attention weights.
-        num_heads (int): Total number of query heads.
-        num_kv_groups (int): Number of key-value groups (must divide num_heads evenly).
+        n_heads (int): Total number of query heads.
+        num_kv_groups (int): Number of key-value groups (must divide n_heads evenly).
         dtype (torch.dtype, optional): Data type for linear layers. Default is None.
         qkv_bias (bool, optional): Whether to use bias in QKV projections. Default is False.
     """
 
-    def __init__(self, d_in: int, d_out: int, dropout: float, num_heads: int, num_kv_groups: int,
+    def __init__(self, d_in: int, d_out: int, dropout: float, n_heads: int, num_kv_groups: int,
                  dtype: torch.dtype = None, qkv_bias: bool = False,
     ) -> None:
         super().__init__()
-        assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
-        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups"
+        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
+        assert n_heads % num_kv_groups == 0, "n_heads must be divisible by num_kv_groups"
 
         # Calculate group size for KV heads
         self.d_out = d_out
-        self.num_heads = num_heads
-        self.head_dim = d_out // num_heads
+        self.n_heads = n_heads
+        self.head_dim = d_out // n_heads
 
         # Projections for keys and values with reduced number of heads
         self.W_key = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=qkv_bias, dtype=dtype)
         self.W_value = nn.Linear(d_in, num_kv_groups * self.head_dim, bias=qkv_bias, dtype=dtype)
         self.num_kv_groups = num_kv_groups
-        self.group_size = num_heads // num_kv_groups
+        self.group_size = n_heads // num_kv_groups
 
         # Projection for queries remains the same as in standard MHA
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias, dtype=dtype)
@@ -82,12 +82,12 @@ class GroupedQueryAttention(nn.Module):
         b, num_tokens, _ = x.shape
 
         # Apply projections
-        queries = self.W_query(x)  # (b, num_tokens, num_heads * head_dim)
+        queries = self.W_query(x)  # (b, num_tokens, n_heads * head_dim)
         keys = self.W_key(x)       # (b, num_tokens, num_kv_groups * head_dim)
         values = self.W_value(x)   # (b, num_tokens, num_kv_groups * head_dim)
 
         # Reshape
-        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        queries = queries.view(b, num_tokens, self.n_heads, self.head_dim).transpose(1, 2)
         keys_new = keys.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
         values_new = values.view(b, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
 
@@ -108,9 +108,9 @@ class GroupedQueryAttention(nn.Module):
                 self.ptr_current_pos = 0
 
         # Expand keys and values to match the number of heads
-        # Shape: (b, num_heads, num_tokens, head_dim)
-        keys = keys_base.repeat_interleave(self.group_size, dim=1)  # Shape: (b, num_heads, num_tokens, head_dim)
-        values = values_base.repeat_interleave(self.group_size, dim=1)  # Shape: (b, num_heads, num_tokens, head_dim)
+        # Shape: (b, n_heads, num_tokens, head_dim)
+        keys = keys_base.repeat_interleave(self.group_size, dim=1)  # Shape: (b, n_heads, num_tokens, head_dim)
+        values = values_base.repeat_interleave(self.group_size, dim=1)  # Shape: (b, n_heads, num_tokens, head_dim)
         # For example, before repeat_interleave along dim=1 (query groups):
         #   [K1, K2]
         # After repeat_interleave (each query group is repeated group_size times):
@@ -119,7 +119,7 @@ class GroupedQueryAttention(nn.Module):
         #   [K1, K2, K1, K2]
 
         # Compute scaled dot-product attention (aka self-attention) with a causal mask
-        # Shape: (b, num_heads, num_tokens, num_tokens)
+        # Shape: (b, n_heads, num_tokens, num_tokens)
         attn_scores = queries @ keys.transpose(2, 3)  # Dot product for each head
 
         ####################################################
@@ -148,10 +148,10 @@ class GroupedQueryAttention(nn.Module):
         assert keys.shape[-1] == self.head_dim
         attn_weights = self.dropout(attn_weights)
 
-        # Shape: (b, num_tokens, num_heads, head_dim)
+        # Shape: (b, num_tokens, n_heads, head_dim)
         context_vec = (attn_weights @ values).transpose(1, 2)
 
-        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)  # optional projection
 

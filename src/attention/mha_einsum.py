@@ -25,27 +25,27 @@ class MHAEinsum(nn.Module):
     6. Dropout regularization for attention weights
     """
 
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias: bool = False) -> None:
+    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, n_heads: int, qkv_bias: bool = False) -> None:
         """
         Initialize the MHAEinsum module.
 
         Args:
             d_in (int): Input embedding dimension
-            d_out (int): Total output embedding dimension (must be divisible by num_heads)
+            d_out (int): Total output embedding dimension (must be divisible by n_heads)
             context_length (int): Maximum sequence length for the causal mask
             dropout (float): Dropout probability for attention weights
-            num_heads (int): Number of attention heads
+            n_heads (int): Number of attention heads
             qkv_bias (bool, optional): Whether to include bias in QKV projections. Defaults to False.
 
         Raises:
-            AssertionError: If d_out is not divisible by num_heads
+            AssertionError: If d_out is not divisible by n_heads
         """
         super().__init__()
-        assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
+        assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
 
         self.d_out = d_out
-        self.num_heads = num_heads
-        self.head_dim = d_out // num_heads
+        self.n_heads = n_heads
+        self.head_dim = d_out // n_heads
 
         self.W_query = nn.Parameter(torch.randn(d_in, d_out))
         self.W_key = nn.Parameter(torch.randn(d_in, d_out))
@@ -124,9 +124,9 @@ class MHAEinsum(nn.Module):
             V += self.bias_v
 
         # Reshape for multi-head attention
-        Q = Q.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
-        K = K.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
-        V = V.view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        Q = Q.view(b, n, self.n_heads, self.head_dim).transpose(1, 2)
+        K = K.view(b, n, self.n_heads, self.head_dim).transpose(1, 2)
+        V = V.view(b, n, self.n_heads, self.head_dim).transpose(1, 2)
 
         # Scaled dot-product attention
         scores = torch.einsum("bhnd,bhmd->bhnm", Q, K) / (self.head_dim ** 0.5)

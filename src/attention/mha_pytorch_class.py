@@ -25,15 +25,15 @@ class MHAPyTorchClass(nn.Module):
     6. Comprehensive bias options for QKV projections
     """
 
-    def __init__(self, d_in: int, d_out: int, num_heads: int, context_length: int, dropout: float = 0.0,
+    def __init__(self, d_in: int, d_out: int, n_heads: int, context_length: int, dropout: float = 0.0,
                  qkv_bias: bool = False, need_weights: bool = True) -> None:
         """
         Initialize the MHAPyTorchClass module.
 
         Args:
             d_in (int): Input embedding dimension
-            d_out (int): Output embedding dimension (must be divisible by num_heads)
-            num_heads (int): Number of attention heads
+            d_out (int): Output embedding dimension (must be divisible by n_heads)
+            n_heads (int): Number of attention heads
             context_length (int): Maximum sequence length for the causal mask
             dropout (float, optional): Dropout probability for attention weights. Defaults to 0.0.
             qkv_bias (bool, optional): Whether to include bias in QKV linear projections. Defaults to False.
@@ -48,7 +48,7 @@ class MHAPyTorchClass(nn.Module):
         self.context_length = context_length
         self.multihead_attn = nn.MultiheadAttention(
             embed_dim=d_out,
-            num_heads=num_heads,
+            n_heads=n_heads,
             dropout=dropout,
             bias=qkv_bias,
             add_bias_kv=qkv_bias,
@@ -83,7 +83,7 @@ class MHAPyTorchClass(nn.Module):
         batch_size, num_tokens, _ = x.shape
 
         # Ensure attn_mask is compatible with expected shape and `batch_first=True`
-        # No need to manually adjust for num_heads; ensure it's right for the sequence
+        # No need to manually adjust for n_heads; ensure it's right for the sequence
         if self.context_length >= num_tokens:
             attn_mask = self.mask[:num_tokens, :num_tokens]
         else:

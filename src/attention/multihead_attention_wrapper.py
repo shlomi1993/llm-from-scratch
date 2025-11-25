@@ -18,7 +18,7 @@ class MultiHeadAttentionWrapper(nn.Module):
     information from different representation subspaces at different positions.
     """
 
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, num_heads: int, qkv_bias: bool = False) -> None:
+    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, n_heads: int, qkv_bias: bool = False) -> None:
         """
         Initialize the MultiHeadAttentionWrapper module.
 
@@ -27,11 +27,11 @@ class MultiHeadAttentionWrapper(nn.Module):
             d_out (int): Output embedding dimension per head
             context_length (int): Maximum sequence length for the causal mask
             dropout (float): Dropout probability for attention weights
-            num_heads (int): Number of attention heads
+            n_heads (int): Number of attention heads
             qkv_bias (bool, optional): Whether to include bias in QKV linear projections. Defaults to False.
         """
         super().__init__()
-        attention_heads = [CausalAttention(d_in, d_out, context_length, dropout, qkv_bias) for _ in range(num_heads)]
+        attention_heads = [CausalAttention(d_in, d_out, context_length, dropout, qkv_bias) for _ in range(n_heads)]
         self.heads = nn.ModuleList(attention_heads)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -46,6 +46,6 @@ class MultiHeadAttentionWrapper(nn.Module):
             x (Tensor): Input tensor of shape (batch_size, num_tokens, d_in)
 
         Returns:
-            Tensor: Concatenated attention outputs of shape (batch_size, num_tokens, d_out * num_heads)
+            Tensor: Concatenated attention outputs of shape (batch_size, num_tokens, d_out * n_heads)
         """
         return torch.cat([head(x) for head in self.heads], dim=-1)
