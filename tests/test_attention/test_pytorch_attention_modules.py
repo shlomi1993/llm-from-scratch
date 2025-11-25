@@ -267,19 +267,16 @@ class TestMultiHeadAttentionCached:
         """
         Test that MultiHeadAttentionCached produces correct output shape.
         """
-        # Create a config object for cached attention
-        config = GptConfig(
-            emb_dim=12,
-            n_layers=1,  # Not used in this module
-            n_heads=4,
-            context_length=8,
-            drop_rate=0.1
-        )
+        d_in = 12
+        d_out = 12
+        context_length = 8
+        dropout = 0.1
+        n_heads = 4
 
-        # Expand input to match emb_dim=12
+        # Expand input to match d_in=12
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 9)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCached(config)
+        mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         output = mha(batch)
 
@@ -290,25 +287,23 @@ class TestMultiHeadAttentionCached:
         """
         Test that caching functionality works correctly.
         """
-        config = GptConfig(
-            emb_dim=6,
-            n_layers=1,
-            n_heads=2,
-            context_length=8,
-            drop_rate=0.0
-        )
+        d_in = 6
+        d_out = 6
+        context_length = 8
+        dropout = 0.0
+        n_heads = 2
 
-        # Expand input to match emb_dim=6
+        # Expand input to match d_in=6
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 3)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCached(config)
+        mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         # Test incremental generation simulation
         for use_cache in [False, True]:  # Test both cached and non-cached modes
             output = mha(batch, use_cache=use_cache)
 
             # Check output shape
-            expected_shape = (batch.shape[0], batch.shape[1], config.emb_dim)
+            expected_shape = (batch.shape[0], batch.shape[1], d_out)
             assert output.shape == expected_shape, f"Expected shape {expected_shape}, got {output.shape}"
 
             # Verify output is finite
@@ -319,20 +314,18 @@ class TestMultiHeadAttentionCached:
         """
         Test that gradients flow properly through cached attention.
         """
-        config = GptConfig(
-            emb_dim=6,
-            n_layers=1,
-            n_heads=2,
-            context_length=8,
-            drop_rate=0.1
-        )
+        d_in = 6
+        d_out = 6
+        context_length = 8
+        dropout = 0.1
+        n_heads = 2
 
-        # Expand input to match emb_dim=6
+        # Expand input to match d_in=6
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 3)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MultiHeadAttentionCached(config)
+        mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
         output = mha(batch)
 
         loss = output.sum()
@@ -345,24 +338,22 @@ class TestMultiHeadAttentionCached:
         """
         Test that cached and non-cached outputs are consistent.
         """
-        config = GptConfig(
-            emb_dim=6,
-            n_layers=1,
-            n_heads=2,
-            context_length=8,
-            drop_rate=0.0  # No dropout for consistency test
-        )
+        d_in = 6
+        d_out = 6
+        context_length = 8
+        dropout = 0.0
+        n_heads = 2
 
-        # Expand input to match emb_dim=6
+        # Expand input to match d_in=6
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 3)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
 
         # Create two identical models
         torch.manual_seed(123)
-        mha_cached = MultiHeadAttentionCached(config)
+        mha_cached = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         torch.manual_seed(123)
-        mha_regular = MultiHeadAttentionCached(config)
+        mha_regular = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         # Get outputs from both models
         output_cached = mha_cached(batch, use_cache=True)
@@ -378,33 +369,27 @@ class TestMultiHeadAttentionCached:
         context_length = 8
         dropout = 0.1
 
-        # Test different head counts with appropriate emb_dim values
+        # Test different head counts with appropriate d_in/d_out values
         test_configs = [
-            (1, 4),   # 1 head, emb_dim=4
-            (2, 6),   # 2 heads, emb_dim=6
-            (4, 8),   # 4 heads, emb_dim=8
+            (1, 4),   # 1 head, d_in=d_out=4
+            (2, 6),   # 2 heads, d_in=d_out=6
+            (4, 8),   # 4 heads, d_in=d_out=8
         ]
 
-        for num_heads, emb_dim in test_configs:
-            config = GptConfig(
-                emb_dim=emb_dim,
-                n_layers=1,
-                n_heads=num_heads,
-                context_length=context_length,
-                drop_rate=dropout
-            )
+        for n_heads, d_in in test_configs:
+            d_out = d_in
 
             # Create input with appropriate dimensions
-            if emb_dim <= 3:
-                expanded_inputs = sample_inputs[:, :emb_dim]
+            if d_in <= 3:
+                expanded_inputs = sample_inputs[:, :d_in]
             else:
-                expanded_inputs = torch.cat([sample_inputs, torch.randn(6, emb_dim - 3)], dim=-1)
+                expanded_inputs = torch.cat([sample_inputs, torch.randn(6, d_in - 3)], dim=-1)
             batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
 
-            mha = MultiHeadAttentionCached(config)
+            mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
             output = mha(batch)
 
-            expected_shape = (2, 6, emb_dim)
-            assert output.shape == expected_shape, f"For {num_heads} heads, expected shape {expected_shape}, got {output.shape}"
-            assert torch.isfinite(output).all(), f"Output for {num_heads} heads should be finite"
-            assert not torch.isnan(output).any(), f"Output for {num_heads} heads should not contain NaN"
+            expected_shape = (2, 6, d_out)
+            assert output.shape == expected_shape, f"For {n_heads} heads, expected shape {expected_shape}, got {output.shape}"
+            assert torch.isfinite(output).all(), f"Output for {n_heads} heads should be finite"
+            assert not torch.isnan(output).any(), f"Output for {n_heads} heads should not contain NaN"
