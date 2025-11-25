@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 from src.gpt import GptModel
-from src.transformer import TransformerBlock, TransformerBlockCached
+from src.transformer import SimpleTransformerBlock, TransformerBlock
 
 
 class TestTransformerBlock:
@@ -32,7 +32,7 @@ class TestTransformerBlock:
         """
         Create a TransformerBlock for testing.
         """
-        return TransformerBlock(sample_config)
+        return SimpleTransformerBlock(sample_config)
 
     def test_forward_pass_basic(self, transformer_block, sample_config):
         """
@@ -59,7 +59,7 @@ class TestTransformerBlock:
         """
         Test Pre-LayerNorm architecture: normalization before attention/FF, not after.
         """
-        block = TransformerBlock(sample_config)
+        block = SimpleTransformerBlock(sample_config)
         input_tensor = torch.randn(2, 5, sample_config.emb_dim)
 
         block.eval()
@@ -171,7 +171,7 @@ class TestTransformerBlock:
             qkv_bias=sample_config.qkv_bias
         )
 
-        block = TransformerBlock(zero_dropout_config)
+        block = SimpleTransformerBlock(zero_dropout_config)
         input_tensor = torch.randn(2, 5, sample_config.emb_dim)
 
         # With zero dropout, train and eval should give identical results
@@ -214,7 +214,7 @@ class TestTransformerBlock:
         Test stacking multiple transformer blocks.
         """
         num_blocks = 3
-        blocks = nn.ModuleList([TransformerBlock(sample_config) for _ in range(num_blocks)])
+        blocks = nn.ModuleList([SimpleTransformerBlock(sample_config) for _ in range(num_blocks)])
 
         input_tensor = torch.randn(2, 5, sample_config.emb_dim)
 
@@ -231,7 +231,7 @@ class TestTransformerBlock:
         """
         Test the structure and components of TransformerBlock (Exercise 4.1).
         """
-        block = TransformerBlock(GPT_CONFIG_124M)
+        block = SimpleTransformerBlock(GPT_CONFIG_124M)
 
         # Verify component types
         assert isinstance(block.att, torch.nn.Module), "att should be a Module"
@@ -342,7 +342,7 @@ class TestTransformerBlockCached:
         """
         Create a TransformerBlockCached for testing.
         """
-        return TransformerBlockCached(sample_config)
+        return TransformerBlock(sample_config)
 
     def test_forward_pass_basic(self, cached_transformer_block, sample_config):
         """
@@ -499,7 +499,7 @@ class TestTransformerBlockCached:
             qkv_bias=sample_config.qkv_bias,
             n_kv_groups=1
         )
-        mha_block = TransformerBlockCached(mha_config)
+        mha_block = TransformerBlock(mha_config)
         assert "MultiheadAttentionCached" in str(type(mha_block.att).__name__), \
             "Should use MultiheadAttentionCached when n_kv_groups == 1"
 
@@ -514,7 +514,7 @@ class TestTransformerBlockCached:
             qkv_bias=sample_config.qkv_bias,
             n_kv_groups=2
         )
-        gqa_block = TransformerBlockCached(gqa_config)
+        gqa_block = TransformerBlock(gqa_config)
         assert "GroupedQueryAttention" in str(type(gqa_block.att).__name__), \
             "Should use GroupedQueryAttention when n_kv_groups > 1"
 

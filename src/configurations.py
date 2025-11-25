@@ -42,6 +42,7 @@ class GptConfig:
     qkv_bias: bool = False      # Query-Key-Value bias
     kv_window_size: int = None  # KV cache window size
     n_kv_groups: int = 1        # Number of KV groups for Grouped Query Attention
+    latent_dim: int = None      # Latent dimension for latent attention mechanisms
 
 
 # GPT2-Small (124M parameters)
