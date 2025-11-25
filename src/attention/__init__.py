@@ -17,6 +17,7 @@ from .multihead_attention_pytorch_class import MultiheadAttentionPyTorchClass
 from .multihead_attention_pytorch_flex_attention import MultiheadAttentionPyTorchFlexAttention, causal
 from .multihead_attention_cached import MultiheadAttentionCached
 from .grouped_query_attention import GroupedQueryAttention
+from .multihead_latent_attention import MultiheadLatentAttention
 
 __all__ = [
     "SelfAttention",
@@ -31,4 +32,5 @@ __all__ = [
     "MultiheadAttentionPyTorchFlexAttention", "causal",
     "MultiheadAttentionCached",
     "GroupedQueryAttention",
+    "MultiheadLatentAttention",
 ]
