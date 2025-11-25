@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.attention import MultiHeadAttention, MultiHeadAttentionWrapper
+from src.attention import MultiheadAttention, MultiheadAttentionWrapper
 
 
 class TestMultiHeadAttention:
@@ -36,7 +36,7 @@ class TestMultiHeadAttention:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
         output = mha(batch)
 
         # Compute loss and backpropagate
@@ -64,10 +64,10 @@ class TestMultiHeadAttention:
 
         # Create two identical models
         torch.manual_seed(123)
-        mha1 = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha1 = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         torch.manual_seed(123)
-        mha2 = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha2 = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Zero out one model's output projection
         with torch.no_grad():
@@ -91,7 +91,7 @@ class TestMultiHeadAttention:
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
-        mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Test with eval mode to ensure consistent behavior
         mha.eval()
@@ -127,7 +127,7 @@ class TestMultiHeadAttention:
         ]
 
         for num_heads, d_out in test_configs:
-            mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+            mha = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
@@ -146,12 +146,12 @@ class TestMultiHeadAttention:
 
         # First run
         torch.manual_seed(42)
-        mha1 = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha1 = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
         output1 = mha1(batch)
 
         # Second run with same seed
         torch.manual_seed(42)
-        mha2 = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha2 = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
         output2 = mha2(batch)
 
         assert torch.allclose(output1, output2, atol=1e-6), "Outputs should be identical with same random seed"
@@ -169,12 +169,12 @@ class TestMultiHeadAttention:
 
         # Wrapper implementation (d_out per head)
         torch.manual_seed(789)
-        wrapper = MultiHeadAttentionWrapper(d_in, d_out_per_head, context_length, dropout, num_heads)
+        wrapper = MultiheadAttentionWrapper(d_in, d_out_per_head, context_length, dropout, num_heads)
         wrapper_output = wrapper(batch)
 
         # Efficient implementation (total d_out)
         torch.manual_seed(789)
-        efficient = MultiHeadAttention(d_in, d_out_per_head * num_heads, context_length, dropout, num_heads)
+        efficient = MultiheadAttention(d_in, d_out_per_head * num_heads, context_length, dropout, num_heads)
         efficient_output = efficient(batch)
 
         # Shapes should match
@@ -195,7 +195,7 @@ class TestMultiHeadAttention:
 
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
-        mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Test that the model produces reasonable outputs
         with torch.no_grad():
@@ -212,7 +212,7 @@ class TestMultiHeadAttention:
         dropout = 0.1
         num_heads = 2
 
-        mha = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Test with wrong input dimension (should be 3D)
         wrong_input_2d = torch.randn(6, 3)  # Missing batch dimension
@@ -250,7 +250,7 @@ class TestMultiHeadAttention:
 
         # Initialize the efficient multi-head attention with transformer-like configuration
         # Note: d_out=embed_dim (total), not per head like in MultiHeadAttentionWrapper
-        mha_efficient = MultiHeadAttention(
+        mha_efficient = MultiheadAttention(
             d_in=embed_dim,
             d_out=embed_dim,  # Total output dimension (768)
             context_length=context_len,

@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.attention import MultiHeadAttentionCombinedQKV, MultiHeadAttention
+from src.attention import MultiheadAttentionCombinedQKV, MultiheadAttention
 
 
 class TestMultiHeadAttentionCombinedQKV:
@@ -36,7 +36,7 @@ class TestMultiHeadAttentionCombinedQKV:
         # Expand input to match d_in=8
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 5)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         output = mha(batch)
 
@@ -53,7 +53,7 @@ class TestMultiHeadAttentionCombinedQKV:
         num_heads = 3
 
         with pytest.raises(AssertionError, match="d_out.*divisible.*n_heads"):
-            MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+            MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
     def test_head_dimension_calculation_combined(self, sample_inputs):
         """
@@ -64,7 +64,7 @@ class TestMultiHeadAttentionCombinedQKV:
         dropout = 0.0
         num_heads = 4
 
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         assert mha.head_dim == 3, f"Expected head_dim=3, got {mha.head_dim}"
         # Note: Implementation doesn't store d_out as attribute
@@ -85,7 +85,7 @@ class TestMultiHeadAttentionCombinedQKV:
         # Expand input to match d_in=6
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 3)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         # Test the QKV projection creates correct shape
         qkv_output = mha.qkv(batch)
@@ -110,7 +110,7 @@ class TestMultiHeadAttentionCombinedQKV:
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
         output = mha(batch)
 
         # Compute loss and backpropagate
@@ -137,7 +137,7 @@ class TestMultiHeadAttentionCombinedQKV:
         # Expand input to match d_in=6
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 3)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         # Test with eval mode to ensure consistent behavior
         mha.eval()
@@ -177,7 +177,7 @@ class TestMultiHeadAttentionCombinedQKV:
                 expanded_inputs = torch.cat([sample_inputs, torch.randn(6, d_in - 3)], dim=-1)
             batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
 
-            mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+            mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)
@@ -198,12 +198,12 @@ class TestMultiHeadAttentionCombinedQKV:
 
         # Combined QKV implementation
         torch.manual_seed(789)
-        combined_qkv = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        combined_qkv = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
         combined_output = combined_qkv(batch)
 
         # Efficient implementation for comparison (different seed to show they can differ)
         torch.manual_seed(456)
-        efficient = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        efficient = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
         efficient_output = efficient(batch)
 
         # Shapes should match
@@ -229,7 +229,7 @@ class TestMultiHeadAttentionCombinedQKV:
         # Expand input to match d_in=4
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 1)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         # Test that the model produces reasonable outputs
         with torch.no_grad():
@@ -246,7 +246,7 @@ class TestMultiHeadAttentionCombinedQKV:
         dropout = 0.1
         num_heads = 2
 
-        mha = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         # Test with wrong input dimension (should be 3D)
         wrong_input_2d = torch.randn(6, 3)  # Missing batch dimension
@@ -275,7 +275,7 @@ class TestMultiHeadAttentionCombinedQKV:
         embeddings = torch.randn(batch_size, context_len, embed_dim)
 
         # Initialize the combined QKV multi-head attention with transformer-like configuration
-        mha_combined_qkv = MultiHeadAttentionCombinedQKV(
+        mha_combined_qkv = MultiheadAttentionCombinedQKV(
             d_in=embed_dim,
             d_out=embed_dim,
             context_length=context_len,
@@ -314,10 +314,10 @@ class TestMultiHeadAttentionCombinedQKV:
         num_heads = 2
 
         # Combined QKV implementation
-        combined_qkv = MultiHeadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
+        combined_qkv = MultiheadAttentionCombinedQKV(d_in, d_out, num_heads, context_length, dropout)
 
         # Regular implementation for comparison
-        regular = MultiHeadAttention(d_in, d_out, context_length, dropout, num_heads)
+        regular = MultiheadAttention(d_in, d_out, context_length, dropout, num_heads)
 
         # Count parameters
         combined_params = sum(p.numel() for p in combined_qkv.parameters())

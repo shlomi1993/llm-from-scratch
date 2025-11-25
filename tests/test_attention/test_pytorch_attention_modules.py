@@ -2,28 +2,28 @@ import pytest
 import torch
 
 from src.attention import (
-    MHAPyTorchSDPAWithoutFlash,
-    MHAPyTorchClass,
-    MHAPyTorchFlexAttention,
-    MultiHeadAttentionCached
+    MultiheadAttentionPyTorchSdpaWithoutFlash,
+    MultiheadAttentionPyTorchClass,
+    MultiheadAttentionPyTorchFlexAttention,
+    MultiheadAttentionCached
 )
 
 
-class TestMHAPyTorchSDPAWithoutFlash:
+class TestMultiheadAttentionPyTorchSdpaWithoutFlash:
     """
-    Test suite for MHAPyTorchSDPAWithoutFlash multi-head attention implementation.
+    Test suite for MultiheadAttentionPyTorchSDPAWithoutFlash multi-head attention implementation.
     """
 
     def test_output_shape_pytorch_sdpa_without_flash(self):
         """
-        Test that MHAPyTorchSDPAWithoutFlash produces correct output shape.
+        Test that MultiheadAttentionPyTorchSDPAWithoutFlash produces correct output shape.
         """
         batch_size, num_tokens, d_in = 2, 8, 512
         d_out = 256
         num_heads = 4
         context_length = 16
 
-        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, n_heads=num_heads, context_length=context_length)
+        mha = MultiheadAttentionPyTorchSdpaWithoutFlash(d_in=d_in, d_out=d_out, n_heads=num_heads, context_length=context_length)
 
         x = torch.randn(batch_size, num_tokens, d_in)
         out = mha(x)
@@ -34,10 +34,10 @@ class TestMHAPyTorchSDPAWithoutFlash:
 
     def test_dimension_divisibility_assertion_pytorch_sdpa_without_flash(self):
         """
-        Test that MHAPyTorchSDPAWithoutFlash raises error for invalid dimensions.
+        Test that MultiheadAttentionPyTorchSdpaWithoutFlash raises error for invalid dimensions.
         """
         with pytest.raises(AssertionError, match="d_out.*divisible.*n_heads"):
-            MHAPyTorchSDPAWithoutFlash(d_in=512, d_out=257, n_heads=4, context_length=16)
+            MultiheadAttentionPyTorchSdpaWithoutFlash(d_in=512, d_out=257, n_heads=4, context_length=16)
 
     def test_gradient_flow_pytorch_sdpa_without_flash(self):
         """
@@ -46,7 +46,7 @@ class TestMHAPyTorchSDPAWithoutFlash:
         batch_size, num_tokens, d_in = 2, 8, 512
         d_out = 256
 
-        mha = MHAPyTorchSDPAWithoutFlash(d_in=d_in, d_out=d_out, n_heads=4, context_length=16, dropout=0.0)
+        mha = MultiheadAttentionPyTorchSdpaWithoutFlash(d_in=d_in, d_out=d_out, n_heads=4, context_length=16, dropout=0.0)
 
         x = torch.randn(batch_size, num_tokens, d_in, requires_grad=True)
         out = mha(x)
@@ -57,15 +57,15 @@ class TestMHAPyTorchSDPAWithoutFlash:
         assert mha.qkv.weight.grad is not None, "QKV weights should have gradients after backward pass"
 
 
-class TestMHAPyTorchClass:
+class TestMultiheadAttentionPyTorchClass:
     """
-    Test suite for MHAPyTorchClass multi-head attention implementation.
+    Test suite for MultiheadAttentionPyTorchClass multi-head attention implementation.
     """
 
     @pytest.fixture
     def sample_inputs(self):
         """
-        Sample input tensor for testing MHAPyTorchClass.
+        Sample input tensor for testing MultiheadAttentionPyTorchClass.
         """
         torch.manual_seed(42)
         return torch.tensor([
@@ -79,9 +79,9 @@ class TestMHAPyTorchClass:
 
     def test_output_shape_pytorch_class(self, sample_inputs):
         """
-        Test that MHAPyTorchClass produces correct output shape.
+        Test that MultiheadAttentionPyTorchClass produces correct output shape.
         """
-        d_in, d_out = 12, 12  # MHAPyTorchClass expects d_in == d_out
+        d_in, d_out = 12, 12  # MultiheadAttentionPyTorchClass expects d_in == d_out
         context_length = 8
         dropout = 0.1
         num_heads = 4
@@ -89,7 +89,7 @@ class TestMHAPyTorchClass:
         # Expand input to match d_in=12
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 9)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MHAPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
 
         output = mha(batch)
 
@@ -98,9 +98,9 @@ class TestMHAPyTorchClass:
 
     def test_gradient_flow_pytorch_class(self, sample_inputs):
         """
-        Test that gradients flow properly through MHAPyTorchClass.
+        Test that gradients flow properly through MultiheadAttentionPyTorchClass.
         """
-        d_in, d_out = 6, 6  # MHAPyTorchClass expects d_in == d_out
+        d_in, d_out = 6, 6  # MultiheadAttentionPyTorchClass expects d_in == d_out
         context_length = 8
         dropout = 0.1
         num_heads = 2
@@ -110,7 +110,7 @@ class TestMHAPyTorchClass:
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MHAPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
         output = mha(batch)
 
         loss = output.sum()
@@ -123,7 +123,7 @@ class TestMHAPyTorchClass:
         """
         Test that PyTorch MultiheadAttention backend is working correctly.
         """
-        d_in, d_out = 4, 4  # MHAPyTorchClass expects d_in == d_out
+        d_in, d_out = 4, 4  # MultiheadAttentionPyTorchClass expects d_in == d_out
         context_length = 8
         dropout = 0.0
         num_heads = 2
@@ -131,7 +131,7 @@ class TestMHAPyTorchClass:
         # Expand input to match d_in=4
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 1)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MHAPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
+        mha = MultiheadAttentionPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
 
         # Test that we can successfully run the forward pass
         output = mha(batch)
@@ -151,15 +151,15 @@ class TestMHAPyTorchClass:
         assert torch.isfinite(eval_output).all(), "Evaluation output should be finite"
 
 
-class TestMHAPyTorchFlexAttention:
+class TestMultiheadAttentionPyTorchFlexAttention:
     """
-    Test suite for MHAPyTorchFlexAttention multi-head attention implementation.
+    Test suite for MultiheadAttentionPyTorchFlexAttention multi-head attention implementation.
     """
 
     @pytest.fixture
     def sample_inputs(self):
         """
-        Sample input tensor for testing MHAPyTorchFlexAttention.
+        Sample input tensor for testing MultiheadAttentionPyTorchFlexAttention.
         """
         torch.manual_seed(42)
         return torch.tensor([
@@ -173,7 +173,7 @@ class TestMHAPyTorchFlexAttention:
 
     def test_output_shape_flex_attention(self, sample_inputs):
         """
-        Test that MHAPyTorchFlexAttention produces correct output shape.
+        Test that MultiheadAttentionPyTorchFlexAttention produces correct output shape.
         """
         d_in, d_out = 12, 12  # FlexAttention expects d_in == d_out
         context_length = 8
@@ -186,13 +186,13 @@ class TestMHAPyTorchFlexAttention:
 
         # Test with flex_attention if available, otherwise use fallback
         try:
-            mha = MHAPyTorchFlexAttention(d_in, d_out, num_heads, context_length, dropout)
+            mha = MultiheadAttentionPyTorchFlexAttention(d_in, d_out, num_heads, context_length, dropout)
             output = mha(batch)
         except (ImportError, AttributeError, TypeError):
             # If flex_attention is not available, test that the class handles it gracefully
             # by falling back to regular attention
-            from src.attention import MHAPyTorchClass  # Use regular MHA as fallback
-            mha = MHAPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
+            from src.attention import MultiheadAttentionPyTorchClass  # Use regular MHA as fallback
+            mha = MultiheadAttentionPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
             output = mha(batch)
 
         assert output.shape == (2, 6, 12), f"Expected shape (2, 6, 12), got {output.shape}"
@@ -200,7 +200,7 @@ class TestMHAPyTorchFlexAttention:
 
     def test_gradient_flow_flex_attention(self, sample_inputs):
         """
-        Test that gradients flow properly through MHAPyTorchFlexAttention.
+        Test that gradients flow properly through MultiheadAttentionPyTorchFlexAttention.
         """
         d_in, d_out = 6, 6  # FlexAttention expects d_in == d_out
         context_length = 8
@@ -213,12 +213,12 @@ class TestMHAPyTorchFlexAttention:
         batch.requires_grad_(True)
 
         try:
-            mha = MHAPyTorchFlexAttention(d_in, d_out, num_heads, context_length, dropout)
+            mha = MultiheadAttentionPyTorchFlexAttention(d_in, d_out, num_heads, context_length, dropout)
             output = mha(batch)
         except (ImportError, AttributeError, TypeError):
             # If flex_attention is not available, test gradients with fallback
-            from src.attention import MHAPyTorchClass  # Use regular MHA as fallback
-            mha = MHAPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
+            from src.attention import MultiheadAttentionPyTorchClass  # Use regular MHA as fallback
+            mha = MultiheadAttentionPyTorchClass(d_in, d_out, num_heads, context_length, dropout)
             output = mha(batch)
 
         loss = output.sum()
@@ -275,7 +275,7 @@ class TestMultiHeadAttentionCached:
         # Expand input to match d_in=12
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 9)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
+        mha = MultiheadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         output = mha(batch)
 
@@ -295,7 +295,7 @@ class TestMultiHeadAttentionCached:
         # Expand input to match d_in=6
         expanded_inputs = torch.cat([sample_inputs, torch.randn(6, 3)], dim=-1)
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
-        mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
+        mha = MultiheadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         # Test incremental generation simulation
         for use_cache in [False, True]:  # Test both cached and non-cached modes
@@ -324,7 +324,7 @@ class TestMultiHeadAttentionCached:
         batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
         batch.requires_grad_(True)
 
-        mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
+        mha = MultiheadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
         output = mha(batch)
 
         loss = output.sum()
@@ -349,10 +349,10 @@ class TestMultiHeadAttentionCached:
 
         # Create two identical models
         torch.manual_seed(123)
-        mha_cached = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
+        mha_cached = MultiheadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         torch.manual_seed(123)
-        mha_regular = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
+        mha_regular = MultiheadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
 
         # Get outputs from both models
         output_cached = mha_cached(batch, use_cache=True)
@@ -385,7 +385,7 @@ class TestMultiHeadAttentionCached:
                 expanded_inputs = torch.cat([sample_inputs, torch.randn(6, d_in - 3)], dim=-1)
             batch = torch.stack((expanded_inputs, expanded_inputs), dim=0)
 
-            mha = MultiHeadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
+            mha = MultiheadAttentionCached(d_in, d_out, context_length, dropout, n_heads)
             output = mha(batch)
 
             expected_shape = (2, 6, d_out)

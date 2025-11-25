@@ -8,7 +8,7 @@ import math
 from torch import nn, Tensor
 
 
-class MHAEinsum(nn.Module):
+class MultiheadAttentionEinsum(nn.Module):
     """
     Multi-Head Attention implementation using Einstein summation (einsum) operations.
 

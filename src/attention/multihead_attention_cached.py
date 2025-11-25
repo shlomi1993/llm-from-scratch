@@ -7,7 +7,7 @@ import torch
 from torch import nn, Tensor
 
 
-class MultiHeadAttentionCached(nn.Module):
+class MultiheadAttentionCached(nn.Module):
     """
     Multi-Head Attention with KV cache support and sliding window optimization.
 

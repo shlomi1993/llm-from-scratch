@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.attention import MultiHeadAttentionWrapper
+from src.attention import MultiheadAttentionWrapper
 
 
 class TestMultiHeadAttentionWrapper:
@@ -31,7 +31,7 @@ class TestMultiHeadAttentionWrapper:
         torch.manual_seed(123)
         context_length = batch.shape[1]  # This is the number of tokens
         d_in, d_out = 3, 2
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, 0.0, n_heads=2)
+        mha = MultiheadAttentionWrapper(d_in, d_out, context_length, 0.0, n_heads=2)
         context_vecs = mha(batch)
 
         # Verify output shape
@@ -54,11 +54,11 @@ class TestMultiHeadAttentionWrapper:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
         # Single head attention
-        single_head = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, n_heads=1)
+        single_head = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, n_heads=1)
         single_output = single_head(batch)
 
         # Multi head attention
-        multi_head = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, n_heads=3)
+        multi_head = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, n_heads=3)
         multi_output = multi_head(batch)
 
         # Multi-head should have 3x the feature dimension of single head
@@ -77,7 +77,7 @@ class TestMultiHeadAttentionWrapper:
         head_counts = [1, 2, 4, 8]
 
         for num_heads in head_counts:
-            mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
+            mha = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
             output = mha(batch)
 
             expected_feature_dim = d_out * num_heads
@@ -95,7 +95,7 @@ class TestMultiHeadAttentionWrapper:
         # Create test input
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
 
         # Verify that each head has proper causal masking
         for i, head in enumerate(mha.heads):
@@ -123,7 +123,7 @@ class TestMultiHeadAttentionWrapper:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
         torch.manual_seed(789)  # Set seed for deterministic but different heads
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
 
         # Extract attention weights from different heads by manually computing them
         head1_keys = mha.heads[0].W_key(batch)
@@ -149,7 +149,7 @@ class TestMultiHeadAttentionWrapper:
         batch = torch.stack((sample_inputs, sample_inputs), dim=0)
 
         torch.manual_seed(456)
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
 
         # Get individual head outputs
         individual_outputs = []
@@ -174,7 +174,7 @@ class TestMultiHeadAttentionWrapper:
         dropout = 0.1
         num_heads = 2
 
-        mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
+        mha = MultiheadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
 
         # Test wrong feature dimension
         with pytest.raises(RuntimeError, match="mat1 and mat2 shapes cannot be multiplied"):

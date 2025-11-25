@@ -13,7 +13,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from .normalization import LayerNorm
-from .attention import MultiHeadAttention, MultiHeadAttentionCached, GroupedQueryAttention
+from .attention import MultiheadAttention, MultiheadAttentionCached, GroupedQueryAttention
 from .feed_forward import FeedForward
 from .configurations import GptConfig
 
@@ -38,7 +38,7 @@ class TransformerBlock(nn.Module):
             config (GptConfig): Configuration object containing model hyperparameters.
         """
         super().__init__()
-        self.att = MultiHeadAttention(
+        self.att = MultiheadAttention(
             d_in=config.emb_dim,
             d_out=config.emb_dim,
             context_length=config.context_length,
@@ -131,7 +131,7 @@ class TransformerBlockCached(nn.Module):
                 dropout=config.drop_rate,
                 qkv_bias=config.qkv_bias)
         else:
-            self.att = MultiHeadAttentionCached(
+            self.att = MultiheadAttentionCached(
                 d_in=config.emb_dim,
                 d_out=config.emb_dim,
                 context_length=config.context_length,
