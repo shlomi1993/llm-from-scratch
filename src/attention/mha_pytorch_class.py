@@ -48,7 +48,7 @@ class MHAPyTorchClass(nn.Module):
         self.context_length = context_length
         self.multihead_attn = nn.MultiheadAttention(
             embed_dim=d_out,
-            n_heads=n_heads,
+            num_heads=n_heads,
             dropout=dropout,
             bias=qkv_bias,
             add_bias_kv=qkv_bias,
