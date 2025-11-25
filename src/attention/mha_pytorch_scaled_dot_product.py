@@ -24,28 +24,28 @@ class MHAPyTorchScaledDotProduct(nn.Module):
     7. Training-aware dropout handling
     """
 
-    def __init__(self, d_in: int, d_out: int, num_heads: int, context_length: int, dropout: float = 0.0, qkv_bias: bool = False) -> None:
+    def __init__(self, d_in: int, d_out: int, n_heads: int, context_length: int, dropout: float = 0.0, qkv_bias: bool = False) -> None:
         """
         Initialize the MHAPyTorchScaledDotProduct module.
 
         Args:
             d_in (int): Input embedding dimension
-            d_out (int): Total output embedding dimension (must be divisible by num_heads)
-            num_heads (int): Number of attention heads
+            d_out (int): Total output embedding dimension (must be divisible by n_heads)
+            n_heads (int): Number of attention heads
             context_length (int): Maximum sequence length (for compatibility, not directly used)
             dropout (float, optional): Dropout probability for attention weights. Defaults to 0.0.
             qkv_bias (bool, optional): Whether to include bias in QKV linear projection. Defaults to False.
 
         Raises:
-            AssertionError: If d_out is not divisible by num_heads
+            AssertionError: If d_out is not divisible by n_heads
         """
         super().__init__()
 
-        assert d_out % num_heads == 0, "d_out is indivisible by num_heads"
+        assert d_out % n_heads == 0, "d_out is indivisible by n_heads"
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         self.context_length = context_length
-        self.head_dim = d_out // num_heads
+        self.head_dim = d_out // n_heads
         self.d_out = d_out
 
         self.qkv = nn.Linear(d_in, 3 * d_out, bias=qkv_bias)
@@ -78,13 +78,13 @@ class MHAPyTorchScaledDotProduct(nn.Module):
         # (b, num_tokens, embed_dim) --> (b, num_tokens, 3 * embed_dim)
         qkv = self.qkv(x)
 
-        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, num_heads, head_dim)
-        qkv = qkv.view(batch_size, num_tokens, 3, self.num_heads, self.head_dim)
+        # (b, num_tokens, 3 * embed_dim) --> (b, num_tokens, 3, n_heads, head_dim)
+        qkv = qkv.view(batch_size, num_tokens, 3, self.n_heads, self.head_dim)
 
-        # (b, num_tokens, 3, num_heads, head_dim) --> (3, b, num_heads, num_tokens, head_dim)
+        # (b, num_tokens, 3, n_heads, head_dim) --> (3, b, n_heads, num_tokens, head_dim)
         qkv = qkv.permute(2, 0, 3, 1, 4)
 
-        # (3, b, num_heads, num_tokens, head_dim) -> 3 times (b, num_heads, num_tokens, head_dim)
+        # (3, b, n_heads, num_tokens, head_dim) -> 3 times (b, n_heads, num_tokens, head_dim)
         queries, keys, values = qkv
 
         # Use Dropout only during training
@@ -94,7 +94,7 @@ class MHAPyTorchScaledDotProduct(nn.Module):
         context_vec = nn.functional.scaled_dot_product_attention(
             queries, keys, values, attn_mask=None, dropout_p=use_dropout, is_causal=True)
 
-        # Combine heads, where self.d_out = self.num_heads * self.head_dim
+        # Combine heads, where self.d_out = self.n_heads * self.head_dim
         context_vec = context_vec.transpose(1, 2).contiguous().view(batch_size, num_tokens, self.d_out)
 
         # Apply output projection

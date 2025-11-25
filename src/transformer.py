@@ -42,7 +42,7 @@ class TransformerBlock(nn.Module):
             d_in=config.emb_dim,
             d_out=config.emb_dim,
             context_length=config.context_length,
-            num_heads=config.n_heads,
+            n_heads=config.n_heads,
             dropout=config.drop_rate,
             qkv_bias=config.qkv_bias
         )
@@ -126,7 +126,7 @@ class TransformerBlockCached(nn.Module):
             self.att = GroupedQueryAttention(
                 d_in=config.emb_dim,
                 d_out=config.emb_dim,
-                num_heads=config.n_heads,
+                n_heads=config.n_heads,
                 num_kv_groups=config.n_kv_groups,
                 dropout=config.drop_rate,
                 qkv_bias=config.qkv_bias)
@@ -135,7 +135,7 @@ class TransformerBlockCached(nn.Module):
                 d_in=config.emb_dim,
                 d_out=config.emb_dim,
                 context_length=config.context_length,
-                num_heads=config.n_heads,
+                n_heads=config.n_heads,
             dropout=config.drop_rate,
             qkv_bias=config.qkv_bias,
             window_size=config.kv_window_size or config.context_length
