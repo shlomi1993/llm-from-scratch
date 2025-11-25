@@ -12,10 +12,8 @@ import torch.nn as nn
 
 from torch import Tensor
 
-from src.attention.multihead_latent_attention import MultiheadLatentAttention
-
 from .normalization import LayerNorm
-from .attention import MultiheadAttention, MultiheadAttentionCached, GroupedQueryAttention
+from .attention import MultiheadAttention, MultiheadAttentionCached, GroupedQueryAttention, MultiheadLatentAttention
 from .feed_forward import FeedForward
 from .configurations import GptConfig
 
