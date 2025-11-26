@@ -5,10 +5,10 @@ This tool provides comprehensive memory estimation across multiple attention mec
 with model architecture decisions.
 """
 
-from .src.common import bytes_convert
-from .src.estimators import estimate_mha, estimate_gqa, estimate_mla, estimate_swa, estimate_moe
-from .src.parser import parse_args
-from .src.mode import Mode
+from src.common import bytes_convert
+from src.estimators import estimate_mha, estimate_gqa, estimate_mla, estimate_swa, estimate_moe
+from src.parser import parse_args
+from src.mode import Mode
 from src.configurations import GptConfig
 
 
