@@ -502,11 +502,11 @@ class TestCliIntegration:
             text=True
         )
 
-        assert result.returncode == 0
-        assert "17.18 GB" in result.stdout  # MHA total
-        assert "4.29 GB" in result.stdout   # GQA total
-        assert "4.00x" in result.stdout     # Ratio
-        assert "75.00%" in result.stdout    # Savings
+        assert result.returncode == 0, "CLI should exit successfully"
+        assert "17.18 GB" in result.stdout, "Output should contain MHA total (17.18 GB)"
+        assert "4.29 GB" in result.stdout, "Output should contain GQA total (4.29 GB)"
+        assert "4.00x" in result.stdout, "Output should contain ratio (4.00x)"
+        assert "75.00%" in result.stdout, "Output should contain savings (75.00%)"
 
     def test_cli_mla_readme_example(self):
         """
@@ -531,8 +531,8 @@ class TestCliIntegration:
 
         assert result.returncode == 0, "CLI should exit successfully"
         assert "3.25 GB" in result.stdout, "Output should contain MHA total (3.25 GB)"
-        assert "0.81 GB" in result.stdout   # GQA and MLA totals
-        assert "75.19%" in result.stdout    # MLA savings
+        assert "0.81 GB" in result.stdout, "Output should contain GQA and MLA totals (0.81 GB)"
+        assert "75.19%" in result.stdout, "Output should contain MLA savings (75.19%)"
 
     def test_cli_swa_readme_example(self):
         """
@@ -556,11 +556,11 @@ class TestCliIntegration:
             text=True
         )
 
-        assert result.returncode == 0
-        assert "17.18 GB" in result.stdout  # MHA total
-        assert "4.29 GB" in result.stdout   # GQA total
-        assert "3.14 GB" in result.stdout   # MHA+SWA
-        assert "0.78 GB" in result.stdout   # GQA+SWA
+        assert result.returncode == 0, "CLI should exit successfully"
+        assert "17.18 GB" in result.stdout, "Output should contain MHA total (17.18 GB)"
+        assert "4.29 GB" in result.stdout, "Output should contain GQA total (4.29 GB)"
+        assert "3.14 GB" in result.stdout, "Output should contain MHA+SWA (3.14 GB)"
+        assert "0.78 GB" in result.stdout, "Output should contain GQA+SWA (0.78 GB)"
 
     def test_cli_moe_readme_example(self):
         """
@@ -584,8 +584,8 @@ class TestCliIntegration:
 
         assert result.returncode == 0, "CLI should exit successfully"
         assert "308,281,344" in result.stdout, "Output should contain dense params (308,281,344)"
-        assert "308,338,688" in result.stdout  # MoE total
-        assert "77,127,680" in result.stdout   # Active params/token
+        assert "308,338,688" in result.stdout, "Output should contain MoE total (308,338,688)"
+        assert "77,127,680" in result.stdout, "Output should contain active params/token (77,127,680)"
 
     def test_cli_multi_mode(self):
         """
