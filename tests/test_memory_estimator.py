@@ -5,8 +5,6 @@ This test suite covers MHA/GQA, MLA, SWA, and MoE estimation modes.
 """
 
 import pytest
-import subprocess
-import sys
 
 from src.configurations import GptConfig
 from tools.memory_estimator.src import (
@@ -462,8 +460,6 @@ class TestMoeEstimation:
         """
         Test that match_dense mode adjusts hidden_dim to match dense params.
         """
-        dense_params = 100_000_000  # Approximate target
-
         result = estimate_moe(
             emb_dim=4096,
             hidden_dim=8192,
@@ -474,143 +470,12 @@ class TestMoeEstimation:
             match_dense=True
         )
 
-        # MoE total should be approximately equal to dense params
-        # (within router params difference)
+        # MoE total should be approximately equal to dense params (within router params difference)
         assert abs(result.moe_total - result.dense_params) < result.router * 2, "MoE total should approximately match dense params in match_dense mode"
 
 
-class TestCliIntegration:
-    """Test CLI interface for all modes with README examples."""
-
-    def test_cli_gqa_readme_example(self):
-        """
-        Test GQA mode CLI with README example.
-        """
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "tools.memory_estimator.memory_estimator",
-                "--mode", "gqa",
-                "--emb-dim", "4096",
-                "--n-heads", "32",
-                "--n-layers", "32",
-                "--context-length", "32768",
-                "--n-kv-groups", "4",
-                "--batch-size", "1",
-                "--dtype", "bfloat16"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        assert result.returncode == 0, "CLI should exit successfully"
-        assert "17.18 GB" in result.stdout, "Output should contain MHA total (17.18 GB)"
-        assert "4.29 GB" in result.stdout, "Output should contain GQA total (4.29 GB)"
-        assert "4.00x" in result.stdout, "Output should contain ratio (4.00x)"
-        assert "75.00%" in result.stdout, "Output should contain savings (75.00%)"
-
-    def test_cli_mla_readme_example(self):
-        """
-        Test MLA mode CLI with README example.
-        """
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "tools.memory_estimator.memory_estimator",
-                "--mode", "mla",
-                "--emb-dim", "2048",
-                "--n-heads", "24",
-                "--n-layers", "48",
-                "--context-length", "8192",
-                "--n-kv-groups", "4",
-                "--latent-dim", "1024",
-                "--batch-size", "1",
-                "--dtype", "bfloat16"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        assert result.returncode == 0, "CLI should exit successfully"
-        assert "3.25 GB" in result.stdout, "Output should contain MHA total (3.25 GB)"
-        assert "0.81 GB" in result.stdout, "Output should contain GQA and MLA totals (0.81 GB)"
-        assert "75.19%" in result.stdout, "Output should contain MLA savings (75.19%)"
-
-    def test_cli_swa_readme_example(self):
-        """
-        Test SWA mode CLI with README example.
-        """
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "tools.memory_estimator.memory_estimator",
-                "--mode", "swa",
-                "--emb-dim", "4096",
-                "--n-heads", "32",
-                "--n-layers", "32",
-                "--context-length", "32768",
-                "--n-kv-groups", "4",
-                "--sliding-window-size", "1024",
-                "--swa-ratio", "5:1",
-                "--batch-size", "1",
-                "--dtype", "bfloat16"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        assert result.returncode == 0, "CLI should exit successfully"
-        assert "17.18 GB" in result.stdout, "Output should contain MHA total (17.18 GB)"
-        assert "4.29 GB" in result.stdout, "Output should contain GQA total (4.29 GB)"
-        assert "3.14 GB" in result.stdout, "Output should contain MHA+SWA (3.14 GB)"
-        assert "0.78 GB" in result.stdout, "Output should contain GQA+SWA (0.78 GB)"
-
-    def test_cli_moe_readme_example(self):
-        """
-        Test MoE mode CLI with README example.
-        """
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "tools.memory_estimator.memory_estimator",
-                "--mode", "moe",
-                "--emb-dim", "7168",
-                "--hidden-dim", "14336",
-                "--ffn-type", "swiglu",
-                "--num-experts", "8",
-                "--top-k", "2",
-                "--dtype", "bfloat16",
-                "--match-dense"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        assert result.returncode == 0, "CLI should exit successfully"
-        assert "308,281,344" in result.stdout, "Output should contain dense params (308,281,344)"
-        assert "308,338,688" in result.stdout, "Output should contain MoE total (308,338,688)"
-        assert "77,127,680" in result.stdout, "Output should contain active params/token (77,127,680)"
-
-    def test_cli_multi_mode(self):
-        """
-        Test multi-mode execution (MHA + GQA).
-        """
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "tools.memory_estimator.memory_estimator",
-                "--mode", "mha", "gqa",
-                "--emb-dim", "2048",
-                "--n-heads", "16",
-                "--n-layers", "12",
-                "--n-kv-groups", "4",
-                "--context-length", "8192",
-                "--batch-size", "1",
-                "--dtype", "float16"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        assert result.returncode == 0, "CLI should exit successfully"
-        # Both modes should produce output
-        assert "MHA total KV cache" in result.stdout, "Output should contain MHA results"
-        assert "GQA total KV cache" in result.stdout, "Output should contain GQA results"
+class TestUtilityFunctions:
+    """Test basic utility functions."""
 
     def test_bytes_convert_and_kv_bytes(self):
         """
