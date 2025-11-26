@@ -11,10 +11,35 @@ from src.configurations import GptConfig
 from src.gpt import GptModel
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generic GPT text generation tool with various attention mechanisms"
-    )
+def validate_args(args: argparse.Namespace) -> None:
+    """
+    Validate command-line arguments for consistency.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+
+    Raises:
+        ValueError: If incompatible or invalid argument combinations are detected.
+    """
+    if args.n_kv_groups > 1:
+        if args.n_heads % args.n_kv_groups != 0:
+            raise ValueError("n_kv_groups must divide n_heads exactly")
+        if args.latent_dim is not None:
+            raise ValueError("GQA and latent attention cannot be used together.")
+        if args.sliding_window_size is not None:
+            raise ValueError("GQA and SWA cannot be used together.")
+    if args.latent_dim is not None and args.sliding_window_size is not None:
+        raise ValueError("MLA and SWA cannot be used together.")
+
+
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for GPT text generation.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments.
+    """
+    parser = argparse.ArgumentParser(description="Generic GPT text generation tool with various attention mechanisms")
 
     # Model architecture parameters
     parser.add_argument("--vocab-size", type=int, default=50257, help="Vocabulary size")
@@ -53,13 +78,14 @@ def main() -> None:
     parser.add_argument("--measure-memory", action="store_true", help="Measure and report GPU memory usage (CUDA only)")
 
     args = parser.parse_args()
+    validate_args(args)
 
-    # Input validation
-    if args.n_kv_groups > 1:
-        if args.n_heads % args.n_kv_groups != 0:
-            raise ValueError("n_kv_groups must divide n_heads exactly")
-        if args.latent_dim is not None:
-            raise ValueError("GQA and latent attention cannot be used together.")
+    return args
+
+
+def main() -> None:
+
+    args = parse_args()
 
     # Set random seed for reproducibility
     torch.manual_seed(args.seed)
@@ -67,13 +93,12 @@ def main() -> None:
     # Determine device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Map dtype string to torch dtype
-    dtype_map = {
+    # Select torch data type
+    dtype = {
         "float32": torch.float32,
         "float16": torch.float16,
         "bfloat16": torch.bfloat16,
-    }
-    dtype = dtype_map[args.dtype]
+    }[args.dtype]
 
     # Build configuration
     config = GptConfig(
