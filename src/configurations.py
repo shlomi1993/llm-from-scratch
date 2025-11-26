@@ -25,24 +25,27 @@ class GptConfig:
         emb_dim (int): Embedding dimension (hidden size) of the model
         n_layers (int): Number of transformer layers
         n_heads (int): Number of attention heads in each layer
-        vocab_size (int): Size of the vocabulary (default: 50257, GPT-2 vocab size)
-        context_length (int): Maximum sequence length the model can handle (default: 1024)
-        drop_rate (float): Dropout probability for regularization (default: 0.1)
-        qkv_bias (bool): Whether to use bias in Query-Key-Value projections (default: False)
+        vocab_size (int): Size of the vocabulary. Defaults to 50257, GPT-2 vocab size
+        context_length (int): Maximum sequence length the model can handle. Default is 1024.
+        drop_rate (float): Dropout probability for regularization. Defaults to 0.1.
+        qkv_bias (bool): Whether to use bias in Query-Key-Value projections. Defaults to False.
+        kv_window_size (int, optional): Size of the KV cache window for optimized attention. Defaults to None (no windowing).
 
     Note:
         The embedding dimension should be divisible by the number of heads for proper multi-head attention computation.
     """
-    emb_dim: int                # Embedding dimension
-    n_layers: int               # Number of layers
-    n_heads: int                # Number of attention heads
-    vocab_size: int = 50257     # Vocabulary size
-    context_length: int = 1024  # Context length
-    drop_rate: float = 0.1      # Dropout rate
-    qkv_bias: bool = False      # Query-Key-Value bias
-    kv_window_size: int = None  # KV cache window size
-    n_kv_groups: int = 1        # Number of KV groups for Grouped Query Attention
-    latent_dim: int = None      # Latent dimension for latent attention mechanisms
+    emb_dim: int                        # Embedding dimension
+    n_layers: int                       # Number of layers
+    n_heads: int                        # Number of attention heads
+    vocab_size: int = 50257             # Vocabulary size
+    context_length: int = 1024          # Context length
+    drop_rate: float = 0.1              # Dropout rate
+    qkv_bias: bool = False              # Query-Key-Value bias
+    kv_window_size: int = None          # KV cache window size
+    n_kv_groups: int = 1                # Number of KV groups for Grouped Query Attention
+    latent_dim: int = None              # Latent dimension for latent attention mechanisms
+    sliding_window_size: int = 0        # Sliding window size for attention mechanisms (default 0 means no SWA)
+    sliding_window_stride: int = 0      # K:1 schedule: K SWA layers followed by 1 regular layer (0=all regular, <0=all SWA)
 
 
 # GPT2-Small (124M parameters)
