@@ -12,10 +12,16 @@ import torch.nn as nn
 
 from torch import Tensor
 
-from .normalization import LayerNorm
-from .attention import MultiheadAttention, MultiheadAttentionCached, GroupedQueryAttention, MultiheadLatentAttention
-from .feed_forward import FeedForward
+from .attention import (
+    MultiheadAttention,
+    MultiheadAttentionCached,
+    GroupedQueryAttention,
+    MultiheadLatentAttention,
+    MultiheadAttentionWithSwa
+)
 from .configurations import GptConfig
+from .feed_forward import FeedForward
+from .normalization import LayerNorm
 
 
 class SimpleTransformerBlock(nn.Module):
@@ -142,6 +148,15 @@ class TransformerBlock(nn.Module):
                 dropout=config.drop_rate,
                 qkv_bias=config.qkv_bias,
                 latent_dim=config.latent_dim
+            )
+        elif config.sliding_window_size is not None and config.sliding_window_size > 0:
+            self.att = MultiheadAttentionWithSwa(
+                d_in=config.emb_dim,
+                d_out=config.emb_dim,
+                n_heads=config.n_heads,
+                dropout=config.drop_rate,
+                qkv_bias=config.qkv_bias,
+                sliding_window_size=config.sliding_window_size
             )
         else:
             self.att = MultiheadAttentionCached(

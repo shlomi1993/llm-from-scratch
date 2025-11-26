@@ -18,6 +18,7 @@ from .multihead_attention_pytorch_flex_attention import MultiheadAttentionPyTorc
 from .multihead_attention_cached import MultiheadAttentionCached
 from .grouped_query_attention import GroupedQueryAttention
 from .multihead_latent_attention import MultiheadLatentAttention
+from .multihead_attention_swa import MultiheadAttentionWithSwa
 
 __all__ = [
     "SelfAttention",
@@ -33,4 +34,5 @@ __all__ = [
     "MultiheadAttentionCached",
     "GroupedQueryAttention",
     "MultiheadLatentAttention",
+    "MultiheadAttentionWithSwa",
 ]

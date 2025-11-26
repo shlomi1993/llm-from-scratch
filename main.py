@@ -31,6 +31,10 @@ def main() -> None:
     # Multi-Head Latent Attention parameters
     parser.add_argument("--latent-dim", type=int, default=None, help="Latent dimension for MLA (enables Multi-Head Latent Attention)")
 
+    # Sliding Window Attention parameters
+    parser.add_argument("--sliding-window-size", type=int, default=None, help="Sliding window size for SWA (enables Sliding Window Attention)")
+    parser.add_argument("--sliding-window-stride", type=int, default=0, help="K:1 schedule for SWA: K SWA layers followed by 1 regular layer (0=all regular, <0=all SWA, >0=K:1 pattern)")
+
     # KV-cache parameters
     parser.add_argument("--kv-window-size", type=int, default=None, help="KV cache window size for optimized cache")
 
@@ -82,7 +86,9 @@ def main() -> None:
         qkv_bias=args.qkv_bias,
         kv_window_size=args.kv_window_size,
         n_kv_groups=args.n_kv_groups,
-        latent_dim=args.latent_dim
+        latent_dim=args.latent_dim,
+        sliding_window_size=args.sliding_window_size,
+        sliding_window_stride=args.sliding_window_stride
     )
 
     # Initialize model
@@ -106,6 +112,13 @@ def main() -> None:
         print(f"Using GQA with {args.n_kv_groups} key/value groups")
     if args.latent_dim is not None:
         print(f"Using MLA with latent_dim={args.latent_dim}")
+    if args.sliding_window_size is not None:
+        if args.sliding_window_stride == 0:
+            print(f"Using all regular (non-SWA) layers")
+        elif args.sliding_window_stride < 0:
+            print(f"Using SWA with window_size={args.sliding_window_size} for all layers")
+        else:
+            print(f"Using SWA with window_size={args.sliding_window_size} in {args.sliding_window_stride}:1 pattern")
     if args.use_cache:
         print("Using KV-cache optimization")
 

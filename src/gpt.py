@@ -27,8 +27,23 @@ class GptModel(nn.Module):
         # Dropout layer
         self.drop_emb = nn.Dropout(config.drop_rate)
 
-        # Transformer blocks
-        self.trf_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
+        # Transformer blocks, with K:1 SWA scheduling if configured
+        blocks = []
+        for i in range(config.n_layers):
+            block = TransformerBlock(config)
+
+            # K:1 schedule: K SWA layers followed by 1 regular layer
+            K = int(config.sliding_window_stride)
+            if K <= 0:  # 0 => all regular; negative => all SWA
+                use_swa = False if K == 0 else True
+            else:
+                group = K + 1
+                use_swa = (i % group) < K
+
+            block.att.sliding_window_size = config.sliding_window_size if use_swa else None
+            blocks.append(block)
+
+        self.trf_blocks = nn.ModuleList(blocks)
         self.current_pos = 0
 
         # Final normalization and output head
@@ -61,7 +76,7 @@ class GptModel(nn.Module):
     def reset_kv_cache(self) -> None:
         for blk in self.trf_blocks:
             blk.att.reset_cache()
-        self.ptr_current_pos = 0
+        self.current_pos = 0
 
     def generate_text_simple(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
         for _ in range(max_new_tokens):
