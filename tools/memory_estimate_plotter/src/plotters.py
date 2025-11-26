@@ -2,16 +2,20 @@
 Plotting functions for different memory estimation modes.
 """
 
-import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
 from argparse import Namespace
-from pathlib import Path
 
-# Add parent directory to path to import from memory_estimator  // TODO Ugly hack, find better solution, low priority
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from memory_estimator.src.estimators import estimate_moe
+try:
+    # Try importing from tools package (when used as a package)
+    from tools.memory_estimator import estimate_moe
+except ImportError:
+    # Fall back to sys.path manipulation (when running script directly)
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from memory_estimator import estimate_moe
 
 from .common import (
     DTYPE_BYTES,
