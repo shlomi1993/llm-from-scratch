@@ -98,11 +98,12 @@ class TestGptModel:
         # Reset cache
         sample_model.reset_kv_cache()
 
-        # Verify position is reset (note: the implementation has a typo - ptr_current_pos should be current_pos)
-        # The actual implementation sets self.ptr_current_pos = 0, but current_pos remains unchanged
-        # We test the actual behavior
+        # Verify position is reset correctly
+        assert sample_model.current_pos == 0, "Current position should be reset to 0"
+
+        # Use cache again
         sample_model(input_ids, use_cache=True)
-        assert sample_model.current_pos == 10, "Current position should be 10 after second use with cache, indicating reset did not work correctly"
+        assert sample_model.current_pos == 5, "Current position should be 5 after second use with cache"
 
     def test_generate_text_simple(self, sample_model: GptModel, sample_config: GptConfig) -> None:
         """
