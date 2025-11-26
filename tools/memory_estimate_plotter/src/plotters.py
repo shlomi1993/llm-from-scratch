@@ -7,15 +7,7 @@ import numpy as np
 
 from argparse import Namespace
 
-try:
-    # Try importing from tools package (when used as a package)
-    from tools.memory_estimator import estimate_moe
-except ImportError:
-    # Fall back to sys.path manipulation (when running script directly)
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from memory_estimator import estimate_moe
+from tools.memory_estimator.src import estimate_moe
 
 from .common import (
     DTYPE_BYTES,
