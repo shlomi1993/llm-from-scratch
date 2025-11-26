@@ -13,7 +13,9 @@ with model architecture decisions.
 import argparse
 import math
 
-from typing import Dict, Tuple, Any
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Tuple
 
 from src.configurations import GptConfig
 
@@ -25,6 +27,155 @@ DTYPE_BYTES = {
     "float8": 1,
     "int8": 1,
 }
+
+
+@dataclass
+class AbstractResults(ABC):
+
+    @abstractmethod
+    def print(self) -> None:
+        """Print estimation results."""
+        pass
+
+
+@dataclass
+class MhaGqaResult(AbstractResults):
+    """
+    Results from MHA vs GQA estimation.
+    """
+    bytes_per_elem: int
+    head_dim: int
+    n_kv_heads_gqa: int
+    total_mha: int
+    total_gqa: int
+    ratio: float
+    savings: float
+
+    def print(self, config: GptConfig, args: argparse.Namespace) -> None:
+        print("==== Config ====")
+        for k, v in vars(config).items():
+            if v is not None:
+                print(f"{k:23}: {v}")
+        print(f"{'batch_size':23}: {args.batch_size}")
+        print(f"{'dtype':23}: {args.dtype} ({self.bytes_per_elem} Bytes/elem)")
+        print(f"{'head_dim':23}: {self.head_dim}")
+        print(f"{'GQA n_kv_heads':23}: {self.n_kv_heads_gqa}")
+        print()
+        print("==== KV-cache totals across all layers ====")
+        print(f"MHA total KV cache  : {bytes_convert(self.total_mha)}")
+        print(f"GQA total KV cache  : {bytes_convert(self.total_gqa)}")
+        print(f"Ratio (MHA / GQA)   : {self.ratio:,.2f}x")
+        print(f"Savings (GQA vs MHA): {self.savings * 100:,.2f}%")
+
+
+@dataclass
+class MlaResult(AbstractResults):
+    """
+    Results from MHA vs GQA vs MLA estimation.
+    """
+    bytes_per_elem: int
+    head_dim: int
+    n_kv_heads_gqa: int
+    total_mha: int
+    total_gqa: int
+    ratio: float
+    savings: float
+    latent_dim: int
+    total_mla: int
+    ratio_mha_mla: float
+    savings_mla: float
+
+    def print(self, config: GptConfig, args: argparse.Namespace) -> None:
+        """Print MHA vs GQA vs MLA estimation results."""
+        print("==== Config ====")
+        for k, v in vars(config).items():
+            if v is not None:
+                print(f"{k:23}: {v}")
+        print(f"{'batch_size':23}: {args.batch_size}")
+        print(f"{'dtype':23}: {args.dtype} ({self.bytes_per_elem} Bytes/elem)")
+        print(f"{'head_dim':23}: {self.head_dim}")
+        print(f"{'GQA n_kv_heads':23}: {self.n_kv_heads_gqa}")
+        print()
+        print("==== KV-cache totals across all layers ====")
+        print(f"MHA total KV cache  : {bytes_convert(self.total_mha)}")
+        print(f"GQA total KV cache  : {bytes_convert(self.total_gqa)}")
+        print(f"MLA total KV cache  : {bytes_convert(self.total_mla)}")
+        print(f"Ratio (MHA / GQA)   : {self.ratio:,.2f}x")
+        print(f"Savings (GQA vs MHA): {self.savings * 100:,.2f}%")
+        print(f"Ratio (MHA / MLA)   : {self.ratio_mha_mla:,.2f}x")
+        print(f"Savings (MLA vs MHA): {self.savings_mla * 100:,.2f}%")
+
+
+
+
+@dataclass
+class SwaResult(AbstractResults):
+    """
+    Results from Sliding Window Attention estimation.
+    """
+    bytes_per_elem: int
+    head_dim: int
+    n_kv_heads_gqa: int
+    eff_W: int
+    n_swa_layers: int
+    n_full_layers: int
+    total_mha_allfull: int
+    total_gqa_allfull: int
+    total_mixed_mha: int
+    total_mixed_gqa: int
+
+    def print(self, config: GptConfig, args: argparse.Namespace) -> None:
+        """Print SWA estimation results."""
+        print("==== Config ====")
+        for k, v in vars(config).items():
+            if v is not None:
+                print(f"{k:23}: {v}")
+        print(f"{'sliding_window_size':23}: {args.sliding_window_size}")
+        print(f"{'batch_size':23}: {args.batch_size}")
+        print(f"{'dtype':23}: {args.dtype} ({self.bytes_per_elem} Bytes/elem)")
+        print(f"{'head_dim':23}: {self.head_dim}")
+        print(f"{'GQA n_kv_heads':23}: {self.n_kv_heads_gqa}")
+        print(f"{'Effective SWA window W':23}: {self.eff_W}")
+        print(f"{'Layer ratio (SWA:Full)':23}: {args.swa_ratio} -> {self.n_swa_layers} SWA, {self.n_full_layers} Full")
+        print()
+        print("==== KV-cache totals across all layers ====")
+        print(f"MHA KV total           : {bytes_convert(self.total_mha_allfull)}")
+        print(f"GQA KV total           : {bytes_convert(self.total_gqa_allfull)}")
+        print(f"MHA + SWA (ratio {args.swa_ratio})  : {bytes_convert(self.total_mixed_mha)}")
+        print(f"GQA + SWA (ratio {args.swa_ratio})  : {bytes_convert(self.total_mixed_gqa)}")
+
+
+@dataclass
+class MoeResult(AbstractResults):
+    """
+    Results from MoE FFN estimation.
+    """
+    dense_params: int
+    router: int
+    moe_hidden_dim: int
+    per_expert_params: int
+    moe_total: int
+    moe_active_params_per_token: int
+    bytes_per_elem: int
+
+    def print(self, args: argparse.Namespace) -> None:
+        """Print MoE estimation results."""
+        print("==== Config ====")
+        print(f"{'emb_dim':23}: {args.emb_dim}")
+        print(f"{'hidden_dim':23}: {args.hidden_dim}")
+        print(f"{'ffn_type':23}: {args.ffn_type}")
+        print(f"{'num_experts':23}: {args.num_experts}")
+        print(f"{'top_k':23}: {args.top_k}")
+        print(f"{'dtype':23}: {args.dtype} ({self.bytes_per_elem} Bytes/elem)")
+        print(f"{'match_dense':23}: {args.match_dense}")
+        print()
+        print("==== Model weights (parameters) ====")
+        print(f"{'Dense FFN params':23}: {self.dense_params:,} ({bytes_convert(self.dense_params * self.bytes_per_elem)})")
+        print(f"{'Per-expert params':23}: {self.per_expert_params:,} ({bytes_convert(self.per_expert_params * self.bytes_per_elem)})")
+        print(f"{'Router params':23}: {self.router:,} ({bytes_convert(self.router * self.bytes_per_elem)})")
+        print(f"{'MoE TOTAL params':23}: {self.moe_total:,} ({bytes_convert(self.moe_total * self.bytes_per_elem)})")
+        print(f"{'MoE ACTIVE/Token':23}: {self.moe_active_params_per_token:,} ({bytes_convert(self.moe_active_params_per_token * self.bytes_per_elem)})")
+        print(f"{'moe_hidden_dim':23}: {self.moe_hidden_dim}")
 
 
 def bytes_convert(n: int) -> str:
@@ -189,7 +340,7 @@ def router_params(emb_dim: int, num_experts: int) -> int:
     return emb_dim * num_experts
 
 
-def estimate_mha_gqa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups: int) -> Dict[str, Any]:
+def estimate_mha_gqa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups: int) -> MhaGqaResult:
     """
     Estimate MHA vs GQA memory usage.
 
@@ -200,7 +351,7 @@ def estimate_mha_gqa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups
         n_kv_groups (int): Number of KV groups for GQA.
 
     Returns:
-        Dict[str, Any]: Dictionary containing memory estimates and metrics.
+        MhaGqaResult: Dataclass containing memory estimates and metrics.
     """
     if config.n_heads % n_kv_groups != 0:
         raise ValueError("n_kv_groups must divide n_heads exactly.")
@@ -219,18 +370,18 @@ def estimate_mha_gqa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups
     ratio = total_mha / total_gqa if total_gqa != 0 else float("inf")
     savings = 1 - (total_gqa / total_mha) if total_mha != 0 else 0.0
 
-    return {
-        "bytes_per_elem": bytes_per_elem,
-        "head_dim": head_dim,
-        "n_kv_heads_gqa": n_kv_heads_gqa,
-        "total_mha": total_mha,
-        "total_gqa": total_gqa,
-        "ratio": ratio,
-        "savings": savings,
-    }
+    return MhaGqaResult(
+        bytes_per_elem=bytes_per_elem,
+        head_dim=head_dim,
+        n_kv_heads_gqa=n_kv_heads_gqa,
+        total_mha=total_mha,
+        total_gqa=total_gqa,
+        ratio=ratio,
+        savings=savings,
+    )
 
 
-def estimate_mla(config: GptConfig, batch_size: int, dtype: str, latent_dim: int, n_kv_groups: int) -> Dict[str, Any]:
+def estimate_mla(config: GptConfig, batch_size: int, dtype: str, latent_dim: int, n_kv_groups: int) -> MlaResult:
     """
     Estimate MHA vs GQA vs MLA memory usage.
 
@@ -241,28 +392,33 @@ def estimate_mla(config: GptConfig, batch_size: int, dtype: str, latent_dim: int
         latent_dim (int): Latent dimension for MLA.
         n_kv_groups (int): Number of KV groups for GQA.
     Returns:
-        Dict[str, Any]: Dictionary containing memory estimates and metrics.
+        MlaResult: Dataclass containing memory estimates and metrics.
     """
     result = estimate_mha_gqa(config, batch_size, dtype, n_kv_groups)
 
     bytes_per_elem = DTYPE_BYTES[dtype]
     total_mla = mla_bytes_total(batch_size, config.context_length, config.n_layers, latent_dim, bytes_per_elem)
 
-    ratio_mha_mla = result["total_mha"] / total_mla if total_mla != 0 else float("inf")
-    savings_mla = 1 - (total_mla / result["total_mha"]) if result["total_mha"] != 0 else 0.0
+    ratio_mha_mla = result.total_mha / total_mla if total_mla != 0 else float("inf")
+    savings_mla = 1 - (total_mla / result.total_mha) if result.total_mha != 0 else 0.0
 
-    result.update({
-        "latent_dim": latent_dim,
-        "total_mla": total_mla,
-        "ratio_mha_mla": ratio_mha_mla,
-        "savings_mla": savings_mla,
-    })
-
-    return result
+    return MlaResult(
+        bytes_per_elem=result.bytes_per_elem,
+        head_dim=result.head_dim,
+        n_kv_heads_gqa=result.n_kv_heads_gqa,
+        total_mha=result.total_mha,
+        total_gqa=result.total_gqa,
+        ratio=result.ratio,
+        savings=result.savings,
+        latent_dim=latent_dim,
+        total_mla=total_mla,
+        ratio_mha_mla=ratio_mha_mla,
+        savings_mla=savings_mla,
+    )
 
 
 def estimate_swa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups: int, sliding_window_size: int,
-                 swa_ratio: str) -> Dict[str, Any]:
+                 swa_ratio: str) -> SwaResult:
     """
     Estimate memory usage with Sliding Window Attention (SWA).
 
@@ -275,7 +431,7 @@ def estimate_swa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups: in
         swa_ratio (str): Ratio string like '1:0' or '5:1' (SWA:Full).
 
     Returns:
-        Dict[str, Any]: Dictionary containing memory estimates and metrics.
+        SwaResult: Dataclass containing memory estimates and metrics.
     """
     if config.n_heads % n_kv_groups != 0:
         raise ValueError("n_kv_groups must divide n_heads exactly.")
@@ -303,21 +459,21 @@ def estimate_swa(config: GptConfig, batch_size: int, dtype: str, n_kv_groups: in
     total_mixed_mha = n_swa_layers * per_mha_swa + n_full_layers * per_mha_full
     total_mixed_gqa = n_swa_layers * per_gqa_swa + n_full_layers * per_gqa_full
 
-    return {
-        "bytes_per_elem": bytes_per_elem,
-        "head_dim": head_dim,
-        "n_kv_heads_gqa": n_kv_heads_gqa,
-        "eff_W": eff_W,
-        "n_swa_layers": n_swa_layers,
-        "n_full_layers": n_full_layers,
-        "total_mha_allfull": total_mha_allfull,
-        "total_gqa_allfull": total_gqa_allfull,
-        "total_mixed_mha": total_mixed_mha,
-        "total_mixed_gqa": total_mixed_gqa,
-    }
+    return SwaResult(
+        bytes_per_elem=bytes_per_elem,
+        head_dim=head_dim,
+        n_kv_heads_gqa=n_kv_heads_gqa,
+        eff_W=eff_W,
+        n_swa_layers=n_swa_layers,
+        n_full_layers=n_full_layers,
+        total_mha_allfull=total_mha_allfull,
+        total_gqa_allfull=total_gqa_allfull,
+        total_mixed_mha=total_mixed_mha,
+        total_mixed_gqa=total_mixed_gqa,
+    )
 
 
-def estimate_moe(emb_dim: int, hidden_dim: int, ffn_type: str, num_experts: int, top_k: int, dtype: str, match_dense: bool = False) -> Dict[str, Any]:
+def estimate_moe(emb_dim: int, hidden_dim: int, ffn_type: str, num_experts: int, top_k: int, dtype: str, match_dense: bool = False) -> MoeResult:
     """
     Estimate FFN vs MoE parameter memory.
 
@@ -331,7 +487,7 @@ def estimate_moe(emb_dim: int, hidden_dim: int, ffn_type: str, num_experts: int,
         match_dense (bool): If True, auto-set per-expert hidden to match dense params.
 
     Returns:
-        Dict[str, Any]: Dictionary containing parameter counts and memory estimates.
+        MoeResult: Dataclass containing parameter counts and memory estimates.
     """
     bytes_per_elem = DTYPE_BYTES[dtype]
 
@@ -352,95 +508,18 @@ def estimate_moe(emb_dim: int, hidden_dim: int, ffn_type: str, num_experts: int,
     moe_total = num_experts * per_expert_params + R
     moe_active_params_per_token = R + top_k * per_expert_params
 
-    return {
-        "dense_params": P_dense,
-        "router": R,
-        "moe_hidden_dim": moe_hidden_dim,
-        "per_expert_params": per_expert_params,
-        "moe_total": moe_total,
-        "moe_active_params_per_token": moe_active_params_per_token,
-        "bytes_per_elem": bytes_per_elem,
-    }
+    return MoeResult(
+        dense_params=P_dense,
+        router=R,
+        moe_hidden_dim=moe_hidden_dim,
+        per_expert_params=per_expert_params,
+        moe_total=moe_total,
+        moe_active_params_per_token=moe_active_params_per_token,
+        bytes_per_elem=bytes_per_elem,
+    )
 
 
-def print_mha_gqa_results(config: GptConfig, args: argparse.Namespace, result: Dict) -> None:
-    """Print MHA vs GQA estimation results."""
-    print("==== Config ====")
-    for k, v in vars(config).items():
-        if v is not None:
-            print(f"{k:23}: {v}")
-    print(f"{'batch_size':23}: {args.batch_size}")
-    print(f"{'dtype':23}: {args.dtype} ({result['bytes_per_elem']} Bytes/elem)")
-    print(f"{'head_dim':23}: {result['head_dim']}")
-    print(f"{'GQA n_kv_heads':23}: {result['n_kv_heads_gqa']}")
-    print()
-    print("==== KV-cache totals across all layers ====")
-    print(f"MHA total KV cache  : {bytes_convert(result['total_mha'])}")
-    print(f"GQA total KV cache  : {bytes_convert(result['total_gqa'])}")
-    print(f"Ratio (MHA / GQA)   : {result['ratio']:,.2f}x")
-    print(f"Savings (GQA vs MHA): {result['savings']*100:,.2f}%")
 
-
-def print_mla_results(config: GptConfig, args: argparse.Namespace, result: Dict) -> None:
-    """Print MHA vs GQA vs MLA estimation results."""
-    print("==== Config ====")
-    for k, v in vars(config).items():
-        if v is not None:
-            print(f"{k:23}: {v}")
-    print(f"{'batch_size':23}: {args.batch_size}")
-    print(f"{'dtype':23}: {args.dtype} ({result['bytes_per_elem']} Bytes/elem)")
-    print(f"{'head_dim':23}: {result['head_dim']}")
-    print(f"{'GQA n_kv_heads':23}: {result['n_kv_heads_gqa']}")
-    print()
-    print("==== KV-cache totals across all layers ====")
-    print(f"MHA total KV cache  : {bytes_convert(result['total_mha'])}")
-    print(f"GQA total KV cache  : {bytes_convert(result['total_gqa'])}")
-    print(f"MLA total KV cache  : {bytes_convert(result['total_mla'])}")
-    print(f"Ratio (MHA / GQA)   : {result['ratio']:,.2f}x")
-    print(f"Savings (GQA vs MHA): {result['savings']*100:,.2f}%")
-    print(f"Ratio (MHA / MLA)   : {result['ratio_mha_mla']:,.2f}x")
-    print(f"Savings (MLA vs MHA): {result['savings_mla']*100:,.2f}%")
-
-
-def print_swa_results(config: GptConfig, args: argparse.Namespace, result: Dict) -> None:
-    """Print SWA estimation results."""
-    print("==== Config ====")
-    for k, v in vars(config).items():
-        if v is not None:
-            print(f"{k:23}: {v}")
-    print(f"{'sliding_window_size':23}: {args.sliding_window_size}")
-    print(f"{'batch_size':23}: {args.batch_size}")
-    print(f"{'dtype':23}: {args.dtype} ({result['bytes_per_elem']} Bytes/elem)")
-    print(f"{'head_dim':23}: {result['head_dim']}")
-    print(f"{'GQA n_kv_heads':23}: {result['n_kv_heads_gqa']}")
-    print(f"{'Effective SWA window W':23}: {result['eff_W']}")
-    print(f"{'Layer ratio (SWA:Full)':23}: {args.swa_ratio} -> {result['n_swa_layers']} SWA, {result['n_full_layers']} Full")
-    print()
-    print("==== KV-cache totals across all layers ====")
-    print(f"MHA KV total           : {bytes_convert(result['total_mha_allfull'])}")
-    print(f"GQA KV total           : {bytes_convert(result['total_gqa_allfull'])}")
-    print(f"MHA + SWA (ratio {args.swa_ratio})  : {bytes_convert(result['total_mixed_mha'])}")
-    print(f"GQA + SWA (ratio {args.swa_ratio})  : {bytes_convert(result['total_mixed_gqa'])}")
-
-
-def print_moe_results(args: argparse.Namespace, result: Dict) -> None:
-    """Print MoE estimation results."""
-    print("==== Config ====")
-    print(f"{'emb_dim':23}: {args.emb_dim}")
-    print(f"{'hidden_dim':23}: {args.hidden_dim}")
-    print(f"{'ffn_type':23}: {args.ffn_type}")
-    print(f"{'num_experts':23}: {args.num_experts}")
-    print(f"{'top_k':23}: {args.top_k}")
-    print(f"{'dtype':23}: {args.dtype} ({result['bytes_per_elem']} Bytes/elem)")
-    print(f"{'match_dense':23}: {args.match_dense}")
-    print()
-    print("==== Model weights (parameters) ====")
-    print(f"{'Dense FFN params':23}: {result['dense_params']:,} ({bytes_convert(result['dense_params'] * result['bytes_per_elem'])})")
-    print(f"{'Per-expert params':23}: {result['per_expert_params']:,} ({bytes_convert(result['per_expert_params'] * result['bytes_per_elem'])})")
-    print(f"{'Router params':23}: {result['router']:,} ({bytes_convert(result['router'] * result['bytes_per_elem'])})")
-    print(f"{'MoE TOTAL params':23}: {result['moe_total']:,} ({bytes_convert(result['moe_total'] * result['bytes_per_elem'])})")
-    print(f"{'MoE ACTIVE/Token':23}: {result['moe_active_params_per_token']:,} ({bytes_convert(result['moe_active_params_per_token'] * result['bytes_per_elem'])})")
-    print(f"{'moe_hidden_dim':23}: {result['moe_hidden_dim']}")
 
 
 def main() -> None:
@@ -449,57 +528,50 @@ def main() -> None:
 
     Supports MHA vs GQA, MLA, SWA, and MoE FFN estimation modes.
     """
-    p = argparse.ArgumentParser(
-        description="Unified memory estimator for MHA/GQA/MLA/SWA and MoE FFN"
-    )
+    parser = argparse.ArgumentParser(description="Unified memory estimator for MHA/GQA/MLA/SWA and MoE FFN")
 
     # Mode selection
-    p.add_argument(
-        "--mode",
-        choices=["gqa", "mla", "swa", "moe"],
-        required=True,
-        help="Estimation mode: gqa (MHA vs GQA), mla (MHA vs GQA vs MLA), "
-             "swa (Sliding Window Attention), moe (Mixture of Experts FFN)"
-    )
+    parser.add_argument("--mode", choices=["gqa", "mla", "swa", "moe"], required=True,
+                        help="Estimation mode: gqa (MHA vs GQA), mla (MHA vs GQA vs MLA), swa (Sliding Window Attention), moe (Mixture of Experts FFN)")
 
     # Common arguments for attention-based modes
-    p.add_argument("--context-length", type=int, default=1024, help="Maximum sequence length")
-    p.add_argument("--emb-dim", type=int, help="Embedding dimension (required for gqa/mla/swa modes)")
-    p.add_argument("--n-heads", type=int, help="Number of attention heads (required for gqa/mla/swa modes)")
-    p.add_argument("--n-layers", type=int, help="Number of transformer layers (required for gqa/mla/swa modes)")
-    p.add_argument("--n-kv-groups", type=int, help="Number of KV groups for GQA (required for gqa/mla/swa modes)")
-    p.add_argument("--batch-size", type=int, default=1, help="Batch size")
-    p.add_argument("--dtype", choices=DTYPE_BYTES.keys(), default="float16", help="Data type")
+    parser.add_argument("--context-length", type=int, default=1024, help="Maximum sequence length")
+    parser.add_argument("--emb-dim", type=int, help="Embedding dimension (required for gqa/mla/swa modes)")
+    parser.add_argument("--n-heads", type=int, help="Number of attention heads (required for gqa/mla/swa modes)")
+    parser.add_argument("--n-layers", type=int, help="Number of transformer layers (required for gqa/mla/swa modes)")
+    parser.add_argument("--n-kv-groups", type=int, help="Number of KV groups for GQA (required for gqa/mla/swa modes)")
+    parser.add_argument("--batch-size", type=int, default=1, help="Batch size")
+    parser.add_argument("--dtype", choices=DTYPE_BYTES.keys(), default="float16", help="Data type")
 
     # MLA-specific
-    p.add_argument("--latent-dim", type=int, help="Latent dimension for MLA (required for mla mode)")
+    parser.add_argument("--latent-dim", type=int, help="Latent dimension for MLA (required for mla mode)")
     # SWA-specific
-    p.add_argument("--sliding-window-size", type=int, help="SWA window size (required for swa mode)")
-    p.add_argument("--swa-ratio", type=str, default="1:0", help="SWA:Full layer ratio (e.g., '5:1', '1:5', default '1:0' = all SWA)")
+    parser.add_argument("--sliding-window-size", type=int, help="SWA window size (required for swa mode)")
+    parser.add_argument("--swa-ratio", type=str, default="1:0", help="SWA:Full layer ratio (e.g., '5:1', '1:5', default '1:0' = all SWA)")
 
     # MoE-specific
-    p.add_argument("--hidden-dim", type=int, help="FFN hidden dimension (required for moe mode)")
-    p.add_argument("--ffn-type", choices=["gelu", "swiglu"], default="swiglu", help="FFN type (for moe mode)")
-    p.add_argument("--num-experts", type=int, default=8, help="Number of experts (for moe mode)")
-    p.add_argument("--top-k", type=int, default=2, help="Number of experts activated per token (for moe mode)")
-    p.add_argument("--match-dense", action="store_true", help="Auto-set per-expert hidden to match dense FFN params (for moe mode)")
+    parser.add_argument("--hidden-dim", type=int, help="FFN hidden dimension (required for moe mode)")
+    parser.add_argument("--ffn-type", choices=["gelu", "swiglu"], default="swiglu", help="FFN type (for moe mode)")
+    parser.add_argument("--num-experts", type=int, default=8, help="Number of experts (for moe mode)")
+    parser.add_argument("--top-k", type=int, default=2, help="Number of experts activated per token (for moe mode)")
+    parser.add_argument("--match-dense", action="store_true", help="Auto-set per-expert hidden to match dense FFN params (for moe mode)")
 
-    args = p.parse_args()
+    args = parser.parse_args()
 
     # Validate mode-specific required arguments
     if args.mode in ["gqa", "mla", "swa"]:
         if not all([args.emb_dim, args.n_heads, args.n_layers, args.n_kv_groups]):
-            p.error(f"{args.mode} mode requires --emb_dim, --n_heads, --n_layers, --n_kv_groups")
+            parser.error(f"{args.mode} mode requires --emb_dim, --n_heads, --n_layers, --n_kv_groups")
 
     if args.mode == "mla" and not args.latent_dim:
-        p.error("mla mode requires --latent_dim")
+        parser.error("mla mode requires --latent_dim")
 
     if args.mode == "swa" and not args.sliding_window_size:
-        p.error("swa mode requires --sliding_window_size")
+        parser.error("swa mode requires --sliding_window_size")
 
     if args.mode == "moe":
         if not all([args.emb_dim, args.hidden_dim]):
-            p.error("moe mode requires --emb_dim and --hidden_dim")
+            parser.error("moe mode requires --emb_dim and --hidden_dim")
 
     # Execute appropriate estimation
     if args.mode == "gqa":
@@ -510,7 +582,7 @@ def main() -> None:
             context_length=args.context_length,
         )
         result = estimate_mha_gqa(config, args.batch_size, args.dtype, args.n_kv_groups)
-        print_mha_gqa_results(config, args, result)
+        result.print(args.config, args)
 
     elif args.mode == "mla":
         config = GptConfig(
@@ -520,7 +592,7 @@ def main() -> None:
             context_length=args.context_length,
         )
         result = estimate_mla(config, args.batch_size, args.dtype, args.latent_dim, args.n_kv_groups)
-        print_mla_results(config, args, result)
+        result.print(args.config, args)
 
     elif args.mode == "swa":
         config = GptConfig(
@@ -530,12 +602,11 @@ def main() -> None:
             context_length=args.context_length,
         )
         result = estimate_swa(config, args.batch_size, args.dtype, args.n_kv_groups, args.sliding_window_size, args.swa_ratio)
-        print_swa_results(config, args, result)
+        result.print(args.config, args)
 
     elif args.mode == "moe":
         result = estimate_moe(args.emb_dim, args.hidden_dim, args.ffn_type, args.num_experts, args.top_k, args.dtype, args.match_dense)
-        print_moe_results(args, result)
-
+        result.print(args.config, args)
 
 if __name__ == "__main__":
     main()
