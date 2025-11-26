@@ -58,6 +58,8 @@ class MultiheadAttentionCached(nn.Module):
         self.d_out = d_out
         self.n_heads = n_heads
         self.head_dim = d_out // n_heads  # Reduce the projection dim to match desired output dim
+
+        # Linear projections
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
