@@ -7,7 +7,7 @@ This test suite covers MHA/GQA, MLA, SWA, and MoE estimation modes.
 import pytest
 
 from src.configurations import GptConfig
-from tools.memory_estimator.src import (
+from memory_estimator import (
     estimate_mha,
     estimate_gqa,
     estimate_mla,

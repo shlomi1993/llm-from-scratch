@@ -9,26 +9,15 @@ which imports from tools.memory_estimator.src.
 import subprocess
 import sys
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
 
 # Path to the memory estimator tool
-TOOL_PATH = Path(__file__).parent.parent / "tools" / "memory_estimator" / "memory_estimator.py"
+TOOL_PATH = Path(__file__).parent.parent / "memory_estimator" / "memory_estimator.py"
 
 
-@dataclass
-class CliResult:
-    """
-    Dataclass to hold CLI execution results.
-    """
-    return_code: int
-    stdout: str
-    stderr: str
-
-
-def run_memory_estimator(args: List[str]) -> CliResult:
+def run_memory_estimator(args: List[str]) -> subprocess.CompletedProcess:
     """
     Run the memory estimator CLI tool and return results.
 
@@ -36,15 +25,14 @@ def run_memory_estimator(args: List[str]) -> CliResult:
         args (List[str]): Command-line arguments (without the script name)
 
     Returns:
-        CliResult: Dataclass with return code, stdout, and stderr
+        subprocess.CompletedProcess: Completed process with return code, stdout, and stderr
     """
-    result = subprocess.run(
+    return subprocess.run(
         [sys.executable, str(TOOL_PATH)] + args,
         capture_output=True,
         text=True,
         cwd=TOOL_PATH.parent  # Run from the tool's directory
     )
-    return CliResult(result.returncode, result.stdout, result.stderr)
 
 
 class TestCliGqa:
@@ -75,7 +63,7 @@ class TestCliGqa:
             "--dtype", "bfloat16"
         ])
 
-        assert result.return_code == 0, f"CLI should exit successfully. stderr: {result.stderr}"
+        assert result.returncode == 0, f"CLI should exit successfully. stderr: {result.stderr}"
         assert "17.18 GB" in result.stdout, "Output should contain MHA total (17.18 GB)"
         assert "4.29 GB" in result.stdout, "Output should contain GQA total (4.29 GB)"
         assert "4.00x" in result.stdout, "Output should contain ratio (4.00x)"
@@ -94,7 +82,7 @@ class TestCliGqa:
             "--dtype", "bfloat16"
         ])
 
-        assert result.return_code != 0, "CLI should fail with invalid n_kv_groups"
+        assert result.returncode != 0, "CLI should fail with invalid n_kv_groups"
         assert "n_kv_groups must divide n_heads" in result.stderr or "n_kv_groups must divide n_heads" in result.stdout
 
 
@@ -126,7 +114,7 @@ class TestCliMla:
             "--latent-dim", "1024"
         ])
 
-        assert result.return_code == 0, f"CLI should exit successfully. stderr: {result.stderr}"
+        assert result.returncode == 0, f"CLI should exit successfully. stderr: {result.stderr}"
         assert "3.25 GB" in result.stdout, "Output should contain MHA total (3.25 GB)"
         assert "0.81 GB" in result.stdout, "Output should contain GQA and MLA totals (0.81 GB)"
         assert "75.19%" in result.stdout, "Output should contain MLA savings (75.19%)"
@@ -163,7 +151,7 @@ class TestCliSwa:
             "--dtype", "bfloat16"
         ])
 
-        assert result.return_code == 0, f"CLI should exit successfully. stderr: {result.stderr}"
+        assert result.returncode == 0, f"CLI should exit successfully. stderr: {result.stderr}"
         assert "17.18 GB" in result.stdout, "Output should contain MHA total (17.18 GB)"
         assert "4.29 GB" in result.stdout, "Output should contain GQA total (4.29 GB)"
         assert "3.14 GB" in result.stdout, "Output should contain MHA+SWA (3.14 GB)"
@@ -197,7 +185,7 @@ class TestCliMoe:
             "--match-dense"
         ])
 
-        assert result.return_code == 0, f"CLI should exit successfully. stderr: {result.stderr}"
+        assert result.returncode == 0, f"CLI should exit successfully. stderr: {result.stderr}"
         assert "308,281,344" in result.stdout, "Output should contain dense params (308,281,344)"
         assert "308,338,688" in result.stdout, "Output should contain MoE total (308,338,688)"
         assert "77,127,680" in result.stdout, "Output should contain active params/token (77,127,680)"
@@ -219,7 +207,7 @@ class TestCliMultiMode:
             "--dtype", "float16"
         ])
 
-        assert result.return_code == 0, f"CLI should exit successfully. stderr: {result.stderr}"
+        assert result.returncode == 0, f"CLI should exit successfully. stderr: {result.stderr}"
         assert "MHA total KV cache" in result.stdout, "Output should contain MHA results"
         assert "GQA total KV cache" in result.stdout, "Output should contain GQA results"
 
@@ -238,7 +226,7 @@ class TestCliMultiMode:
             "--swa-ratio", "5:1"
         ])
 
-        assert result.return_code == 0, f"CLI should exit successfully. stderr: {result.stderr}"
+        assert result.returncode == 0, f"CLI should exit successfully. stderr: {result.stderr}"
         # All three modes should produce output
         assert result.stdout.count("==== Config ====") == 3, "Should have output for all 3 modes"
 
@@ -250,7 +238,7 @@ class TestCliHelp:
         """Test --help flag."""
         result = run_memory_estimator(["--help"])
 
-        assert result.return_code == 0, "Help should exit successfully"
+        assert result.returncode == 0, "Help should exit successfully"
         assert "usage:" in result.stdout.lower() or "usage:" in result.stderr.lower(), "Should show usage information"
         assert "--mode" in result.stdout or "--mode" in result.stderr, "Should describe --mode argument"
 
@@ -259,5 +247,5 @@ class TestCliHelp:
         result = run_memory_estimator([])
 
         # Should fail or show help
-        assert result.return_code != 0, "Should fail when no arguments provided"
+        assert result.returncode != 0, "Should fail when no arguments provided"
         assert "required" in result.stderr.lower() or "usage:" in result.stderr.lower(), "Should indicate missing arguments"
