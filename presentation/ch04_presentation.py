@@ -50,9 +50,9 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, x):
         b, num_tokens, d_in = x.shape
-        # As in `CausalAttention`, for inputs where `num_tokens` exceeds `context_length`, 
+        # As in `CausalAttention`, for inputs where `num_tokens` exceeds `context_length`,
         # this will result in errors in the mask creation further below.
-        # In practice, this is not a problem since the LLM (chapters 4-7) ensures that inputs  
+        # In practice, this is not a problem since the LLM (chapters 4-7) ensures that inputs
         # do not exceed `context_length` before reaching this forward method.
 
         keys = self.W_key(x) # Shape: (b, num_tokens, d_out)
@@ -193,182 +193,240 @@ class TransformerBlock(nn.Module):
 ######################################### Presentation of Sections 4.6 and 4.7 #########################################
 ########################################################################################################################
 
+# Disable scientific notation for better readability during presentation
 torch.set_printoptions(sci_mode=False)
+
+# ============================================
+# Section 4.6: The Complete GPT Model
+# ============================================
+# This class brings together all components: embeddings, transformer blocks, and output layer
+# Architecture mirrors GPT-2 with 12 stacked transformer blocks for the 124M configuration
 
 class GPTModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+        # Token embedding: converts token IDs to 768-dimensional vectors
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
+
+        # Positional embedding: adds position information to token embeddings
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+
+        # Dropout applied to embeddings for regularization
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
 
+        # Stack of transformer blocks (12 layers for GPT-2 124M)
+        # Each block contains multi-head attention and feed-forward networks
         self.trf_blocks = nn.Sequential(*[TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
 
+        # Final layer normalization before output projection
         self.final_norm = LayerNorm(cfg["emb_dim"])
+
+        # Output head: projects back to vocabulary size (50,257 tokens)
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx):
+        # Extract batch size and sequence length from input
         batch_size, seq_len = in_idx.shape
+
+        # Convert token IDs to embeddings
         tok_embeds = self.tok_emb(in_idx)
+
+        # Generate positional embeddings for the sequence
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
+
+        # Combine token and position information
         x = tok_embeds + pos_embeds  # Shape [batch_size, num_tokens, emb_size]
+
+        # Apply dropout to combined embeddings
         x = self.drop_emb(x)
+
+        # Process through all transformer blocks
         x = self.trf_blocks(x)
+
+        # Apply final normalization
         x = self.final_norm(x)
+
+        # Project to vocabulary size to get logits for next token prediction
         logits = self.out_head(x)
         return logits
 
-"""- Using the configuration of the 124M parameter model, we can now instantiate this GPT model with random initial weights as follows:"""
 
-torch.manual_seed(123)
+# ============================================
+# Model Instantiation
+# ============================================
+# Create a GPT model with random initial weights using the 124M parameter configuration
+# Note: This model is untrained and will produce random outputs until trained
+
+torch.manual_seed(123)  # Set seed for reproducibility
 model = GPTModel(GPT_CONFIG_124M)
 
+
+# ============================================
+# Forward Pass Demo
+# ============================================
+# Pass a batch through the model to see the output shape
+# Input: [batch_size=2, num_tokens=4] → Output: [batch_size=2, num_tokens=4, vocab_size=50257]
 
 out = model(batch)
 print("Input batch:\n", batch)
 print("\nOutput shape:", out.shape)
 print(out)
 
-"""- We will train this model in the next chapter
-- However, a quick note about its size: we previously referred to it as a 124M parameter model; we can double check this number as follows:
-"""
 
+# ============================================
+# Model Size Analysis: Parameter Count
+# ============================================
+# We'll verify the model's parameter count and understand the "124M vs 163M" discrepancy
+
+# Count total parameters across all layers
 total_params = sum(p.numel() for p in model.parameters())
 print(f"Total number of parameters: {total_params:,}")
 
-"""- As we see above, this model has 163M, not 124M parameters; why?
-- In the original GPT-2 paper, the researchers applied weight tying, which means that they reused the token embedding layer (`tok_emb`) as the output layer, which means setting `self.out_head.weight = self.tok_emb.weight`
-- The token embedding layer projects the 50,257-dimensional one-hot encoded input tokens to a 768-dimensional embedding representation
-- The output layer projects 768-dimensional embeddings back into a 50,257-dimensional representation so that we can convert these back into words (more about that in the next section)
-- So, the embedding and output layer have the same number of weight parameters, as we can see based on the shape of their weight matrices
-- However, a quick note about its size: we previously referred to it as a 124M parameter model; we can double check this number as follows:
-"""
 
+# ============================================
+# Understanding Weight Tying
+# ============================================
+# Why does our model have 163M parameters instead of the advertised 124M?
+# Answer: GPT-2 used "weight tying" - sharing weights between token embedding and output layers
+
+# Both layers have the same shape: [vocab_size, emb_dim] = [50257, 768]
 print("Token embedding layer shape:", model.tok_emb.weight.shape)
 print("Output layer shape:", model.out_head.weight.shape)
 
-"""- In the original GPT-2 paper, the researchers reused the token embedding matrix as an output matrix
-- Correspondingly, if we subtracted the number of parameters of the output layer, we'd get a 124M parameter model:
-"""
 
-total_params_gpt2 =  total_params - sum(p.numel() for p in model.out_head.parameters())
+# ============================================
+# Calculating the "True" GPT-2 124M Count
+# ============================================
+# If we apply weight tying (reusing tok_emb weights for out_head), we subtract the output layer parameters
+# This gives us the canonical 124M parameter count from the GPT-2 paper
+
+total_params_gpt2 = total_params - sum(p.numel() for p in model.out_head.parameters())
 print(f"Number of trainable parameters considering weight tying: {total_params_gpt2:,}")
 
-"""- In practice, I found it easier to train the model without weight-tying, which is why we didn't implement it here
-- However, we will revisit and apply this weight-tying idea later when we load the pretrained weights in chapter 5
-- Lastly, we can compute the memory requirements of the model as follows, which can be a helpful reference point:
-"""
 
-# Calculate the total size in bytes (assuming float32, 4 bytes per parameter)
+# ============================================
+# Memory Footprint Estimation
+# ============================================
+# Estimate how much RAM/VRAM this model requires when loaded
+# Useful for deployment and hardware planning
+
+# Each parameter stored as float32 (4 bytes)
 total_size_bytes = total_params * 4
 
-# Convert to megabytes
+# Convert bytes to megabytes for easier interpretation
 total_size_mb = total_size_bytes / (1024 * 1024)
 
 print(f"Total size of the model: {total_size_mb:.2f} MB")
 
-"""- Exercise: you can try the following other configurations, which are referenced in the [GPT-2 paper](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=dOad5HoAAAAJ&citation_for_view=dOad5HoAAAAJ:YsMSGLbcyi4C), as well.
 
-    - **GPT2-small** (the 124M configuration we already implemented):
-        - "emb_dim" = 768
-        - "n_layers" = 12
-        - "n_heads" = 12
+# ============================================
+# Scaling Up: Other GPT-2 Configurations
+# ============================================
+# The architecture we built is flexible and can be scaled to larger models
+# Simply adjust emb_dim, n_layers, and n_heads in the config dictionary
+#
+# GPT-2 Small (124M) - What we implemented:
+#   - emb_dim: 768, n_layers: 12, n_heads: 12
+#
+# GPT-2 Medium (345M):
+#   - emb_dim: 1024, n_layers: 24, n_heads: 16
+#
+# GPT-2 Large (762M):
+#   - emb_dim: 1280, n_layers: 36, n_heads: 20
+#
+# GPT-2 XL (1.5B):
+#   - emb_dim: 1600, n_layers: 48, n_heads: 25
 
-    - **GPT2-medium:**
-        - "emb_dim" = 1024
-        - "n_layers" = 24
-        - "n_heads" = 16
-    
-    - **GPT2-large:**
-        - "emb_dim" = 1280
-        - "n_layers" = 36
-        - "n_heads" = 20
-    
-    - **GPT2-XL:**
-        - "emb_dim" = 1600
-        - "n_layers" = 48
-        - "n_heads" = 25
 
-## 4.7 Generating text
-
-- LLMs like the GPT model we implemented above are used to generate one word at a time
-
-<img src="https://sebastianraschka.com/images/LLMs-from-scratch-images/ch04_compressed/16.webp" width="400px">
-
-- The following `generate_text_simple` function implements greedy decoding, which is a simple and fast method to generate text
-- In greedy decoding, at each step, the model chooses the word (or token) with the highest probability as its next output (the highest logit corresponds to the highest probability, so we technically wouldn't even have to compute the softmax function explicitly)
-- In the next chapter, we will implement a more advanced `generate_text` function
-- The figure below depicts how the GPT model, given an input context, generates the next word token
-
-<img src="https://sebastianraschka.com/images/LLMs-from-scratch-images/ch04_compressed/17.webp" width="600px">
-"""
+# ============================================
+# Section 4.7: Text Generation with Greedy Decoding
+# ============================================
+# Now that we have a complete GPT model, let's use it to generate text
+# Generation is autoregressive: produce one token at a time, feed it back as input
 
 def generate_text_simple(model, idx, max_new_tokens, context_size):
-    # idx is (batch, n_tokens) array of indices in the current context
+    """
+    Generate text using greedy decoding - always pick the most likely next token.
+
+    Args:
+        model (nn.Module): The GPT model
+        idx (torch.Tensor): Input token indices [batch_size, seq_len]
+        max_new_tokens (int): How many tokens to generate
+        context_size (int): Maximum context length the model supports
+
+    Returns:
+        torch.Tensor: Extended sequence with generated tokens appended
+    """
+
+    # Generate tokens one at a time in a loop
     for _ in range(max_new_tokens):
 
-        # Crop current context if it exceeds the supported context size
-        # E.g., if LLM supports only 5 tokens, and the context size is 10
-        # then only the last 5 tokens are used as context
+        # Step 1: Context Window Management
+        # If our sequence exceeds the model's max context (e.g., 1024 tokens), crop it to keep only the most recent tokens
         idx_cond = idx[:, -context_size:]
 
-        # Get the predictions
+        # Step 2: Get Model Predictions
+        # Run the current context through the model, while disabling gradient computation since we're not training
         with torch.no_grad():
             logits = model(idx_cond)
 
-        # Focus only on the last time step
-        # (batch, n_tokens, vocab_size) becomes (batch, vocab_size)
-        logits = logits[:, -1, :]
+        # Step 3: Focus on the Next Token
+        # Extract predictions for only the last position in the sequence
+        logits = logits[:, -1, :]  # Shape: [batch_size, seq_len, vocab_size] → [batch_size, vocab_size]
 
-        # Apply softmax to get probabilities
-        probas = torch.softmax(logits, dim=-1)  # (batch, vocab_size)
+        # Step 4: Convert Logits to Probabilities
+        # Apply softmax to get a probability distribution over the vocabulary
+        probas = torch.softmax(logits, dim=-1)  # Shape: [batch_size, vocab_size]
 
-        # Get the idx of the vocab entry with the highest probability value
-        idx_next = torch.argmax(probas, dim=-1, keepdim=True)  # (batch, 1)
+        # Step 5: Greedy Selection
+        # Pick the token with the highest probability (greedy decoding)
+        # Alternative strategies: sampling, top-k, nucleus sampling (covered later)
+        idx_next = torch.argmax(probas, dim=-1, keepdim=True)  # Shape: [batch_size, 1]
 
-        # Append sampled index to the running sequence
-        idx = torch.cat((idx, idx_next), dim=1)  # (batch, n_tokens+1)
+        # Step 6: Append to Sequence
+        # Add the newly generated token to our running sequence
+        idx = torch.cat((idx, idx_next), dim=1)  # Shape: [batch_size, seq_len+1]
 
     return idx
 
-"""- The `generate_text_simple` above implements an iterative process, where it creates one token at a time
 
-<img src="https://sebastianraschka.com/images/LLMs-from-scratch-images/ch04_compressed/18.webp" width="600px">
+# ============================================
+# Demo: Text Generation in Action
+# ============================================
+# Let's see the generation process with a concrete example
 
-- Let's prepare an input example:
-"""
-
+# Step 1: Prepare Input Text
+# Start with a prompt that the model will continue
 start_context = "Hello, I am"
 
+# Step 2: Tokenize the Input
+# Convert text to token IDs using the GPT-2 tokenizer, and add batch dimension: [seq_len] → [1, seq_len]
 encoded = tokenizer.encode(start_context)
 print("encoded:", encoded)
-
 encoded_tensor = torch.tensor(encoded).unsqueeze(0)
 print("encoded_tensor.shape:", encoded_tensor.shape)
 
-model.eval() # disable dropout
+# Step 3: Set Model to Evaluation Mode
+# Disable dropout to get deterministic outputs during inference
+model.eval()
 
+# Step 4: Generate New Tokens
+# Generate 6 additional tokens following the input context
 out = generate_text_simple(
     model=model,
     idx=encoded_tensor,
     max_new_tokens=6,
     context_size=GPT_CONFIG_124M["context_length"]
 )
-
 print("Output:", out)
 print("Output length:", len(out[0]))
 
-"""- Remove batch dimension and convert back into text:"""
-
+# Step 5: Decode Back to Text
+# Convert token IDs back to human-readable text after removing the batch dimension before decoding
 decoded_text = tokenizer.decode(out.squeeze(0).tolist())
 print(decoded_text)
 
-"""- Note that the model is untrained; hence the random output texts above
-- We will train the model in the next chapter
-
-## Summary and takeaways
-
-- See the [./gpt.py](./gpt.py) script, a self-contained script containing the GPT model we implement in this Jupyter notebook
-- You can find the exercise solutions in [./exercise-solutions.ipynb](./exercise-solutions.ipynb)
-"""
-
+# Important Note:
+# The output will be gibberish because the model has random weights
+# In Chapter 5, we'll train this model to produce coherent text
+# For now, this demonstrates the generation mechanics
