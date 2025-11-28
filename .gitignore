@@ -36,3 +36,6 @@ datasets/
 
 # Log files
 *.log
+
+# Opened presentation files
+~?*.pptx
