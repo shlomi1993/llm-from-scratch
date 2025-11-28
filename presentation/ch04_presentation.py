@@ -1,13 +1,11 @@
 """
 ch04_presentation.py
 
-# Chapter 4: Implementing a GPT model from Scratch To Generate Text - Presentation Code
+Chapter 4: Implementing a GPT model from Scratch To Generate Text - Presentation Code
 
 This is auto-generated code from the Jupyter notebook, modified to present sections 4.6 and 4.7 of Chapter 4.
 
-Original file is located at
-    https://colab.research.google.com/drive/1h0nmndcXRgmcUr6-KcasScKy_hFwMdUh
-
+Original file is located at https://colab.research.google.com/drive/1h0nmndcXRgmcUr6-KcasScKy_hFwMdUh
 """
 
 import torch
