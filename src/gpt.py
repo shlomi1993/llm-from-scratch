@@ -1,18 +1,11 @@
-"""
-GPT model implementation.
-
-This module defines the GPTModel class, which implements a GPT-style autoregressive language model with token and
-position embeddings, multiple transformer blocks, and an output head for generating vocabulary logits. The model
-supports both standard and cached generation modes for efficient text generation.
-"""
 import torch
 import torch.nn as nn
 
 from torch import Tensor
 
-from .transformer import TransformerBlock
-from .normalization import LayerNorm
 from .configurations import GptConfig
+from .normalization import LayerNorm
+from .transformer import TransformerBlock
 
 
 class GptModel(nn.Module):
@@ -27,24 +20,9 @@ class GptModel(nn.Module):
         # Dropout layer
         self.drop_emb = nn.Dropout(config.drop_rate)
 
-        # Transformer blocks, with K:1 SWA scheduling if configured
-        blocks = []
-        for i in range(config.n_layers):
-            block = TransformerBlock(config)
-
-            # K:1 schedule: K SWA layers followed by 1 regular layer
-            K = int(config.sliding_window_stride)
-            if K <= 0:  # 0 => all regular; negative => all SWA
-                use_swa = False if K == 0 else True
-            else:
-                group = K + 1
-                use_swa = (i % group) < K
-
-            block.att.sliding_window_size = config.sliding_window_size if use_swa else None
-            blocks.append(block)
-
-        self.trf_blocks = nn.ModuleList(blocks)
-        self.current_pos = 0
+        # Transformer blocks
+        self.trf_blocks = nn.ModuleList([TransformerBlock(config) for _ in range(config.n_layers)])
+        self.ptr_current_pos = 0  # Position tracking for cached attention
 
         # Final normalization and output head
         self.final_norm = LayerNorm(config.emb_dim)
@@ -56,8 +34,11 @@ class GptModel(nn.Module):
 
         # Position ids
         if use_cache:
-            pos_ids = torch.arange(self.current_pos, self.current_pos + seq_len, device=in_idx.device, dtype=torch.long)
-            self.current_pos += seq_len
+            if self.ptr_current_pos + seq_len > self.pos_emb.num_embeddings:
+                raise ValueError(f"Position embedding overflow. Tried to read {self.ptr_current_pos + seq_len} which exceeded size of {self.pos_emb.num_embeddings}")
+
+            pos_ids = torch.arange(self.ptr_current_pos, self.ptr_current_pos + seq_len, device=in_idx.device, dtype=torch.long)
+            self.ptr_current_pos += seq_len
         else:
             pos_ids = torch.arange(0, seq_len, device=in_idx.device, dtype=torch.long)
         pos_embeds = self.pos_emb(pos_ids).unsqueeze(0)
@@ -65,8 +46,12 @@ class GptModel(nn.Module):
         # Combine token and position embeddings
         x = tok_embeds + pos_embeds  # Shape [batch_size, num_tokens, emb_size]
         x = self.drop_emb(x)
+
+        # Pass through transformer blocks
         for blk in self.trf_blocks:
             x = blk(x, use_cache=use_cache)
+
+        # Final normalization
         x = self.final_norm(x)
 
         # Output logits
@@ -75,8 +60,9 @@ class GptModel(nn.Module):
 
     def reset_kv_cache(self) -> None:
         for blk in self.trf_blocks:
+            blk: TransformerBlock
             blk.att.reset_cache()
-        self.current_pos = 0
+        self.ptr_current_pos = 0
 
     def generate_text_simple(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
         for _ in range(max_new_tokens):
@@ -154,3 +140,77 @@ class GptModel(nn.Module):
                     idx = torch.cat([idx, next_idx], dim=1)
 
         return idx
+
+
+"""
+For tests:
+
+Run:
+torch.manual_seed(123)
+model = GPTModel(GPT_CONFIG_124M)
+
+out = model(batch)
+
+Expect:
+batch.shape == out.shape[0:2] == torch.Size([2, 4])
+out.shape == torch.Size([2, 4, 50257])
+out == tensor([[[ 0.3613,  0.4222, -0.0711,  ...,  0.3483,  0.4661, -0.2838],
+         [-0.1792, -0.5660, -0.9485,  ...,  0.0477,  0.5181, -0.3168],
+         [ 0.7120,  0.0332,  0.1085,  ...,  0.1018, -0.4327, -0.2553],
+         [-1.0076,  0.3418, -0.1190,  ...,  0.7195,  0.4023,  0.0532]],
+
+        [[-0.2564,  0.0900,  0.0335,  ...,  0.2659,  0.4454, -0.6806],
+         [ 0.1230,  0.3653, -0.2074,  ...,  0.7705,  0.2710,  0.2246],
+         [ 1.0558,  1.0318, -0.2800,  ...,  0.6936,  0.3205, -0.3178],
+         [-0.1565,  0.3926,  0.3288,  ...,  1.2630, -0.1858,  0.0388]]],
+       grad_fn=<UnsafeViewBackward0>)
+
+Run:
+total_params = sum(p.numel() for p in model.parameters())
+
+Expect:
+total_params == 163,009,536
+
+Run:
+total_params_gpt2 =  total_params - sum(p.numel() for p in model.out_head.parameters())
+
+Expect:
+total_params_gpt2 == 124,412,160
+
+Run:
+# Calculate the total size in bytes (assuming float32, 4 bytes per parameter)
+total_size_bytes = total_params * 4
+
+# Convert to megabytes
+total_size_mb = total_size_bytes / (1024 * 1024)
+
+Expect:
+total_size_mb == 621.83
+
+
+Run:
+start_context = "Hello, I am"
+encoded = tokenizer.encode(start_context)
+encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+model.eval() # disable dropout
+
+out = model.generate_text_simple(
+    idx=encoded_tensor,
+    max_new_tokens=6,
+    context_size=GPT_CONFIG_124M["context_length"]
+)
+
+Expect:
+out == tensor([[15496,    11,   314,   716, 27018, 24086, 47843, 30961, 42348,  
+len(out[0]) == 10
+
+
+Run:
+decoded_text = tokenizer.decode(out.squeeze(0).tolist())
+
+Expect:
+decoded_text == "Hello, I am Featureiman Byeswickattribute argue"
+
+
+Implement another test based on the file chapters/ch04/01_main-chapter-code/tests.py
+"""

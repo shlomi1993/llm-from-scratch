@@ -12,15 +12,6 @@ EOT = "<|endoftext|>"
 
 class GptDatasetV1(Dataset):
     def __init__(self, txt: str, tokenizer: Encoding, max_length: int, stride: int) -> None:
-        """
-        GPT Dataset for language modeling.
-
-        Args:
-            txt (str): The input text data.
-            tokenizer (Encoding): The tokenizer to encode the text.
-            max_length (int): The maximum length of each input sequence.
-            stride (int): The stride for the sliding window.
-        """
         self.input_ids = []
         self.target_ids = []
 
@@ -43,28 +34,7 @@ class GptDatasetV1(Dataset):
 
 def create_dataloader_v1(txt: str, batch_size: int, max_length: int, stride: int, shuffle: bool = True,
                          drop_last: bool = True, num_workers: int = 0) -> DataLoader:
-    """
-    Create a DataLoader for the GPT dataset.
-
-    Args:
-        txt (str): The input text data.
-        batch_size (int): The batch size for the DataLoader.
-        max_length (int): The maximum length of each input sequence.
-        stride (int): The stride for the sliding window.
-        shuffle (bool, optional): Whether to shuffle the data. Defaults to True.
-        drop_last (bool, optional): Whether to drop the last incomplete batch. Defaults to True.
-        num_workers (int, optional): The number of worker processes for data loading. Defaults to 0.
-
-    Returns:
-        DataLoader: The DataLoader for the GPT dataset.
-    """
-    # Initialize the tokenizer
     tokenizer = tiktoken.get_encoding("gpt2")
-
-    # Create dataset
     dataset = GptDatasetV1(txt, tokenizer, max_length, stride)
-
-    # Create dataloader
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=num_workers)
-
     return dataloader
