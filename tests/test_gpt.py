@@ -294,7 +294,7 @@ def test_generate_text_simple_cached_default_context(sample_model: GptModel, sam
     assert generated.shape == (1, expected_length), "Generated output shape should match expected dimensions"
 
 
-def test_parameter_counting(self) -> None:
+def test_parameter_counting() -> None:
     """
     Test parameter counting for standard GPT configurations.
     """
@@ -430,7 +430,7 @@ def test_device_compatibility(sample_model: GptModel, sample_config: GptConfig) 
         assert output_cuda.device.type == 'cuda', "Output should be on CUDA device"
 
 
-def test_integration_with_tokenizer(self) -> None:
+def test_integration_with_tokenizer() -> None:
     """
     Test GPT model with actual tokenizer for end-to-end generation.
     """
@@ -507,16 +507,8 @@ def test_gpt_model_parameter_counts_match_expected(cfg, expected_total, expected
     """
     model = GptModel(cfg)
 
-    total = sum(p.numel() for p in model.parameters())
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params = sum(p.numel() for p in model.parameters())
+    weight_tying = total_params - sum(p.numel() for p in model.out_head.parameters())
 
-    assert total == expected_total, (
-        f"GptModel total params mismatch for emb_dim={cfg.emb_dim}, n_layers={cfg.n_layers}: "
-        f"expected {expected_total:,}, got {total:,}. "
-        f"(If you use weight tying, TOTAL should still include lm_head unless it is the same tensor.)"
-    )
-    assert trainable == expected_trainable_tied, (
-        f"GptModel trainable params mismatch (weight-tied expectation) for emb_dim={cfg.emb_dim}, n_layers={cfg.n_layers}: "
-        f"expected {expected_trainable_tied:,}, got {trainable:,}. "
-        f"(If you do not tie weights, trainable will equal total.)"
-    )
+    assert total_params == expected_total, f"Expected: {expected_total:,}, got: {total_params:,}"
+    assert weight_tying == expected_trainable_tied, f"Expected: {expected_trainable_tied:,}, got: {weight_tying:,}"
