@@ -24,7 +24,7 @@ from src.utils import text_to_token_ids, token_ids_to_text
 
 
 @pytest.mark.skip(reason="Downloading files from the internet takes time; run manually when needed")
-def test_download_and_load_gpt2_124m():
+def test_download_and_load_gpt2_124m(tokenizer: tiktoken.Encoding):
     model_size = "124M"
     temp_dir = tempfile.mkdtemp()
     try:
@@ -40,15 +40,16 @@ def test_download_and_load_gpt2_124m():
         gpt = load_weights_into_gpt(model_size, temp_dir, config)
         gpt.eval()
 
-        batch_size = 2
-        seq_len = 8
-        input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len))
-        output = gpt(input_ids)
+        input_ids = text_to_token_ids("Every effort moves you", tokenizer)
 
-        expected_shape = (batch_size, seq_len, config.vocab_size)
-        assert output.shape == expected_shape, f"Failed for batch_size={batch_size}, seq_len={seq_len}"
-        assert torch.isfinite(output).all(), "Output should contain only finite values"
-        assert not torch.isnan(output).any(), "Output should not contain NaN values"
+        deterministic_output_ids = gpt.generate_cached(input_ids, max_new_tokens=10, context_size=config.context_length)
+        generated_text = token_ids_to_text(deterministic_output_ids, tokenizer)
+        assert generated_text == "Every effort moves you forward.\n\nThe first step is to understand", f"Generated text mismatch: got '{generated_text}'"
+
+        prod_output_ids = gpt.generate(input_ids, max_new_tokens=10, context_size=config.context_length, temperature=1.0, top_k=50, eos_id=tokenizer.eot_token)
+        assert prod_output_ids.shape[1] == 14, f"Generated token count should be 4 + 10 = 14, but got {prod_output_ids.shape[1]}"
+        generated_text = token_ids_to_text(prod_output_ids, tokenizer)
+        assert generated_text.startswith("Every effort moves you"), f"Generated text mismatch: got '{generated_text}'"
 
     finally:
         shutil.rmtree(temp_dir)
