@@ -4,7 +4,7 @@ import tiktoken
 
 from importlib.metadata import version
 
-from src.dataloader import create_dataloader_v1
+from src.dataloader import GptDataloaderV1
 
 
 def test_torch_version():
@@ -47,7 +47,7 @@ def test_dataloader_functionality():
 
     batch_size = 8
     max_length = 4
-    dataloader = create_dataloader_v1(raw_text, batch_size, max_length, max_length)
+    dataloader = GptDataloaderV1(raw_text, batch_size, max_length, max_length)
 
     for batch in dataloader:
         x, y = batch
@@ -94,7 +94,7 @@ def test_gpt_dataset_and_dataloader_embedding_shape() -> None:
     token_embedding_layer = nn.Embedding(vocab_size, output_dim)
     pos_embedding_layer = nn.Embedding(max_length, output_dim)
 
-    dataloader = create_dataloader_v1(raw_text, batch_size, max_length, stride, shuffle=False, drop_last=True)
+    dataloader = GptDataloaderV1(raw_text, batch_size, max_length, stride, shuffle=False, drop_last=True)
 
     it = iter(dataloader)
     x, y = next(it)

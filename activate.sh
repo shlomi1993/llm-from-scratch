@@ -31,4 +31,4 @@ fi
 
 # Show Python version and location for confirmation
 echo "Python version: $(python --version)"
-echo "Python location: $(which python)"
+echo "Python bin: $(which python)"
