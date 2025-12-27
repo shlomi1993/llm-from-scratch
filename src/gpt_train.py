@@ -1,8 +1,3 @@
-# Copyright (c) Sebastian Raschka under Apache License 2.0 (see LICENSE.txt).
-# Source for "Build a Large Language Model From Scratch"
-#   - https://www.manning.com/books/build-a-large-language-model-from-scratch
-# Code: https://github.com/rasbt/LLMs-from-scratch
-
 import matplotlib.pyplot as plt
 import os
 import requests
@@ -12,8 +7,8 @@ import tiktoken
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from .configurations import GptConfig
 from .dataloader import GptDataloaderV1
-
 from .gpt import GptModel
 
 
@@ -35,7 +30,7 @@ def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, 
     loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
     return loss  # Negative average log probability
 
-###########
+
 def calc_loss_loader(data_loader: DataLoader, model: GptModel, device: torch.device, num_batches: int = None):
     if len(data_loader) == 0:
         return float("nan")
@@ -49,6 +44,16 @@ def calc_loss_loader(data_loader: DataLoader, model: GptModel, device: torch.dev
         total_loss += loss.item()
 
     return total_loss / num_batches
+
+
+def train_test_split(text: str, max_length: int, batch_size: int, stride: int = None, train_ratio: float = 0.9) -> tuple[DataLoader, DataLoader]:
+    split_idx = int(train_ratio * len(text))
+    train_text = text[:split_idx]
+    val_text = text[split_idx:]
+    stride = stride or max_length
+    train_loader = GptDataloaderV1(train_text, batch_size, max_length, stride, shuffle=True, drop_last=True, num_workers=0)
+    val_loader = GptDataloaderV1(val_text, batch_size, max_length, stride, shuffle=False, drop_last=False, num_workers=0)
+    return train_loader, val_loader
 
 
 def evaluate_model(model, train_loader, val_loader, device, eval_iter):
@@ -130,7 +135,7 @@ def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
     # plt.show()
 
 
-def main(gpt_config, settings):
+def main(config: GptConfig, settings):
 
     torch.manual_seed(123)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -155,7 +160,7 @@ def main(gpt_config, settings):
     # Initialize model
     ##############################
 
-    model = GptModel(gpt_config)
+    model = GptModel(config)
     model.to(device)  # no assignment model = model.to(device) necessary for nn.Module classes
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=settings["learning_rate"], weight_decay=settings["weight_decay"]
@@ -165,29 +170,7 @@ def main(gpt_config, settings):
     # Set up dataloaders
     ##############################
 
-    # Train/validation ratio
-    train_ratio = 0.90
-    split_idx = int(train_ratio * len(text_data))
-
-    train_loader = GptDataloaderV1(
-        text_data[:split_idx],
-        batch_size=settings["batch_size"],
-        max_length=gpt_config["context_length"],
-        stride=gpt_config["context_length"],
-        drop_last=True,
-        shuffle=True,
-        num_workers=0
-    )
-
-    val_loader = GptDataloaderV1(
-        text_data[split_idx:],
-        batch_size=settings["batch_size"],
-        max_length=gpt_config["context_length"],
-        stride=gpt_config["context_length"],
-        drop_last=False,
-        shuffle=False,
-        num_workers=0
-    )
+    train_loader, val_loader = train_test_split(text_data, config.context_length, settings["batch_size"], train_ratio=0.90)
 
     ##############################
     # Train model
