@@ -9,18 +9,6 @@ from src.configurations import GPT_CONFIG_124M, GptConfig
 from src.gpt_train import text_to_token_ids, token_ids_to_text, calc_loss_batch, calc_loss_loader, train_test_split
 
 
-@pytest.fixture(scope="module")
-def tokenizer():
-    return tiktoken.get_encoding("gpt2")
-
-
-@pytest.fixture(scope="module")
-def dataset_example():
-    with open("datasets/the-verdict.txt", "r", encoding="utf-8") as f:
-        text = f.read()
-    return text
-
-
 def test_text_to_token_ids_and_token_ids_to_text(tokenizer):
     text = "Every effort moves you"
     token_ids = text_to_token_ids(text, tokenizer)
@@ -42,7 +30,7 @@ def test_token_ids_to_text_with_model(tokenizer: tiktoken.Encoding):
     assert out == "Every effort moves youprettyvis Slow shoulders JA xmlsavf Meridian stereotyp", f"Generated text mismatch: got '{out}'"
 
 
-def test_calc_loss_batch():
+def test_calc_loss_batch(device: torch.device):
     torch.manual_seed(123)
     model = GptModel(GPT_CONFIG_124M)
     model.eval()
@@ -52,16 +40,14 @@ def test_calc_loss_batch():
     targets = torch.tensor([[3626, 6100, 345  ],  # [" effort moves you",
                             [1107,  588, 11311]]) #  " really like chocolate"]
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with torch.no_grad():
         loss = calc_loss_batch(inputs, targets, model, device)
 
     assert torch.isclose(loss, torch.tensor(10.8765), atol=1e-5), f"Loss mismatch: got {loss.item()}"
 
 
-def test_calc_loss_loader():
+def test_calc_loss_loader(device: torch.device):
     torch.manual_seed(123)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     config = GptConfig(vocab_size=10, context_length=3, emb_dim=4, n_heads=2, n_layers=1, drop_rate=0.0, qkv_bias=False)
     model = GptModel(config)
 
@@ -82,9 +68,9 @@ def test_calc_loss_loader():
 
 @pytest.mark.parametrize("max_length, batch_size, stride", [(10, 4, 5)])
 @pytest.mark.parametrize("train_ratio", [0.7, 0.8, 0.9])
-def test_train_test_split(dataset_example: str, tokenizer: tiktoken.Encoding, max_length: int, batch_size: int,
+def test_train_test_split(the_verdict_dataset: str, tokenizer: tiktoken.Encoding, max_length: int, batch_size: int,
                           stride: int, train_ratio: float):
-    train_loader, val_loader = train_test_split(dataset_example, max_length, batch_size, stride, train_ratio)
+    train_loader, val_loader = train_test_split(the_verdict_dataset, max_length, batch_size, stride, train_ratio)
 
     for loader in [train_loader, val_loader]:
         for i, (inputs, targets) in enumerate(loader):
@@ -93,9 +79,9 @@ def test_train_test_split(dataset_example: str, tokenizer: tiktoken.Encoding, ma
             assert inputs.shape == (batch_size, max_length)
             assert targets.shape == (batch_size, max_length)
 
-    split_idx = int(train_ratio * len(dataset_example))
-    train_text = dataset_example[:split_idx]
-    val_text = dataset_example[split_idx:]
+    split_idx = int(train_ratio * len(the_verdict_dataset))
+    train_text = the_verdict_dataset[:split_idx]
+    val_text = the_verdict_dataset[split_idx:]
 
     def calculate_expected_batches(text: str, drop_last: bool) -> int:
         token_ids = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
