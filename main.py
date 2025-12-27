@@ -121,3 +121,75 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+
+### TODO GPT TRAIN - TO INTEGRATE IN THE MAIN ABOVE ###
+# def main(config: GptConfig, learning_rate: float, n_epochs: int, batch_size: int, weight_decay: float):
+#     torch.manual_seed(123)
+#     device = get_device()
+
+#     # Download data if necessary
+#     file_path = "the-verdict.txt"
+#     if not os.path.exists(file_path):
+#         url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
+#         response = requests.get(url, timeout=30)
+#         response.raise_for_status()
+#         text_data = response.text
+#         with open(file_path, "w", encoding="utf-8") as file:
+#             file.write(text_data)
+#     else:
+#         with open(file_path, "r", encoding="utf-8") as file:
+#             text_data = file.read()
+
+#     # Initialize model
+#     model = GptModel(config)
+#     model.to(device)  # no assignment model = model.to(device) necessary for nn.Module classes
+#     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+#     # Set up dataloaders
+#     train_loader, val_loader = train_test_split(text_data, config.context_length, batch_size, train_ratio=0.90)
+
+#     # Train model
+#     tokenizer = tiktoken.get_encoding("gpt2")
+#     train_losses, val_losses, tokens_seen = train_model_simple(
+#         model, train_loader, val_loader, optimizer, device,
+#         n_epochs=n_epochs, eval_freq=5, eval_iter=1,
+#         start_context="Every effort moves you", tokenizer=tokenizer
+#     )
+
+#     return train_losses, val_losses, tokens_seen, model
+
+
+# if __name__ == "__main__":
+
+#     GPT_CONFIG_124M_256CONT = {
+#         "vocab_size": 50257,
+#         "context_length": 256,
+#         "emb_dim": 768,
+#         "n_heads": 12,
+#         "n_layers": 12,
+#         "drop_rate": 0.1,
+#         "qkv_bias": False
+#     }
+
+#     # Training
+#     n_epochs = 10
+#     train_losses, val_losses, tokens_seen, model = main(
+#         GPT_CONFIG_124M_256CONT,
+#         learning_rate=5e-4,
+#         n_epochs=n_epochs,
+#         batch_size=2,
+#         weight_decay=0.1
+#     )
+
+#     # Plot results
+#     epochs_tensor = torch.linspace(0, n_epochs, len(train_losses))
+#     plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
+#     plt.savefig("loss.pdf")
+
+#     # Save and load model
+#     torch.save(model.state_dict(), "model.pth")
+#     model = GptModel(GPT_CONFIG_124M_256CONT)
+#     model.load_state_dict(torch.load("model.pth", weights_only=True))
