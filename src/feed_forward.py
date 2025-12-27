@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from .activation import GELU
-from .configurations import GptConfig
+from .config import GptConfig
 
 
 class FeedForward(nn.Module):

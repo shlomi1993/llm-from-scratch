@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from .attention import MultiheadAttentionCached
-from .configurations import GptConfig
+from .config import GptConfig
 from .feed_forward import FeedForward
 from .normalization import LayerNorm
 

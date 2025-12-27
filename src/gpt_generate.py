@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from src.configurations import GptConfig
+from src.config import GptConfig
 from src.gpt import GptModel
 from src.transformer import TransformerBlock
 

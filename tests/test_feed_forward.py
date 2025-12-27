@@ -1,6 +1,6 @@
 import torch
 
-from src.configurations import GPT_CONFIG_124M
+from src.config import GPT_CONFIG_124M
 from src.feed_forward import FeedForward
 
 

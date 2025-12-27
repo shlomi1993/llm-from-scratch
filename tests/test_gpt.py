@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import tiktoken
 
-from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
+from src.config import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 from src.gpt import GptModel
 
 

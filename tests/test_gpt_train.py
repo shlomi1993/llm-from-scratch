@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.gpt import GptModel
-from src.configurations import GPT_CONFIG_124M, GptConfig
+from src.config import GPT_CONFIG_124M, GptConfig
 from src.gpt_train import text_to_token_ids, token_ids_to_text, calc_loss_batch, calc_loss_loader, train_test_split
 
 
