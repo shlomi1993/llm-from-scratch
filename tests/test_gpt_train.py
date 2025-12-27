@@ -21,7 +21,7 @@ def test_token_ids_to_text_with_model(tokenizer: tiktoken.Encoding):
     config = GptConfig(vocab_size=50257, context_length=256, emb_dim=8, n_heads=2, n_layers=1, drop_rate=0.0)
     model = GptModel(config)
     text = "Every effort moves you"
-    token_ids = model.generate(
+    token_ids = model.generate_naive(
         idx=text_to_token_ids(text, tokenizer),
         max_new_tokens=10,
         context_size=config.context_length
