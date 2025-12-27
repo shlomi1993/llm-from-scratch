@@ -64,7 +64,7 @@ class GptModel(nn.Module):
             blk.att.reset_cache()
         self.ptr_current_pos = 0
 
-    def generate(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
+    def generate_naive(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
         for _ in range(max_new_tokens):
 
             # Crop current context if it exceeds the supported context size (e.g., if LLM supports only 5 tokens, and
@@ -91,22 +91,57 @@ class GptModel(nn.Module):
 
         return idx
 
-    def generate2(self, idx: Tensor, max_new_tokens: int, context_size: int, use_cache: bool = True):
+    def generate_cached(self, idx: Tensor, max_new_tokens: int, context_size: int, use_cache: bool = True):
         self.eval()
         ctx_len = context_size or self.pos_emb.num_embeddings
-
         with torch.no_grad():
             if use_cache:
                 self.reset_kv_cache()  # Init cache with full prompt
                 logits = self(idx[:, -ctx_len:], use_cache)
                 for _ in range(max_new_tokens):
-                    next_idx = logits[:, -1].argmax(dim=-1, keepdim=True)   # a) pick the token with the highest log-probability (greedy sampling)
-                    idx = torch.cat([idx, next_idx], dim=1)                 # b) append it to the running sequence
-                    logits = self(next_idx, use_cache)                 # c) feed model only the new token
+                    next_idx = logits[:, -1].argmax(dim=-1, keepdim=True)  # a) pick the token with the highest log-probability (greedy sampling)
+                    idx = torch.cat([idx, next_idx], dim=1)                # b) append it to the running sequence
+                    logits = self(next_idx, use_cache)                     # c) feed model only the new token
             else:
                 for _ in range(max_new_tokens):
                     logits = self(idx[:, -ctx_len:], use_cache)
                     next_idx = logits[:, -1].argmax(dim=-1, keepdim=True)
                     idx = torch.cat([idx, next_idx], dim=1)
+        return idx
+
+    def generate(self, idx: Tensor, max_new_tokens: int, context_size: int, temperature: float = 0.0, top_k: int = None, eos_id: int = None) -> Tensor:
+        for _ in range(max_new_tokens):
+
+            # Trim context
+            idx_cond = idx[:, -context_size:]
+
+            # Forward pass
+            with torch.no_grad():
+                logits = self(idx_cond)
+
+            # Get logits for the last time step
+            logits = logits[:, -1, :]
+
+            # Apply top-k
+            if top_k is not None:
+                top_logits, _ = torch.topk(logits, top_k)
+                min_val = top_logits[:, -1]
+                logits = torch.where(logits < min_val, torch.tensor(float("-inf")).to(logits.device), logits)
+
+            # Apply temperature or greedy selection
+            if temperature > 0.0:
+                logits = logits / temperature
+                logits = logits - logits.max(dim=-1, keepdim=True).values
+                probs = torch.softmax(logits, dim=-1)
+                idx_next = torch.multinomial(probs, num_samples=1)
+            else:
+                idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+
+            # Stop if EOS token is generated
+            if idx_next == eos_id:
+                break
+
+            # Append to sequence
+            idx = torch.cat((idx, idx_next), dim=1)
 
         return idx

@@ -124,7 +124,7 @@ def test_generate_text_simple(sample_model: GptModel, sample_config: GptConfig) 
     initial_context = torch.randint(0, sample_config.vocab_size, (1, 3))
     max_new_tokens = 5
 
-    generated = sample_model.generate(initial_context, max_new_tokens, sample_config.context_length)
+    generated = sample_model.generate_naive(initial_context, max_new_tokens, sample_config.context_length)
 
     # Verify output shape
     expected_length = initial_context.shape[1] + max_new_tokens
@@ -147,7 +147,7 @@ def test_generate_text_simple_batch(sample_model: GptModel, sample_config: GptCo
     initial_context = torch.randint(0, sample_config.vocab_size, (batch_size, 4))
     max_new_tokens = 3
 
-    generated = sample_model.generate(initial_context, max_new_tokens, sample_config.context_length)
+    generated = sample_model.generate_naive(initial_context, max_new_tokens, sample_config.context_length)
 
     expected_shape = (batch_size, initial_context.shape[1] + max_new_tokens)
     assert generated.shape == expected_shape, "Generated output shape should match expected dimensions"
@@ -166,7 +166,7 @@ def test_generate_text_simple_context_cropping(sample_model: GptModel, sample_co
     long_context = torch.randint(0, sample_config.vocab_size, (1, sample_config.context_length + 5))
     max_new_tokens = 2
 
-    generated = sample_model.generate(long_context, max_new_tokens, sample_config.context_length)
+    generated = sample_model.generate_naive(long_context, max_new_tokens, sample_config.context_length)
 
     # Should successfully generate tokens
     assert generated.shape[1] == long_context.shape[1] + max_new_tokens, "Generated length should account for context and new tokens"
@@ -179,7 +179,7 @@ def test_generate_text_simple_cached_with_cache(sample_model: GptModel, sample_c
     initial_context = torch.randint(0, sample_config.vocab_size, (1, 3))
     max_new_tokens = 5
 
-    generated = sample_model.generate2(initial_context, max_new_tokens, sample_config.context_length, use_cache=True)
+    generated = sample_model.generate_cached(initial_context, max_new_tokens, sample_config.context_length, use_cache=True)
 
     # Verify output shape
     expected_length = initial_context.shape[1] + max_new_tokens
@@ -200,7 +200,7 @@ def test_generate_text_simple_cached_without_cache(sample_model: GptModel, sampl
     initial_context = torch.randint(0, sample_config.vocab_size, (1, 3))
     max_new_tokens = 5
 
-    generated = sample_model.generate2(initial_context, max_new_tokens, sample_config.context_length, use_cache=False)
+    generated = sample_model.generate_cached(initial_context, max_new_tokens, sample_config.context_length, use_cache=False)
 
     # Verify output shape
     expected_length = initial_context.shape[1] + max_new_tokens
@@ -221,12 +221,12 @@ def test_generate_text_cached_vs_uncached(sample_config: GptConfig) -> None:
     # Generate with cache
     torch.manual_seed(999)
     model1 = GptModel(sample_config)
-    generated_cached = model1.generate2(initial_context.clone(), max_new_tokens, sample_config.context_length, use_cache=True)
+    generated_cached = model1.generate_cached(initial_context.clone(), max_new_tokens, sample_config.context_length, use_cache=True)
 
     # Generate without cache
     torch.manual_seed(999)
     model2 = GptModel(sample_config)
-    generated_uncached = model2.generate2(initial_context.clone(), max_new_tokens, sample_config.context_length, use_cache=False)
+    generated_uncached = model2.generate_cached(initial_context.clone(), max_new_tokens, sample_config.context_length, use_cache=False)
 
     # Both should produce identical results
     assert torch.equal(generated_cached, generated_uncached), "Cached and uncached generation should produce identical results"
@@ -239,7 +239,7 @@ def test_generate_text_simple_cached_default_context(sample_model: GptModel, sam
     initial_context = torch.randint(0, sample_config.vocab_size, (1, 3))
     max_new_tokens = 3
 
-    generated = sample_model.generate2(initial_context, max_new_tokens, context_size=None, use_cache=True)
+    generated = sample_model.generate_cached(initial_context, max_new_tokens, context_size=None, use_cache=True)
 
     expected_length = initial_context.shape[1] + max_new_tokens
     assert generated.shape == (1, expected_length), "Generated output shape should match expected dimensions"
@@ -394,7 +394,7 @@ def test_integration_with_tokenizer(tokenizer: tiktoken.Encoding) -> None:
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
 
     # Generate text
-    generated = model.generate(encoded_tensor, max_new_tokens=10, context_size=GPT_CONFIG_124M.context_length)
+    generated = model.generate_naive(encoded_tensor, max_new_tokens=10, context_size=GPT_CONFIG_124M.context_length)
 
     # Verify output
     assert generated.shape == (1, len(encoded) + 10), "Generated output shape should match expected dimensions"
@@ -410,7 +410,7 @@ def test_integration_with_tokenizer(tokenizer: tiktoken.Encoding) -> None:
     torch.manual_seed(123)
     model2 = GptModel(GPT_CONFIG_124M)
     model2.eval()
-    generated2 = model2.generate(encoded_tensor, max_new_tokens=10, context_size=GPT_CONFIG_124M.context_length)
+    generated2 = model2.generate_naive(encoded_tensor, max_new_tokens=10, context_size=GPT_CONFIG_124M.context_length)
     assert torch.equal(generated, generated2), "Deterministic generation should produce identical outputs"
 
 
