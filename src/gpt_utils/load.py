@@ -1,9 +1,51 @@
+import json
 import numpy as np
+import os
+import tensorflow as tf
 import torch
 
 from src.config import GptConfig
 from src.gpt import GptModel
+from src.gpt_utils.download import download_gpt2
 from src.transformer import TransformerBlock
+
+
+def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
+
+    # Initialize parameters dictionary with empty blocks for each layer
+    params = {"blocks": [{} for _ in range(settings["n_layer"])]}
+
+    # Iterate over each variable in the checkpoint
+    for name, _ in tf.train.list_variables(ckpt_path):
+        # Load the variable and remove singleton dimensions
+        variable_array = np.squeeze(tf.train.load_variable(ckpt_path, name))
+
+        # Process the variable name to extract relevant parts
+        variable_name_parts = name.split("/")[1:]  # Skip the 'model/' prefix
+
+        # Identify the target dictionary for the variable
+        target_dict = params
+        if variable_name_parts[0].startswith("h"):
+            layer_number = int(variable_name_parts[0][1:])
+            target_dict = params["blocks"][layer_number]
+
+        # Recursively access or create nested dictionaries
+        for key in variable_name_parts[1:-1]:
+            target_dict = target_dict.setdefault(key, {})
+
+        # Assign the variable array to the last key
+        last_key = variable_name_parts[-1]
+        target_dict[last_key] = variable_array
+
+    return params
+
+
+def _load_gpt2_params_and_settings(model_size: str, models_dir: str) -> tuple[dict, dict]:
+    model_dir = download_gpt2(model_size, models_dir)
+    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
+    settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
+    params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
+    return params, settings
 
 
 def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
@@ -12,7 +54,9 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(right))
 
 
-def load_weights_into_gpt(config: GptConfig, params: dict[str, np.ndarray]) -> GptModel:
+def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
+    params, _ = _load_gpt2_params_and_settings(model_size, models_dir)
+
     gpt = GptModel(config)
     gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])
     gpt.tok_emb.weight = _assign(gpt.tok_emb.weight, params["wte"])

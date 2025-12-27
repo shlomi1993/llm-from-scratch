@@ -4,6 +4,10 @@ import sys
 import tiktoken
 import torch
 
+from torch.utils.data import DataLoader, TensorDataset
+
+from src.config import GptConfig
+from src.gpt import GptModel
 from src.utils import get_device
 
 
@@ -34,3 +38,18 @@ def the_verdict_dataset() -> str:
     with open("datasets/the-verdict.txt", "r", encoding="utf-8") as f:
         text = f.read()
     return text
+
+@pytest.fixture
+def dummy_loader():
+    batch_size = 2
+    seq_len = 3
+    n_batches = 2
+    x = torch.randint(0, 10, (n_batches * batch_size, seq_len))
+    y = x.clone()
+    dataset = TensorDataset(x, y)
+    return DataLoader(dataset, batch_size=batch_size)
+
+@pytest.fixture
+def dummy_model():
+    config = GptConfig(vocab_size=10, context_length=3, emb_dim=4, n_heads=2, n_layers=1, drop_rate=0.0)
+    return GptModel(config)
