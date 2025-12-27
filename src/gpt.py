@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from torch import Tensor
 
-from .configurations import GptConfig
+from .config import GptConfig
 from .normalization import LayerNorm
 from .transformer import TransformerBlock
 

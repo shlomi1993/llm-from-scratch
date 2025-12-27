@@ -3,7 +3,7 @@ import time
 import tiktoken
 import torch
 
-from src.configurations import GptConfig
+from src.config import GptConfig
 from src.gpt import GptModel
 
 

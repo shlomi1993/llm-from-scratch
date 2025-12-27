@@ -2,7 +2,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.configurations import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
+from src.config import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
 from src.transformer import TransformerBlock
 
 

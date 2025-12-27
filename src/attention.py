@@ -2,7 +2,7 @@ import torch
 
 from torch import nn, Tensor
 
-from .configurations import GptConfig
+from .config import GptConfig
 
 
 class SelfAttention(nn.Module):
