@@ -2,11 +2,13 @@ import tiktoken
 import torch
 
 
-def get_device() -> torch.device:
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
-        return torch.device("mps")
+def get_device(device_arg: str = "auto") -> torch.device:
+    if device_arg != "auto":
+        return torch.device(device_arg)
     if torch.cuda.is_available():
         return torch.device("cuda")
+    if torch.backends.mps.is_available():  # Need 'and torch.backends.mps.is_built()' ?
+        return torch.device("mps")
     return torch.device("cpu")
 
 

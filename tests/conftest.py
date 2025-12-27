@@ -49,7 +49,21 @@ def dummy_loader():
     dataset = TensorDataset(x, y)
     return DataLoader(dataset, batch_size=batch_size)
 
+
 @pytest.fixture
-def dummy_model():
-    config = GptConfig(vocab_size=10, context_length=3, emb_dim=4, n_heads=2, n_layers=1, drop_rate=0.0)
-    return GptModel(config)
+def sample_config() -> GptConfig:
+    return GptConfig(
+        emb_dim=64,
+        n_layers=2,
+        n_heads=4,
+        vocab_size=1000,
+        context_length=32,
+        drop_rate=0.1,
+        qkv_bias=False
+    )
+
+
+@pytest.fixture
+def sample_model(sample_config: GptConfig) -> GptModel:
+    torch.manual_seed(42)
+    return GptModel(sample_config)
