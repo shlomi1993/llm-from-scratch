@@ -21,11 +21,10 @@ from src.gpt_utils import (
     train_model
 )
 from src.utils import text_to_token_ids, token_ids_to_text
-from test_gpt import test_forward_pass_basic
 
 
-@pytest.mark.skip(reason="Downloads files from the internet takes time, run manually when needed")
-def test_download_and_load_gpt2_124M():
+@pytest.mark.skip(reason="Downloading files from the internet takes time; run manually when needed")
+def test_download_and_load_gpt2_124m():
     model_size = "124M"
     temp_dir = tempfile.mkdtemp()
     try:
@@ -36,8 +35,20 @@ def test_download_and_load_gpt2_124M():
             fpath = os.path.join(model_dir, fname)
             assert os.path.exists(fpath), f"File missing: {fpath}"
 
-        gpt = load_weights_into_gpt(model_size, temp_dir, GPT_CONFIG_124M)
-        test_forward_pass_basic(gpt, GPT_CONFIG_124M, batch_size=1, seq_len=1)
+        config = GptConfig(emb_dim=768, n_layers=12, n_heads=12, qkv_bias=True)
+
+        gpt = load_weights_into_gpt(model_size, temp_dir, config)
+        gpt.eval()
+
+        batch_size = 2
+        seq_len = 8
+        input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len))
+        output = gpt(input_ids)
+
+        expected_shape = (batch_size, seq_len, config.vocab_size)
+        assert output.shape == expected_shape, f"Failed for batch_size={batch_size}, seq_len={seq_len}"
+        assert torch.isfinite(output).all(), "Output should contain only finite values"
+        assert not torch.isnan(output).any(), "Output should not contain NaN values"
 
     finally:
         shutil.rmtree(temp_dir)
