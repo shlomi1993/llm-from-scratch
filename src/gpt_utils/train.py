@@ -5,9 +5,9 @@ import tiktoken
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from .dataloader import GptDataloaderV1
-from .gpt import GptModel
-from .utils import text_to_token_ids, token_ids_to_text
+from src.dataloader import GptDataloaderV1
+from src.gpt import GptModel
+from src.utils import text_to_token_ids, token_ids_to_text
 
 
 def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: torch.device) -> Tensor:

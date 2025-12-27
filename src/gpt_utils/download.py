@@ -1,5 +1,4 @@
 import os
-import json
 import numpy as np
 import requests
 import tensorflow as tf
@@ -51,43 +50,13 @@ def _download_file(url: str, destination: str) -> None:
     print(f"Successfully downloaded {destination}")
 
 
-def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
-
-    # Initialize parameters dictionary with empty blocks for each layer
-    params = {"blocks": [{} for _ in range(settings["n_layer"])]}
-
-    # Iterate over each variable in the checkpoint
-    for name, _ in tf.train.list_variables(ckpt_path):
-        # Load the variable and remove singleton dimensions
-        variable_array = np.squeeze(tf.train.load_variable(ckpt_path, name))
-
-        # Process the variable name to extract relevant parts
-        variable_name_parts = name.split("/")[1:]  # Skip the 'model/' prefix
-
-        # Identify the target dictionary for the variable
-        target_dict = params
-        if variable_name_parts[0].startswith("h"):
-            layer_number = int(variable_name_parts[0][1:])
-            target_dict = params["blocks"][layer_number]
-
-        # Recursively access or create nested dictionaries
-        for key in variable_name_parts[1:-1]:
-            target_dict = target_dict.setdefault(key, {})
-
-        # Assign the variable array to the last key
-        last_key = variable_name_parts[-1]
-        target_dict[last_key] = variable_array
-
-    return params
-
-
 def _validate_model_size(model_size: str) -> None:
     allowed_sizes = ("124M", "355M", "774M", "1558M")
     if model_size not in allowed_sizes:
         raise ValueError(f"Model size not in {allowed_sizes}")
 
 
-def download_and_load_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict]:
+def download_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict]:
     _validate_model_size(model_size)
 
     # Make model directory
@@ -105,10 +74,5 @@ def download_and_load_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict
             print(f"\033[93mWARNING\033[0m: Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
             _download_file(backup_url, file_path)
 
-
-    # Load settings and params
-    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
-    params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
-
-    return settings, params
+    # Return model size directory
+    return model_dir

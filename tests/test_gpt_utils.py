@@ -1,12 +1,55 @@
+import os
 import pytest
+import shutil
+import tempfile
 import tiktoken
 import torch
 
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.gpt import GptModel
 from src.config import GPT_CONFIG_124M, GptConfig
-from src.gpt_train import text_to_token_ids, token_ids_to_text, calc_loss_batch, calc_loss_loader, train_test_split
+from src.gpt import GptModel
+from src.gpt_utils import (
+    FILES_TO_DOWNLOAD,
+    download_gpt2,
+    load_weights_into_gpt,
+    calc_loss_batch,
+    calc_loss_loader,
+    train_test_split,
+    evaluate_model,
+    generate_and_print_sample,
+    train_model
+)
+from src.utils import text_to_token_ids, token_ids_to_text
+from test_gpt import test_forward_pass_basic
+
+
+# @pytest.mark.skip(reason="Downloads files from the internet takes time, run manually when needed")
+def test_download_and_load_gpt2_124M():
+    model_size = "124M"
+    temp_dir = tempfile.mkdtemp()
+    try:
+        model_dir = download_gpt2(model_size, temp_dir)
+
+        # Check that required files are downloaded
+        for fname in FILES_TO_DOWNLOAD:
+            fpath = os.path.join(model_dir, fname)
+            assert os.path.exists(fpath), f"File missing: {fpath}"
+
+        gpt = load_weights_into_gpt(model_size, temp_dir, GPT_CONFIG_124M)
+        test_forward_pass_basic(gpt, GPT_CONFIG_124M, batch_size=1, seq_len=1)
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+def test_download_and_load_gpt2_invalid_size_raises():
+    temp_dir = tempfile.mkdtemp()
+    try:
+        with pytest.raises(ValueError):
+            download_gpt2("invalid_size", temp_dir)
+    finally:
+        shutil.rmtree(temp_dir)
 
 
 def test_text_to_token_ids_and_token_ids_to_text(tokenizer):
@@ -105,4 +148,33 @@ def test_train_test_split(the_verdict_dataset: str, tokenizer: tiktoken.Encoding
         f"Val loader size mismatch. Expected {expected_val_batches}, got {len(val_loader)}"
 
 
-# TODO: add tests for evaluate_model, generate_and_print_sample and train_model_simple
+def test_evaluate_model_runs(dummy_model: GptModel, dummy_loader: DataLoader, device: torch.device):
+    model = dummy_model
+    loader = dummy_loader
+    model.to(device)
+    train_loss, val_loss = evaluate_model(model, loader, loader, device, eval_iter=1)
+    assert isinstance(train_loss, float), f"Train loss should be float, got {type(train_loss)}"
+    assert isinstance(val_loss, float), f"Val loss should be float, got {type(val_loss)}"
+
+
+@pytest.mark.parametrize("start_context", ["Hello world", "Test"])
+def test_generate_and_print_sample_runs(dummy_model: GptModel, tokenizer: tiktoken.Encoding, device: torch.device, capsys, start_context: str):
+    model = dummy_model
+    model.to(device)
+    generate_and_print_sample(model, tokenizer, device, start_context=start_context)
+    out = capsys.readouterr().out
+    assert isinstance(out, str) and len(out) > 0, "Generated output should be non-empty string"
+
+
+def test_train_model_runs(dummy_model: GptModel, tokenizer: tiktoken.Encoding, dummy_loader: DataLoader, device: torch.device):
+    model = dummy_model
+    loader = dummy_loader
+    model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    train_losses, val_losses, tokens_seen = train_model(
+        model, loader, loader, optimizer, device,
+        n_epochs=1, eval_freq=1, eval_iter=1, start_context="Hello world", tokenizer=tokenizer
+    )
+    assert isinstance(train_losses, list), f"train_losses should be list, got {type(train_losses)}"
+    assert isinstance(val_losses, list), f"val_losses should be list, got {type(val_losses)}"
+    assert isinstance(tokens_seen, list), f"tokens_seen should be list, got {type(tokens_seen)}"
