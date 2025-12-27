@@ -24,7 +24,7 @@ from src.utils import text_to_token_ids, token_ids_to_text
 from test_gpt import test_forward_pass_basic
 
 
-# @pytest.mark.skip(reason="Downloads files from the internet takes time, run manually when needed")
+@pytest.mark.skip(reason="Downloads files from the internet takes time, run manually when needed")
 def test_download_and_load_gpt2_124M():
     model_size = "124M"
     temp_dir = tempfile.mkdtemp()
@@ -148,31 +148,28 @@ def test_train_test_split(the_verdict_dataset: str, tokenizer: tiktoken.Encoding
         f"Val loader size mismatch. Expected {expected_val_batches}, got {len(val_loader)}"
 
 
-def test_evaluate_model_runs(dummy_model: GptModel, dummy_loader: DataLoader, device: torch.device):
-    model = dummy_model
+def test_evaluate_model_runs(sample_model: GptModel, dummy_loader: DataLoader, device: torch.device):
     loader = dummy_loader
-    model.to(device)
-    train_loss, val_loss = evaluate_model(model, loader, loader, device, eval_iter=1)
+    sample_model.to(device)
+    train_loss, val_loss = evaluate_model(sample_model, loader, loader, device, eval_iter=1)
     assert isinstance(train_loss, float), f"Train loss should be float, got {type(train_loss)}"
     assert isinstance(val_loss, float), f"Val loss should be float, got {type(val_loss)}"
 
 
 @pytest.mark.parametrize("start_context", ["Hello world", "Test"])
-def test_generate_and_print_sample_runs(dummy_model: GptModel, tokenizer: tiktoken.Encoding, device: torch.device, capsys, start_context: str):
-    model = dummy_model
-    model.to(device)
-    generate_and_print_sample(model, tokenizer, device, start_context=start_context)
+def test_generate_and_print_sample_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, device: torch.device, capsys, start_context: str):
+    sample_model.to(device)
+    generate_and_print_sample(sample_model, tokenizer, device, start_context=start_context)
     out = capsys.readouterr().out
     assert isinstance(out, str) and len(out) > 0, "Generated output should be non-empty string"
 
 
-def test_train_model_runs(dummy_model: GptModel, tokenizer: tiktoken.Encoding, dummy_loader: DataLoader, device: torch.device):
-    model = dummy_model
+def test_train_model_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, dummy_loader: DataLoader, device: torch.device):
     loader = dummy_loader
-    model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    sample_model.to(device)
+    optimizer = torch.optim.AdamW(sample_model.parameters(), lr=1e-3)
     train_losses, val_losses, tokens_seen = train_model(
-        model, loader, loader, optimizer, device,
+        sample_model, loader, loader, optimizer, device,
         n_epochs=1, eval_freq=1, eval_iter=1, start_context="Hello world", tokenizer=tokenizer
     )
     assert isinstance(train_losses, list), f"train_losses should be list, got {type(train_losses)}"

@@ -25,31 +25,6 @@ def _model_size_mb_from_params(total_params):
     return round(total_params * 4 / 1024 / 1024, 2)
 
 
-@pytest.fixture
-def sample_config() -> GptConfig:
-    """
-    Create a small test configuration for faster testing.
-    """
-    return GptConfig(
-        emb_dim=64,
-        n_layers=2,
-        n_heads=4,
-        vocab_size=1000,
-        context_length=32,
-        drop_rate=0.1,
-        qkv_bias=False
-    )
-
-
-@pytest.fixture
-def sample_model(sample_config: GptConfig) -> GptModel:
-    """
-    Create a GptModel instance for testing.
-    """
-    torch.manual_seed(42)
-    return GptModel(sample_config)
-
-
 @pytest.mark.parametrize("batch_size, seq_len", [(1, 1), (1, 10), (2, 5), (4, 32)])
 def test_forward_pass_basic(sample_model: GptModel, sample_config: GptConfig, batch_size: int, seq_len: int) -> None:
     """
