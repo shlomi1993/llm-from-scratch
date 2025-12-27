@@ -103,3 +103,6 @@ def test_train_test_split(the_verdict_dataset: str, tokenizer: tiktoken.Encoding
 
     assert len(val_loader) == expected_val_batches, \
         f"Val loader size mismatch. Expected {expected_val_batches}, got {len(val_loader)}"
+
+
+# TODO: add tests for evaluate_model, generate_and_print_sample and train_model_simple

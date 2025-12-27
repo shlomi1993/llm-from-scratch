@@ -381,7 +381,7 @@ def test_device_compatibility(sample_model: GptModel, sample_config: GptConfig) 
         assert output_cuda.device.type == "cuda", "Output should be on CUDA device"
 
 
-def test_integration_with_tokenizer() -> None:
+def test_integration_with_tokenizer(tokenizer: tiktoken.Encoding) -> None:
     """
     Test GPT model with actual tokenizer for end-to-end generation.
     """
@@ -390,7 +390,6 @@ def test_integration_with_tokenizer() -> None:
     model.eval()
 
     start_context = "Hello, I am"
-    tokenizer = tiktoken.get_encoding("gpt2")
     encoded = tokenizer.encode(start_context)
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
 

@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from .configurations import GptConfig
 from .dataloader import GptDataloaderV1
 from .gpt import GptModel
+from .utils import get_device  
 
 
 def text_to_token_ids(text: str, tokenizer: tiktoken.Encoding) -> Tensor:
@@ -56,7 +57,7 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
     return train_loader, val_loader
 
 
-def evaluate_model(model, train_loader, val_loader, device, eval_iter):
+def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: torch.device, eval_iter: int) -> tuple[float, float]:
     model.eval()
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
@@ -65,32 +66,30 @@ def evaluate_model(model, train_loader, val_loader, device, eval_iter):
     return train_loss, val_loss
 
 
-def generate_and_print_sample(model, tokenizer, device, start_context):
+def generate_and_print_sample(model: GptModel, tokenizer: tiktoken.Encoding, device: torch.device, start_context: str) -> None:
     model.eval()
-    context_size = model.pos_emb.weight.shape[0]
     encoded = text_to_token_ids(start_context, tokenizer).to(device)
     with torch.no_grad():
-        token_ids = model.generate_text(
-            idx=encoded,
-            max_new_tokens=50, context_size=context_size
-        )
+        token_ids = model.generate(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
         decoded_text = token_ids_to_text(token_ids, tokenizer)
         print(decoded_text.replace("\n", " "))  # Compact print format
     model.train()
 
 
-def train_model_simple(model, train_loader, val_loader, optimizer, device, num_epochs,
-                       eval_freq, eval_iter, start_context, tokenizer):
+def train_model_simple(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
+                       device: torch.device, n_epochs: int, eval_freq: int, eval_iter: int, start_context: str,
+                       tokenizer: tiktoken.Encoding) -> tuple[list[float], list[float], list[int]]:
     # Initialize lists to track losses and tokens seen
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen = 0
     global_step = -1
 
     # Main training loop
-    for epoch in range(num_epochs):
+    for epoch in range(1, n_epochs + 1):
         model.train()  # Set model to training mode
 
         for input_batch, target_batch in train_loader:
+            input_batch: Tensor
             optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
             loss = calc_loss_batch(input_batch, target_batch, model, device)
             loss.backward()  # Calculate loss gradients
@@ -100,23 +99,19 @@ def train_model_simple(model, train_loader, val_loader, optimizer, device, num_e
 
             # Optional evaluation step
             if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_model(
-                    model, train_loader, val_loader, device, eval_iter)
+                train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter)
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 track_tokens_seen.append(tokens_seen)
-                print(f"Ep {epoch+1} (Step {global_step:06d}): "
-                      f"Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                print(f"Epoch {epoch} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Print a sample text after each epoch
-        generate_and_print_sample(
-            model, tokenizer, device, start_context
-        )
+        generate_and_print_sample(model, tokenizer, device, start_context)
 
     return train_losses, val_losses, track_tokens_seen
 
 
-def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
+def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: list[float], val_losses: list[float]) -> None:
     fig, ax1 = plt.subplots()
 
     # Plot training and validation loss against epochs
@@ -132,96 +127,4 @@ def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
     ax2.set_xlabel("Tokens seen")
 
     fig.tight_layout()  # Adjust layout to make room
-    # plt.show()
-
-
-def main(config: GptConfig, settings):
-
-    torch.manual_seed(123)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    ##############################
-    # Download data if necessary
-    ##############################
-
-    file_path = "the-verdict.txt"
-    url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
-
-    if not os.path.exists(file_path):
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        text_data = response.text
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(text_data)
-    else:
-        with open(file_path, "r", encoding="utf-8") as file:
-            text_data = file.read()
-    ##############################
-    # Initialize model
-    ##############################
-
-    model = GptModel(config)
-    model.to(device)  # no assignment model = model.to(device) necessary for nn.Module classes
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=settings["learning_rate"], weight_decay=settings["weight_decay"]
-    )
-
-    ##############################
-    # Set up dataloaders
-    ##############################
-
-    train_loader, val_loader = train_test_split(text_data, config.context_length, settings["batch_size"], train_ratio=0.90)
-
-    ##############################
-    # Train model
-    ##############################
-
-    tokenizer = tiktoken.get_encoding("gpt2")
-
-    train_losses, val_losses, tokens_seen = train_model_simple(
-        model, train_loader, val_loader, optimizer, device,
-        num_epochs=settings["num_epochs"], eval_freq=5, eval_iter=1,
-        start_context="Every effort moves you", tokenizer=tokenizer
-    )
-
-    return train_losses, val_losses, tokens_seen, model
-
-
-if __name__ == "__main__":
-
-    GPT_CONFIG_124M = {
-        "vocab_size": 50257,    # Vocabulary size
-        "context_length": 256,  # Shortened context length (orig: 1024)
-        "emb_dim": 768,         # Embedding dimension
-        "n_heads": 12,          # Number of attention heads
-        "n_layers": 12,         # Number of layers
-        "drop_rate": 0.1,       # Dropout rate
-        "qkv_bias": False       # Query-key-value bias
-    }
-
-    OTHER_SETTINGS = {
-        "learning_rate": 5e-4,
-        "num_epochs": 10,
-        "batch_size": 2,
-        "weight_decay": 0.1
-    }
-
-    ###########################
-    # Initiate training
-    ###########################
-
-    train_losses, val_losses, tokens_seen, model = main(GPT_CONFIG_124M, OTHER_SETTINGS)
-
-    ###########################
-    # After training
-    ###########################
-
-    # Plot results
-    epochs_tensor = torch.linspace(0, OTHER_SETTINGS["num_epochs"], len(train_losses))
-    plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
-    plt.savefig("loss.pdf")
-
-    # Save and load model
-    torch.save(model.state_dict(), "model.pth")
-    model = GptModel(GPT_CONFIG_124M)
-    model.load_state_dict(torch.load("model.pth", weights_only=True))
+    plt.show()

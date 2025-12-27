@@ -31,13 +31,10 @@ def test_tiktoken_version():
         f"tiktoken version {tiktoken_version} is less than required 0.5.1"
 
 
-def test_dataloader_functionality():
+def test_dataloader_functionality(the_verdict_dataset: str):
     """
     Test that the dataloader creates embeddings with expected shape torch.Size([8, 4, 256])
     """
-    with open("datasets/the-verdict.txt", "r", encoding="utf-8") as f:
-        raw_text: str = f.read()
-
     vocab_size = 50257
     output_dim = 256
     context_length = 1024
@@ -47,7 +44,7 @@ def test_dataloader_functionality():
 
     batch_size = 8
     max_length = 4
-    dataloader = GptDataloaderV1(raw_text, batch_size, max_length, max_length)
+    dataloader = GptDataloaderV1(the_verdict_dataset, batch_size, max_length, max_length)
 
     for batch in dataloader:
         x, y = batch
@@ -60,7 +57,7 @@ def test_dataloader_functionality():
     assert input_embeddings.shape == expected_shape, f"Expected shape {expected_shape}, but got {input_embeddings.shape}"
 
 
-def test_gpt_dataset_and_dataloader_embedding_shape() -> None:
+def test_gpt_dataset_and_dataloader_embedding_shape(tokenizer: tiktoken.Encoding) -> None:
     raw_text = (
         "Hello world. This is a small test text for GPT dataset. "
         "We want enough tokens to form several sequences. "
@@ -73,7 +70,6 @@ def test_gpt_dataset_and_dataloader_embedding_shape() -> None:
         "Adding more text so we can form enough batches for batch_size=8. "
     )
 
-    tokenizer = tiktoken.get_encoding("gpt2")
     encoded_text = tokenizer.encode(raw_text)
 
     max_length = 4
