@@ -33,12 +33,15 @@ def test_token_ids_to_text_with_model(tokenizer: tiktoken.Encoding):
 def test_calc_loss_batch(device: torch.device):
     torch.manual_seed(123)
     model = GptModel(GPT_CONFIG_124M)
+    model.to(device)
     model.eval()
 
     inputs = torch.tensor([[16833, 3626, 6100],   # ["every effort moves",
                            [40,    1107, 588]])   #  "I really like"]
     targets = torch.tensor([[3626, 6100, 345  ],  # [" effort moves you",
                             [1107,  588, 11311]]) #  " really like chocolate"]
+    inputs = inputs.to(device)
+    targets = targets.to(device)
 
     with torch.no_grad():
         loss = calc_loss_batch(inputs, targets, model, device)
@@ -50,18 +53,20 @@ def test_calc_loss_loader(device: torch.device):
     torch.manual_seed(123)
     config = GptConfig(vocab_size=10, context_length=3, emb_dim=4, n_heads=2, n_layers=1, drop_rate=0.0, qkv_bias=False)
     model = GptModel(config)
+    model.to(device)
 
     # Random input and target tokens
     batch_size = 2
     n_batches = 3
-    inputs = torch.randint(0, 10, (n_batches * batch_size, 3))
-    targets = inputs.clone()
+    inputs = torch.randint(0, 10, (n_batches * batch_size, 3)).to(device)
+    targets = inputs.clone().to(device)
     dataset = TensorDataset(inputs, targets)
     loader = DataLoader(dataset, batch_size=batch_size)
 
     avg_loss = calc_loss_loader(loader, model, device)
     assert isinstance(avg_loss, float) and avg_loss > 0, f"Average loss should be positive float, got {avg_loss}"
 
+    # For empty loader, device doesn't matter
     avg_loss_empty = calc_loss_loader(DataLoader([]), model, device)
     assert avg_loss_empty != avg_loss_empty, "Average loss on empty loader should be NaN"
 
