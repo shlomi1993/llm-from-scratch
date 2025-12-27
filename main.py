@@ -123,6 +123,11 @@ if __name__ == "__main__":
     main()
 
 
+# TODO Improve the following tests
+# test_evaluate_model_runs
+# test_generate_and_print_sample_runs
+# test_train_model_runs
+# And the whole test_main.py module
 
 
 ### TODO GPT TRAIN - TO INTEGRATE IN THE MAIN ABOVE ###
