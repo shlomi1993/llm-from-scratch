@@ -372,13 +372,13 @@ def test_device_compatibility(sample_model: GptModel, sample_config: GptConfig) 
     """
     input_ids = torch.randint(0, sample_config.vocab_size, (1, 5))
     output_cpu = sample_model(input_ids)
-    assert output_cpu.device == torch.device('cpu'), "Output should be on CPU"
+    assert output_cpu.device == torch.device("cpu"), "Output should be on CPU"
 
     if torch.cuda.is_available():
         sample_model = sample_model.cuda()
         input_ids = input_ids.cuda()
         output_cuda = sample_model(input_ids)
-        assert output_cuda.device.type == 'cuda', "Output should be on CUDA device"
+        assert output_cuda.device.type == "cuda", "Output should be on CUDA device"
 
 
 def test_integration_with_tokenizer() -> None:
