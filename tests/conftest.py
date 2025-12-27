@@ -4,6 +4,8 @@ import sys
 import tiktoken
 import torch
 
+from src.utils import get_device
+
 
 # Add the root directory to Python path for tools package
 root_path = os.path.join(os.path.dirname(__file__), '..')
@@ -19,11 +21,7 @@ if src_path not in sys.path:
 
 @pytest.fixture(scope="session")
 def device() -> torch.device:
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
-        return torch.device("mps")
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
+    return get_device()
 
 
 @pytest.fixture(scope="session")
