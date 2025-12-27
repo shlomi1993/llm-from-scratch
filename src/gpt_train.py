@@ -1,27 +1,13 @@
 import matplotlib.pyplot as plt
-import os
-import requests
 import torch
 import tiktoken
 
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from .configurations import GptConfig
 from .dataloader import GptDataloaderV1
 from .gpt import GptModel
-from .utils import get_device  
-
-
-def text_to_token_ids(text: str, tokenizer: tiktoken.Encoding) -> Tensor:
-    encoded = tokenizer.encode(text)
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)  # add batch dimension
-    return encoded_tensor
-
-
-def token_ids_to_text(token_ids: Tensor, tokenizer: tiktoken.Encoding) -> str:
-    flat = token_ids.squeeze(0)  # remove batch dimension
-    return tokenizer.decode(flat.tolist())
+from .utils import text_to_token_ids, token_ids_to_text
 
 
 def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: torch.device) -> Tensor:
@@ -70,15 +56,16 @@ def generate_and_print_sample(model: GptModel, tokenizer: tiktoken.Encoding, dev
     model.eval()
     encoded = text_to_token_ids(start_context, tokenizer).to(device)
     with torch.no_grad():
-        token_ids = model.generate(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
+        token_ids = model.generate_naive(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
         decoded_text = token_ids_to_text(token_ids, tokenizer)
         print(decoded_text.replace("\n", " "))  # Compact print format
     model.train()
 
 
-def train_model_simple(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
-                       device: torch.device, n_epochs: int, eval_freq: int, eval_iter: int, start_context: str,
-                       tokenizer: tiktoken.Encoding) -> tuple[list[float], list[float], list[int]]:
+def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
+                device: torch.device, n_epochs: int, eval_freq: int, eval_iter: int, start_context: str,
+                tokenizer: tiktoken.Encoding) -> tuple[list[float], list[float], list[int]]:
+
     # Initialize lists to track losses and tokens seen
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen = 0

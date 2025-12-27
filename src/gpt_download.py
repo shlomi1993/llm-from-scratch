@@ -21,7 +21,7 @@ FILES_TO_DOWNLOAD = [
 ]
 
 
-def download_file(url: str, destination: str) -> None:
+def _download_file(url: str, destination: str) -> None:
 
     # Send a GET request to download the file
     response = requests.get(url, stream=True, timeout=60)
@@ -52,7 +52,7 @@ def download_file(url: str, destination: str) -> None:
     print(f"Successfully downloaded {destination}")
 
 
-def load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
+def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
 
     # Initialize parameters dictionary with empty blocks for each layer
     params = {"blocks": [{} for _ in range(settings["n_layer"])]}
@@ -82,14 +82,14 @@ def load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str
     return params
 
 
-def validate_model_size(model_size: str) -> None:
+def _validate_model_size(model_size: str) -> None:
     allowed_sizes = ("124M", "355M", "774M", "1558M")
     if model_size not in allowed_sizes:
         raise ValueError(f"Model size not in {allowed_sizes}")
 
 
 def download_and_load_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict]:
-    validate_model_size(model_size)
+    _validate_model_size(model_size)
 
     # Make model directory
     model_dir = os.path.join(models_dir, model_size)
@@ -101,15 +101,15 @@ def download_and_load_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict
         backup_url = os.path.join(BACKUP_DOWNLOAD_URL, model_size, filename)
         file_path = os.path.join(model_dir, filename)
         try:
-            download_file(file_url, file_path)
+            _download_file(file_url, file_path)
         except requests.exceptions.RequestException:
             print(f"\033[93mWARNING\033[0m: Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
-            download_file(backup_url, file_path)
+            _download_file(backup_url, file_path)
 
 
     # Load settings and params
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
-    params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
+    params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
 
     return settings, params

@@ -90,7 +90,7 @@ def main() -> None:
 
     # Generate text using appropriate method
     with torch.no_grad():
-        token_ids = model.generate2(encoded_tensor, args.max_new_tokens, config.context_length, args.use_cache)
+        token_ids = model.generate_cached(encoded_tensor, args.max_new_tokens, config.context_length, args.use_cache)
 
     # End timing if requested
     if args.measure_time:
@@ -193,3 +193,51 @@ if __name__ == "__main__":
 #     torch.save(model.state_dict(), "model.pth")
 #     model = GptModel(GPT_CONFIG_124M_256CONT)
 #     model.load_state_dict(torch.load("model.pth", weights_only=True))
+
+
+### TODO GPT GENERATE - TO INTEGRATE IN THE MAIN ABOVE ###
+
+# def main():
+#     parser = argparse.ArgumentParser(description="Generate text with a pretrained GPT-2 model.")
+#     parser.add_argument("--model-size", default="124M", choices=["124M", "355M", "774M", "1558M"], help="Size of the GPT-2 model to use.")
+#     parser.add_argument("--prompt", required=True, help="Prompt text used to seed the generation.")
+#     parser.add_argument("--device", default="auto", choices=["cpu", "cuda", "mps", "auto"], help="Device for running inference, e.g., cpu, cuda, mps, or auto.")
+#     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
+#     args = parser.parse_args()
+
+#     device = torch.device(args.device) if args.device != "auto" else get_device()
+#     torch.manual_seed(args.seed)
+#     print("PyTorch:", torch.__version__)
+#     print("Device:", device)
+#     print("Model size:", args.model_size)
+#     print("Seed:", args.seed)
+#     print("Prompt:", args.prompt)
+
+#     config = {
+#         "124M": GPT_CONFIG_124M,
+#         "355M": GPT_CONFIG_355M,
+#         "774M": GPT_CONFIG_774M,
+#         "1558M": GPT_CONFIG_1558M
+#     }[args.model_size]
+
+#     _, params = download_and_load_gpt2(model_size=args.model_size, models_dir="gpt2")
+
+#     gpt = load_weights_into_gpt(config, params)
+#     gpt.to(device)
+#     gpt.eval()
+
+#     tokenizer = tiktoken.get_encoding("gpt2")
+
+#     token_ids = gpt.generate(
+#         idx=text_to_token_ids(args.prompt, tokenizer).to(device),
+#         max_new_tokens=25,
+#         context_size=config.context_length,
+#         top_k=50,
+#         temperature=1.0
+#     )
+
+#     print("Output text:\n", token_ids_to_text(token_ids, tokenizer))
+
+
+# if __name__ == "__main__":
+#     main()
