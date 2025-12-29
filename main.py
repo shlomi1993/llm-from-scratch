@@ -133,8 +133,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# TODO Improve the tests: test_evaluate_model_runs, test_generate_and_print_sample_runs, test_train_model_runs
-# TODO Add tests for main.py
-

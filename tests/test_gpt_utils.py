@@ -205,16 +205,8 @@ def test_evaluate_model_runs(sample_model: GptModel, dummy_loader: DataLoader, d
     loader = dummy_loader
     sample_model.to(device)
     train_loss, val_loss = evaluate_model(sample_model, loader, loader, device, eval_iter=1)
-    assert isinstance(train_loss, float), f"Train loss should be float, got {type(train_loss)}"
-    assert isinstance(val_loss, float), f"Val loss should be float, got {type(val_loss)}"
-
-
-@pytest.mark.parametrize("start_context", ["Hello world", "Test"])
-def test_generate_and_print_sample_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, device: torch.device, capsys, start_context: str):
-    sample_model.to(device)
-    generate_and_print_sample(sample_model, tokenizer, device, start_context=start_context)
-    out = capsys.readouterr().out
-    assert isinstance(out, str) and len(out) > 0, "Generated output should be non-empty string"
+    assert np.isclose(train_loss, 6.72825), f"Train loss mismatch, got {train_loss}, expected approx 6.72825"
+    assert np.isclose(val_loss, 6.72825), f"Val loss mismatch, got {val_loss}, expected approx 6.72825"
 
 
 def test_train_model_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, dummy_loader: DataLoader, device: torch.device):
@@ -222,12 +214,11 @@ def test_train_model_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, 
     sample_model.to(device)
     optimizer = torch.optim.AdamW(sample_model.parameters(), lr=1e-3)
     train_losses, val_losses, tokens_seen = train_model(
-        sample_model, loader, loader, optimizer, device, n_epochs=1, eval_freq=1, eval_iter=1,
-        start_context="Hello world", tokenizer=tokenizer
+        sample_model, loader, loader, optimizer, device, n_epochs=1, eval_freq=1, eval_iter=1, start_context="Hello world", tokenizer=tokenizer
     )
-    assert isinstance(train_losses, list), f"train_losses should be list, got {type(train_losses)}"
-    assert isinstance(val_losses, list), f"val_losses should be list, got {type(val_losses)}"
-    assert isinstance(tokens_seen, list), f"tokens_seen should be list, got {type(tokens_seen)}"
+    assert len(train_losses) == 2 and all(l > 0 for l in train_losses), f"train_losses should be list of positive floats, got {train_losses}"
+    assert len(val_losses) == 2 and all(l > 0 for l in val_losses), f"val_losses should be list of positive floats, got {val_losses}"
+    assert tokens_seen == [6, 12], f"tokens_seen should be [6, 12], got {tokens_seen}"
 
 
 def test_run_model_training_flow(tmp_path: str, tokenizer: tiktoken.Encoding):

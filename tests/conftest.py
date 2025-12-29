@@ -66,7 +66,7 @@ def sample_config() -> GptConfig:
 
 @pytest.fixture
 def sample_model(sample_config: GptConfig) -> GptModel:
-    torch.manual_seed(42)
+    torch.manual_seed(123)
     return GptModel(sample_config)
 
 
