@@ -129,7 +129,7 @@ class TrainingResults:
     saved_plot_path: str
 
 
-def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-4, n_epochs: int = 10,
+def run_model_training_flow(config: GptConfig, training_set_path: str, tokenizer: tiktoken.Encoding, lr: float = 5e-4, n_epochs: int = 10,
                             batch_size: int = 2, weight_decay: float = 0.1, dataset_encoding: str = "utf-8",
                             device: str = "cpu", seed: int = 123, max_length: int = None, stride: int = None,
                             train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
@@ -157,9 +157,6 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
 
     # Train-test split
     train_loader, val_loader = train_test_split(text_data, max_length, batch_size, stride, train_ratio)
-
-    # Prepare tokenizer
-    tokenizer = tiktoken.get_encoding("gpt2")
 
     # Train model
     train_losses, val_losses, tokens_seen = train_model(

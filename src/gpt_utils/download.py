@@ -1,7 +1,5 @@
 import os
-import numpy as np
 import requests
-import tensorflow as tf
 
 from tqdm import tqdm
 
