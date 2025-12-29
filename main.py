@@ -124,7 +124,7 @@ def main() -> None:
                 measure_memory=args.measure_memory
             )
     elif args.command == "download":
-        download_gpt2(model_size=args.model_size)
+        download_gpt2(model_size=args.model_size, models_dir=args.models_dir)
     else:
         raise InputError(f"Unknown command {args.command}")
 
