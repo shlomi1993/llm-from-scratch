@@ -18,29 +18,32 @@ def parse_args() -> argparse.Namespace:
     parent.add_argument("--dtype", type=str, default="float32", choices=["float32", "float16", "bfloat16"], help="Data type for model parameters (float32, float16, bfloat16). Default: float32.")
     parent.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility. Default: 123.")
 
+    # Architecture
+    arch_parent = argparse.ArgumentParser(add_help=False)
+    arch_parent.add_argument("--context-length", type=int, default=1024, help="Maximum context length for the model. Default: 1024.")
+    arch_parent.add_argument("--drop-rate", type=float, default=0.1, help="Dropout rate for regularization. Default: 0.1.")
+    arch_parent.add_argument("--emb-dim", type=int, default=768, help="Embedding dimension size. Default: 768.")
+    arch_parent.add_argument("--kv-window-size", type=int, default=None, help="KV cache window size for optimized cache. Default: None.")
+    arch_parent.add_argument("--n-layers", type=int, default=12, help="Number of transformer layers. Default: 12.")
+    arch_parent.add_argument("--n-heads", type=int, default=12, help="Number of attention heads. Default: 12.")
+    arch_parent.add_argument("--qkv-bias", action="store_true", help="Enable bias in QKV projections.")
+    arch_parent.add_argument("--vocab-size", type=int, default=50257, help="Vocabulary size for the tokenizer. Default: 50257.")
+
     # Sub-commands
     subparsers = parser.add_subparsers(dest="command", required=True, help="Sub-command to run")
 
     # Train subcommand - architecture and training args
-    train_parser = subparsers.add_parser("train", parents=[parent], help="Train a new model from scratch.")
+    train_parser = subparsers.add_parser("train", parents=[parent, arch_parent], help="Train a new model from scratch.")
     train_parser.add_argument("--batch-size", type=int, default=2, help="Training batch size. Default: 2.")
-    train_parser.add_argument("--context-length", type=int, default=1024, help="Maximum context length for the model. Default: 1024.")
     train_parser.add_argument("--data-file", type=str, default="the-verdict.txt", help="Path to the training text file. Default: the-verdict.txt.")
-    train_parser.add_argument("--emb-dim", type=int, default=768, help="Embedding dimension size. Default: 768.")
-    train_parser.add_argument("--kv-window-size", type=int, default=None, help="KV cache window size for optimized cache. Default: None.")
     train_parser.add_argument("--lr", type=float, default=5e-4, help="Learning rate for optimizer. Default: 5e-4.")
     train_parser.add_argument("--n-epochs", type=int, default=10, help="Number of training epochs. Default: 10.")
-    train_parser.add_argument("--n-heads", type=int, default=12, help="Number of attention heads. Default: 12.")
-    train_parser.add_argument("--n-layers", type=int, default=12, help="Number of transformer layers. Default: 12.")
-    train_parser.add_argument("--drop-rate", type=float, default=0.1, help="Dropout rate for regularization. Default: 0.1.")
     train_parser.add_argument("--plot-path", type=str, default="loss.pdf", help="Path to save the loss plot. Default: loss.pdf.")
-    train_parser.add_argument("--qkv-bias", action="store_true", help="Enable bias in QKV projections.")
     train_parser.add_argument("--save-path", type=str, default="gpt2.pth", help="Path to save the trained model. Default: gpt2.pth.")
-    train_parser.add_argument("--vocab-size", type=int, default=50257, help="Vocabulary size for the tokenizer. Default: 50257.")
     train_parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for optimizer. Default: 0.1.")
 
     # Generate subcommand
-    gen_parser = subparsers.add_parser("generate", parents=[parent], help="Generate text using a local (trained or downloaded) model.")
+    gen_parser = subparsers.add_parser("generate", parents=[parent, arch_parent], help="Generate text using a local (trained or downloaded) model.")
     gen_parser.add_argument("--interactive", action="store_true", help="Run in interactive prompt mode.")
     gen_parser.add_argument("--max-new-tokens", type=int, default=25, help="Number of new tokens to generate. Default: 25.")
     gen_parser.add_argument("--model-size", type=str, default="124M", choices=["124M", "355M", "774M", "1558M"], help="Model size to use (for pretrained models). Default: 124M.")
