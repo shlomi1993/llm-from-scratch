@@ -1,5 +1,6 @@
 import os
 import pytest
+import requests
 import shutil
 import tempfile
 import tiktoken
@@ -62,6 +63,41 @@ def test_download_and_load_gpt2_invalid_size_raises():
             download_gpt2("invalid_size", temp_dir)
     finally:
         shutil.rmtree(temp_dir)
+
+
+@pytest.mark.parametrize("model_size, expected_sizes", [
+    ("124M", {
+        "checkpoint": 77,
+        "encoder.json": 1042301,
+        "hparams.json": 90,
+        "model.ckpt.data-00000-of-00001": 497759232,
+        "model.ckpt.index": 5215,
+        "model.ckpt.meta": 471155,
+        "vocab.bpe": 456318
+    }),
+    ("355M", {
+        "checkpoint": 77,
+        "encoder.json": 1042301,
+        "hparams.json": 91,
+        "model.ckpt.data-00000-of-00001": 1419292672,
+        "model.ckpt.index": 10399,
+        "model.ckpt.meta": 926519,
+        "vocab.bpe": 456318
+    })
+])
+@pytest.mark.parametrize("base_url", [
+    "https://openaipublic.blob.core.windows.net/gpt-2/models",
+    "https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2"
+])
+def test_model_files(base_url: str, model_size: str, expected_sizes: dict):
+    for file_name, expected_size in expected_sizes.items():
+        url = f"{base_url}/{model_size}/{file_name}"
+        response = requests.head(url, allow_redirects=True, timeout=30)
+        assert response.status_code == 200, f"Failed to access {url}"
+        size = response.headers.get("Content-Length")
+        assert size is not None, "Content-Length header is missing"
+        size = int(size)
+        assert size == expected_size, f"{url} file has expected size {expected_size}, but got {size}"
 
 
 def test_text_to_token_ids_and_token_ids_to_text(tokenizer):
