@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.config import GptConfig
 from src.gpt import GptModel
+from src.gpt_utils.download import FILES_TO_DOWNLOAD, download_gpt2
 from src.utils import get_device
 
 
@@ -67,3 +68,25 @@ def sample_config() -> GptConfig:
 def sample_model(sample_config: GptConfig) -> GptModel:
     torch.manual_seed(42)
     return GptModel(sample_config)
+
+
+@pytest.fixture(scope="session")
+def ref_model_dir() -> str:
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
+    model_dir = os.path.join(base_dir, "reference_models", "124M")
+
+    needs_download = False
+    if not os.path.isdir(model_dir):
+        needs_download = True
+    else:
+        for fname in FILES_TO_DOWNLOAD:
+            fpath = os.path.join(model_dir, fname)
+            if not os.path.isfile(fpath) or os.path.getsize(fpath) == 0:
+                needs_download = True
+                break
+
+    if needs_download:
+        os.makedirs(model_dir, exist_ok=True)
+        download_gpt2("124M", model_dir)
+
+    return model_dir

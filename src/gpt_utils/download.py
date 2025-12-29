@@ -51,7 +51,7 @@ def _download_file(url: str, destination: str) -> None:
 def _validate_model_size(model_size: str) -> None:
     allowed_sizes = ("124M", "355M", "774M", "1558M")
     if model_size not in allowed_sizes:
-        raise ValueError(f"Model size not in {allowed_sizes}")
+        raise ValueError(f"Model size {model_size} not in {allowed_sizes}")
 
 
 def download_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict]:
