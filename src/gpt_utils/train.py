@@ -2,12 +2,14 @@ import matplotlib.pyplot as plt
 import torch
 import tiktoken
 
+from dataclasses import dataclass
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from src.config import GptConfig
 from src.dataloader import GptDataloaderV1
 from src.gpt import GptModel
-from src.utils import text_to_token_ids, token_ids_to_text
+from src.utils import get_device, text_to_token_ids, token_ids_to_text
 
 
 def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: torch.device) -> Tensor:
@@ -115,3 +117,63 @@ def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: li
 
     fig.tight_layout()  # Adjust layout to make room
     plt.show()
+
+
+@dataclass
+class TrainingResults:
+    model: GptModel
+    train_losses: list[float]
+    val_losses: list[float]
+    tokens_seen: list[int]
+    saved_model_path: str
+    saved_plot_path: str
+
+
+def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-4, n_epochs: int = 10,
+                            batch_size: int = 2, weight_decay: float = 0.1, dataset_encoding: str = "utf-8",
+                            device: str = "cpu", seed: int = 123, max_length: int = None, stride: int = None,
+                            train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
+                            start_context: str = "Every effort moves you", saved_model_path: str = "model.pth",
+                            make_plot: bool = True, saved_plot_path: str = "loss.pdf") -> TrainingResults:
+
+    # TODO Change start_context default
+
+    # Initialize dynamic parameters
+    max_length = max_length or config.context_length
+    stride = stride or max_length
+
+    # General setup
+    torch.manual_seed(seed)
+    device = get_device(device)
+
+    # Load dataset
+    with open(training_set_path, "r", encoding=dataset_encoding) as file:
+        text_data = file.read()
+
+    # Load model
+    model = GptModel(config)
+    model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    # Train-test split
+    train_loader, val_loader = train_test_split(text_data, max_length, batch_size, stride, train_ratio)
+
+    # Prepare tokenizer
+    tokenizer = tiktoken.get_encoding("gpt2")
+
+    # Train model
+    train_losses, val_losses, tokens_seen = train_model(
+        model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context, tokenizer
+    )
+
+    # Save and load model
+    torch.save(model.state_dict(), saved_model_path)  # TODO To load: model = GptModel(config); model.load_state_dict(torch.load(saved_model_path, weights_only=True))
+
+    # Plot loss
+    if make_plot:
+        epochs_tensor = torch.linspace(0, n_epochs, len(train_losses))
+        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
+        plt.savefig(saved_plot_path)
+
+    # Return training results
+    return TrainingResults(model, train_losses, val_losses, tokens_seen, saved_model_path, saved_plot_path)
