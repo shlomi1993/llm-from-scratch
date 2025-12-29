@@ -106,11 +106,10 @@ def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig, d
     return gpt
 
 
-def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: str = "cpu", seed: int = 123) -> GptModel:
+def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: torch.device, seed: int = 123) -> GptModel:
 
     # General setup
     torch.manual_seed(seed)
-    device = get_device(device)
 
     # Set generation configs
     gen_config = GptConfig(
@@ -135,6 +134,10 @@ def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: 
 def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, model_size: str, tokenizer: str,
                               max_new_tokens: int = 25, temperature: float = 1.0, top_k: int = 50, device: str = "cpu",
                               seed: int = 123, measure_time: bool = False, measure_memory: bool = False) -> str:
+
+    # General setup
+    torch.manual_seed(seed)
+    device = get_device(device)
 
     # Time and memory measurement setup for model loading
     load_duration = load_max_mem_gb = gen_duration = gen_max_mem_gb = tps = None
@@ -211,9 +214,15 @@ def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: s
                                max_new_tokens: int = 25, temperature: float = 1.0, top_k: int = 50, device: str = "cpu",
                                seed: int = 123) -> None:
 
+    # General setup
+    torch.manual_seed(seed)
+    device = get_device(device)
+
+    # Load model
     gpt = _load_eval_gpt(config, model_size, models_dir, device, seed)
 
-    print("\nInteractive mode. Type your prompt and press Enter. Press Ctrl+C to exit.\n")
+    # Run interactive mode
+    print("\nInteractive mode. Type your prompt and press Enter. Press Ctrl+C/CMD+C to exit.\n")
     try:
         while True:
             try:
