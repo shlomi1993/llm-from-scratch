@@ -1,4 +1,6 @@
+import builtins
 import os
+import numpy as np
 import pytest
 import requests
 import shutil
@@ -19,7 +21,10 @@ from src.gpt_utils import (
     train_test_split,
     evaluate_model,
     generate_and_print_sample,
-    train_model
+    train_model,
+    run_model_training_flow,
+    run_model_generation_flow,
+    run_model_interactive_flow
 )
 from src.utils import text_to_token_ids, token_ids_to_text
 
@@ -217,9 +222,83 @@ def test_train_model_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, 
     sample_model.to(device)
     optimizer = torch.optim.AdamW(sample_model.parameters(), lr=1e-3)
     train_losses, val_losses, tokens_seen = train_model(
-        sample_model, loader, loader, optimizer, device,
-        n_epochs=1, eval_freq=1, eval_iter=1, start_context="Hello world", tokenizer=tokenizer
+        sample_model, loader, loader, optimizer, device, n_epochs=1, eval_freq=1, eval_iter=1,
+        start_context="Hello world", tokenizer=tokenizer
     )
     assert isinstance(train_losses, list), f"train_losses should be list, got {type(train_losses)}"
     assert isinstance(val_losses, list), f"val_losses should be list, got {type(val_losses)}"
     assert isinstance(tokens_seen, list), f"tokens_seen should be list, got {type(tokens_seen)}"
+
+
+def test_run_model_training_flow(tmp_path: str, tokenizer: tiktoken.Encoding):
+    config = GptConfig(context_length=8, emb_dim=4, n_heads=2, n_layers=1, drop_rate=0.0)
+    data_path = tmp_path / "tiny.txt"
+    data_path.write_text("hello world " * 20)
+    result = run_model_training_flow(
+        config=config,
+        training_set_path=str(data_path),
+        tokenizer=tokenizer,
+        lr=1e-3,
+        n_epochs=1,
+        batch_size=2,
+        weight_decay=0.0,
+        device="cpu",
+        seed=123,
+        saved_model_path=str(tmp_path / "model.pth"),
+        make_plot=False,
+        saved_plot_path=str(tmp_path / "loss.pdf")
+    )
+    assert os.path.exists(result.saved_model_path), f"Saved model file not found at {result.saved_model_path}"
+    assert not os.path.exists(result.saved_plot_path), f"Saved plot file should NOT exist at {result.saved_plot_path}"
+    assert np.isclose(result.train_losses[0], 10.86, atol=1e-2), f"Train loss mismatch, got {result.train_losses[0]}, expected approx 10.86"
+    assert isinstance(result.val_losses, list) and len(result.val_losses) > 0, f"val_losses should be non-empty list, got {type(result.val_losses)}"
+    assert result.tokens_seen[0] == 16, f"First train loss should be positive, got {result.train_losses[0]}"
+
+
+def test_run_model_generation_flow(tokenizer: tiktoken.Encoding, ref_model_dir: str):
+    models_dir = os.path.dirname(ref_model_dir)
+    model_size = os.path.basename(ref_model_dir)
+    out = run_model_generation_flow(
+        config=GptConfig(emb_dim=768, n_layers=12, n_heads=12, drop_rate=0.0, qkv_bias=True),
+        prompt="tell me a joke",
+        models_dir=models_dir,
+        model_size=model_size,
+        tokenizer=tokenizer,
+        max_new_tokens=2,
+        temperature=1.0,
+        top_k=5
+    )
+    assert isinstance(out, str), f"Generated output should be string, got {type(out)}"
+    assert len(out) > 0, "Generated output should be non-empty string"
+    assert out.startswith("tell me a joke"), f"Generated text should start with prompt, got '{out}'"
+
+
+def test_run_model_interactive_flow(monkeypatch, tokenizer: tiktoken.Encoding, ref_model_dir: str, capsys: pytest.CaptureFixture):
+    models_dir = os.path.dirname(ref_model_dir)
+    model_size = os.path.basename(ref_model_dir)
+    config = GptConfig(emb_dim=768, n_layers=12, n_heads=12, drop_rate=0.0, qkv_bias=True)
+
+
+    # Simulate user input: one prompt, then EOFError to exit
+    inputs = iter(["tell me a joke", ""])
+    def fake_input(_):
+        try:
+            return next(inputs)
+        except StopIteration:
+            raise EOFError
+    monkeypatch.setattr(builtins, "input", fake_input)
+
+    run_model_interactive_flow(
+        config=config,
+        models_dir=models_dir,
+        model_size=model_size,
+        tokenizer=tokenizer,
+        max_new_tokens=2,
+        temperature=1.0,
+        top_k=5,
+        device="cpu",
+        seed=42
+    )
+    out = capsys.readouterr().out
+    assert "Output:" in out, f"Expected output in interactive flow, got: {out}"
+    assert "tell me a joke" in out, f"Prompt should appear in output, got: {out}"

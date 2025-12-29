@@ -42,12 +42,15 @@ def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[st
     return params
 
 
-def _load_gpt2_params_and_settings(model_size: str, models_dir: str) -> tuple[dict, dict]:
-    model_dir = download_gpt2(model_size, models_dir)
+def _load_gpt2_params(model_size: str, models_dir: str, download: bool = False) -> dict:
+    if download:
+        model_dir = download_gpt2(model_size, models_dir)
+    else:
+        model_dir = os.path.join(models_dir, model_size)
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
     params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
-    return params, settings
+    return params
 
 
 def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
@@ -56,8 +59,8 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(right))
 
 
-def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
-    params, _ = _load_gpt2_params_and_settings(model_size, models_dir)
+def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig, download: bool = False) -> GptModel:
+    params = _load_gpt2_params(model_size, models_dir, download)
 
     gpt = GptModel(config)
     gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])
@@ -122,7 +125,7 @@ def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: 
 
     # Load model
     gpt = GptModel(gen_config)
-    load_weights_into_gpt(gpt, model_size, models_dir)
+    load_weights_into_gpt(model_size, models_dir, gen_config)
     gpt.to(device)
     gpt.eval()
 
