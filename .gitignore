@@ -32,7 +32,7 @@ MANIFEST
 llm-from-scratch-venv/
 
 # Datasets
-datasets/
+datasets/large_sets/
 
 # Models
 models/
