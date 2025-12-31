@@ -12,6 +12,18 @@ from src.dataloader import GptDataloaderV1
 from src.gpt import GptModel
 
 
+@dataclass
+class TrainingResults:
+    model: GptModel
+    train_losses: list[float]
+    val_losses: list[float]
+    train_accuracies: list[float] = None
+    val_accuracies: list[float] = None
+    n_tokens_seen: list[int] = None
+    n_examples_seen: int = None
+
+
+
 def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: Device) -> Tensor:
     input_batch = input_batch.to(device)
     target_batch = target_batch.to(device)
@@ -20,19 +32,21 @@ def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, 
     return loss  # Negative average log probability
 
 
-def calc_loss_loader(data_loader: DataLoader, model: GptModel, device: Device, num_batches: int = None):
+def calc_loss_loader(data_loader: DataLoader, model: GptModel, device: Device, n_batches: int = None,
+                     loss_func: callable = calc_loss_batch) -> float:
     if len(data_loader) == 0:
         return float("nan")
 
     total_loss = 0.
-    num_batches = len(data_loader) if num_batches is None else min(num_batches, len(data_loader))
+    n_batches = min(n_batches, len(data_loader)) if n_batches else len(data_loader)
     for i, (input_batch, target_batch) in enumerate(data_loader):
-        if i >= num_batches:
+        if i >= n_batches:
             break
-        loss = calc_loss_batch(input_batch, target_batch, model, device)
+
+        loss: Tensor = loss_func(input_batch, target_batch, model, device)
         total_loss += loss.item()
 
-    return total_loss / num_batches
+    return total_loss / n_batches
 
 
 def train_test_split(text: str, max_length: int, batch_size: int, stride: int = None, train_ratio: float = 0.9) -> tuple[DataLoader, DataLoader]:
@@ -45,11 +59,12 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
     return train_loader, val_loader
 
 
-def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: Device, eval_iter: int) -> tuple[float, float]:
+def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: Device, eval_iter: int,
+                   loss_func: callable = calc_loss_batch) -> tuple[float, float]:
     model.eval()
     with torch.no_grad():
-        train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
-        val_loss = calc_loss_loader(val_loader, model, device, num_batches=eval_iter)
+        train_loss = calc_loss_loader(train_loader, model, device, n_batches=eval_iter, loss_func=loss_func)
+        val_loss = calc_loss_loader(val_loader, model, device, n_batches=eval_iter, loss_func=loss_func)
     model.train()
     return train_loss, val_loss
 
@@ -65,12 +80,17 @@ def generate_and_print_sample(model: GptModel, tokenizer: tiktoken.Encoding, dev
 
 
 def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
-                device: Device, n_epochs: int, eval_freq: int, eval_iter: int, start_context: str,
-                tokenizer: tiktoken.Encoding) -> tuple[list[float], list[float], list[int]]:
+                device: Device, n_epochs: int, eval_freq: int = 50, eval_iter: int = 5, start_context: str = None,
+                tokenizer: tiktoken.Encoding = None, loss_func: callable = calc_loss_batch,
+                track_seen_tokens: bool = False, calc_accuracy_loader: callable = None) -> TrainingResults:
 
-    # Initialize lists to track losses and tokens seen
-    train_losses, val_losses, track_tokens_seen = [], [], []
-    tokens_seen = 0
+    if bool(tokenizer) != bool(start_context):
+        raise ValueError(f"Both '{tokenizer.__name__}' and '{start_context.__name__}' must be provided for sample generation.")
+
+    # Initialize lists to track losses and tokens/examples seen
+    train_losses, val_losses, train_accuracies, val_accuracies, tokens_seen = [], [], [], [], []
+    n_tokens_seen = 0
+    n_examples_seen = 0
     global_step = -1
 
     # Main training loop
@@ -80,24 +100,43 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
         for input_batch, target_batch in train_loader:
             input_batch: Tensor
             optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
-            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss: Tensor = loss_func(input_batch, target_batch, model, device)
             loss.backward()  # Calculate loss gradients
             optimizer.step()  # Update model weights using loss gradients
-            tokens_seen += input_batch.numel()
+            n_tokens_seen += input_batch.numel()
+            n_examples_seen += input_batch.shape[0]
             global_step += 1
 
             # Optional evaluation step
             if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter)
+                train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter, loss_func)
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
-                track_tokens_seen.append(tokens_seen)
+                if track_seen_tokens:
+                    tokens_seen.append(n_tokens_seen)
                 print(f"Epoch {epoch} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Print a sample text after each epoch
-        generate_and_print_sample(model, tokenizer, device, start_context)
+        if tokenizer:
+            generate_and_print_sample(model, tokenizer, device, start_context)
 
-    return train_losses, val_losses, track_tokens_seen
+        # Calculate accuracy after each epoch if classification mode
+        if calc_accuracy_loader is not None:
+            train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
+            val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
+            print(f"Training accuracy: {train_accuracy * 100:.2f}% | Validation accuracy: {val_accuracy * 100:.2f}%")
+            train_accuracies.append(train_accuracy)
+            val_accuracies.append(val_accuracy)
+
+    return TrainingResults(
+        model=model,
+        train_losses=train_losses,
+        val_losses=val_losses,
+        train_accuracies=train_accuracies if calc_accuracy_loader else None,
+        val_accuracies=val_accuracies if calc_accuracy_loader else None,
+        n_tokens_seen=tokens_seen if track_seen_tokens else None,
+        n_examples_seen=n_examples_seen
+    )
 
 
 def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: list[float], val_losses: list[float]) -> None:
@@ -117,16 +156,6 @@ def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: li
 
     fig.tight_layout()  # Adjust layout to make room
     plt.show()
-
-
-@dataclass
-class TrainingResults:
-    model: GptModel
-    train_losses: list[float]
-    val_losses: list[float]
-    tokens_seen: list[int]
-    saved_model_path: str
-    saved_plot_path: str
 
 
 def run_model_training_flow(config: GptConfig, training_set_path: str, tokenizer: tiktoken.Encoding, lr: float = 5e-4, n_epochs: int = 10,
@@ -159,7 +188,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, tokenizer
     train_loader, val_loader = train_test_split(text_data, max_length, batch_size, stride, train_ratio)
 
     # Train model
-    train_losses, val_losses, tokens_seen = train_model(
+    training_results = train_model(
         model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context, tokenizer
     )
 
@@ -168,9 +197,9 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, tokenizer
 
     # Plot loss
     if make_plot:
-        epochs_tensor = torch.linspace(0, n_epochs, len(train_losses))
-        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
+        epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
+        plot_losses(epochs_tensor, training_results.n_tokens_seen, training_results.train_losses, training_results.val_losses)
         plt.savefig(saved_plot_path)
 
     # Return training results
-    return TrainingResults(model, train_losses, val_losses, tokens_seen, saved_model_path, saved_plot_path)
+    return training_results

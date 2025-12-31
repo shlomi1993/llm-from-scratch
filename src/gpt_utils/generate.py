@@ -42,11 +42,10 @@ def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[st
     return params
 
 
-def _load_gpt2_params(model_size: str, models_dir: str, download: bool = False) -> dict:
-    if download:
-        model_dir = download_gpt2(model_size, models_dir)
-    else:
-        model_dir = os.path.join(models_dir, model_size)
+def _load_gpt2_params(model_size: str, models_dir: str) -> dict:
+    model_dir = os.path.join(models_dir, model_size)
+    if not os.path.exists(model_dir):
+        raise ValueError(f"Model directory '{model_dir}' does not exist. Please download the model first.")
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
     params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
@@ -60,7 +59,7 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
 
 
 def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig, download: bool = False) -> GptModel:
-    params = _load_gpt2_params(model_size, models_dir, download)
+    params = _load_gpt2_params(model_size, models_dir)
 
     gpt = GptModel(config)
     gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])

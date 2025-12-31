@@ -97,7 +97,7 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
     return correct_predictions / n_examples
 
 
-def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: Device) -> Tensor:
+def calc_loss_batch_last_token(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: Device) -> Tensor:
     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
     logits = model(input_batch)[:, -1, :]  # Logits of last output token
     loss = torch.nn.functional.cross_entropy(logits, target_batch)
@@ -105,7 +105,6 @@ def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, 
 
 
 # Flow
-torch.manual_seed(123)
 df = pd.read_csv(DATA_FILE_PATH, sep="\t", header=None, names=["Label", "Text"])
 balanced_df = create_balanced_dataset(df)
 train_df, validation_df, test_df = random_split(balanced_df, 0.7, 0.1)  # 70% train, 10% validation, 20% test
@@ -118,6 +117,7 @@ val_dataset = SpamDataset(csv_file="datasets/sms_spam_collection/validation.csv"
 test_dataset = SpamDataset(csv_file="datasets/sms_spam_collection/test.csv", max_length=train_dataset.max_length, tokenizer=tokenizer)
 num_workers = 0
 batch_size = 8
+torch.manual_seed(123)
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
 val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size, num_workers=num_workers, drop_last=False)
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, num_workers=num_workers, drop_last=False)
@@ -150,28 +150,22 @@ token_ids = model.generate_naive(
 )
 assert token_ids_to_text(token_ids, tokenizer) == "Is the following text 'spam'? Answer with 'yes' or 'no': 'You are a winner you have been specially selected to receive $1000 cash or a $2000 award.'\n\nThe following text 'spam'? Answer with 'yes' or 'no': 'You are a winner"
 num_classes = 2
+inputs = torch.tensor(tokenizer.encode("Do you have time")).unsqueeze(0)
+expected_tokens = torch.tensor([[5211,  345,  423,  640]])
+assert torch.equal(inputs, expected_tokens), f"Tokenization mismatch: got {inputs.tolist()}, expected {expected_tokens.tolist()}"
+assert inputs.shape == (1, 4), f"Input shape mismatch: got {inputs.shape}, expected (1, 4)"
+torch.manual_seed(123)
 model.out_head = torch.nn.Linear(in_features=config.emb_dim, out_features=num_classes)
 for param in model.trf_blocks[-1].parameters():
     param.requires_grad = True
 for param in model.final_norm.parameters():
     param.requires_grad = True
-inputs = torch.tensor(tokenizer.encode("Do you have time")).unsqueeze(0)
-expected_tokens = torch.tensor([[5211,  345,  423,  640]])
-assert torch.equal(inputs, expected_tokens), f"Tokenization mismatch: got {inputs.tolist()}, expected {expected_tokens.tolist()}"
-assert inputs.shape == (1, 4), f"Input shape mismatch: got {inputs.shape}, expected (1, 4)"
 with torch.no_grad():
     outputs = model(inputs)
-expected_outputs = torch.tensor([[
-    [-1.5854,  0.9904],
-    [-3.7235,  7.4548],
-    [-2.2661,  6.6049],
-    [-3.5983,  3.9902]
-]])
-import ipdb; ipdb.set_trace(context=11)
+expected_outputs = torch.tensor([[[-1.5854,  0.9904], [-3.7235,  7.4548], [-2.2661,  6.6049], [-3.5983,  3.9902]]])
 assert torch.allclose(outputs, expected_outputs, atol=1e-4), f"Output mismatch: got {outputs.tolist()}, expected {expected_outputs.tolist()}"
 expected_shape = (1, 4, 2)
 assert outputs.shape == expected_shape, f"Output shape mismatch: got {outputs.shape}, expected {expected_shape}"
-import ipdb; ipdb.set_trace(context=11)
 expected_last = torch.tensor([[-3.5983,  3.9902]])
 assert torch.allclose(outputs[:, -1, :], expected_last, atol=1e-4), f"Last output mismatch: got {outputs[:, -1, :].tolist()}, expected {expected_last.tolist()}"
 probas = torch.softmax(outputs[:, -1, :], dim=-1)
@@ -180,17 +174,19 @@ assert label.item() == 1
 logits = outputs[:, -1, :]
 label = torch.argmax(logits)
 assert label.item() == 1
-device = get_device("cpu")
-train_accuracy = calc_accuracy_loader(train_loader, model, device, num_batches=10)
-val_accuracy = calc_accuracy_loader(val_loader, model, device, num_batches=10)
-test_accuracy = calc_accuracy_loader(test_loader, model, device, num_batches=10)
+device = get_device("mps")
+model.to(device)
+torch.manual_seed(123)
+train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=10)
+val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=10)
+test_accuracy = calc_accuracy_loader(test_loader, model, device, n_batches=10)
 assert 0.4 <= train_accuracy <= 0.6, f"Unexpected train accuracy: {train_accuracy}"
 assert 0.4 <= val_accuracy <= 0.6, f"Unexpected validation accuracy: {val_accuracy}"
 assert 0.4 <= test_accuracy <= 0.6, f"Unexpected test accuracy: {test_accuracy}"
 with torch.no_grad(): # Disable gradient tracking for efficiency because we are not training, yet
-    train_loss = calc_loss_loader(train_loader, model, device, num_batches=5)
-    val_loss = calc_loss_loader(val_loader, model, device, num_batches=5)
-    test_loss = calc_loss_loader(test_loader, model, device, num_batches=5)
-assert 2.1 <= train_loss <= 2.8, f"Unexpected train loss: {train_loss}"
-assert 2.1 <= val_loss <= 2.8, f"Unexpected validation loss: {val_loss}"
-assert 2.1 <= test_loss <= 2.8, f"Unexpected test loss: {test_loss}"
+    train_loss = calc_loss_loader(train_loader, model, device, n_batches=5, loss_func=calc_loss_batch_last_token)
+    val_loss = calc_loss_loader(val_loader, model, device, n_batches=5, loss_func=calc_loss_batch_last_token)
+    test_loss = calc_loss_loader(test_loader, model, device, n_batches=5, loss_func=calc_loss_batch_last_token)
+assert 2.4 <= train_loss <= 2.6, f"Unexpected train loss: {train_loss}"
+assert 2.5 <= val_loss <= 2.6, f"Unexpected validation loss: {val_loss}"
+assert 2.3 <= test_loss <= 2.4, f"Unexpected test loss: {test_loss}"
