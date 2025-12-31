@@ -54,7 +54,7 @@ def _validate_model_size(model_size: str) -> None:
         raise ValueError(f"Model size {model_size} not in {allowed_sizes}")
 
 
-def download_gpt2(model_size: str, models_dir: str) -> tuple[dict, dict]:
+def download_gpt2(model_size: str, models_dir: str) -> str:
     _validate_model_size(model_size)
 
     # Make model directory

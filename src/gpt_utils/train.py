@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from src.common import Device, get_device, text_to_token_ids, token_ids_to_text
 from src.config import GptConfig
 from src.dataloader import GptDataloaderV1
 from src.gpt import GptModel
-from src.utils import get_device, text_to_token_ids, token_ids_to_text
 
 
-def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: torch.device) -> Tensor:
+def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, device: Device) -> Tensor:
     input_batch = input_batch.to(device)
     target_batch = target_batch.to(device)
     logits: Tensor = model(input_batch)
@@ -20,7 +20,7 @@ def calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: GptModel, 
     return loss  # Negative average log probability
 
 
-def calc_loss_loader(data_loader: DataLoader, model: GptModel, device: torch.device, num_batches: int = None):
+def calc_loss_loader(data_loader: DataLoader, model: GptModel, device: Device, num_batches: int = None):
     if len(data_loader) == 0:
         return float("nan")
 
@@ -45,7 +45,7 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
     return train_loader, val_loader
 
 
-def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: torch.device, eval_iter: int) -> tuple[float, float]:
+def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: Device, eval_iter: int) -> tuple[float, float]:
     model.eval()
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
@@ -54,7 +54,7 @@ def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLo
     return train_loss, val_loss
 
 
-def generate_and_print_sample(model: GptModel, tokenizer: tiktoken.Encoding, device: torch.device, start_context: str) -> None:
+def generate_and_print_sample(model: GptModel, tokenizer: tiktoken.Encoding, device: Device, start_context: str) -> None:
     model.eval()
     encoded = text_to_token_ids(start_context, tokenizer).to(device)
     with torch.no_grad():
@@ -65,7 +65,7 @@ def generate_and_print_sample(model: GptModel, tokenizer: tiktoken.Encoding, dev
 
 
 def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: torch.optim.Optimizer,
-                device: torch.device, n_epochs: int, eval_freq: int, eval_iter: int, start_context: str,
+                device: Device, n_epochs: int, eval_freq: int, eval_iter: int, start_context: str,
                 tokenizer: tiktoken.Encoding) -> tuple[list[float], list[float], list[int]]:
 
     # Initialize lists to track losses and tokens seen

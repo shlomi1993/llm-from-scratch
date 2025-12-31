@@ -26,7 +26,7 @@ from src.gpt_utils import (
     run_model_generation_flow,
     run_model_interactive_flow
 )
-from src.utils import text_to_token_ids, token_ids_to_text
+from src.common import text_to_token_ids, token_ids_to_text
 
 
 @pytest.mark.skip(reason="Downloading files from the internet takes time; run manually when needed")
