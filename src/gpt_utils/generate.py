@@ -5,11 +5,11 @@ import tensorflow as tf
 import time
 import torch
 
+from src.common import Device, get_device, text_to_token_ids, token_ids_to_text
 from src.config import GptConfig
 from src.gpt import GptModel
 from src.gpt_utils.download import download_gpt2
 from src.transformer import TransformerBlock
-from src.utils import get_device, text_to_token_ids, token_ids_to_text
 
 
 def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
@@ -106,7 +106,7 @@ def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig, d
     return gpt
 
 
-def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: torch.device, seed: int = 123) -> GptModel:
+def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: Device, seed: int = 123) -> GptModel:
 
     # General setup
     torch.manual_seed(seed)
