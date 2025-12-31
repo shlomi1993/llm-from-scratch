@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from src.config import GptConfig
 from src.gpt import GptModel
 from src.gpt_utils.download import FILES_TO_DOWNLOAD, download_gpt2
-from src.utils import get_device
+from src.common import get_device
 
 
 # Add the root directory to Python path for tools package
@@ -73,7 +73,7 @@ def sample_model(sample_config: GptConfig) -> GptModel:
 @pytest.fixture(scope="session")
 def ref_model_dir() -> str:
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models'))
-    model_dir = os.path.join(base_dir, "reference_models", "124M")
+    model_dir = os.path.join(base_dir, "reference_gpt2_models", "124M")
 
     needs_download = False
     if not os.path.isdir(model_dir):
