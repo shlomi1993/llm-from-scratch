@@ -1,5 +1,8 @@
+import os
 import pandas as pd
+import matplotlib.pyplot as plt
 import tiktoken
+import time
 import torch
 
 from torch import Tensor
@@ -8,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from src.common import Device, get_device, text_to_token_ids, token_ids_to_text
 from src.config import GptConfig
 from src.gpt import GptModel
-from src.gpt_utils import download_gpt2, load_weights_into_gpt, calc_loss_loader
+from src.gpt_utils import download_gpt2, load_weights_into_gpt, calc_loss_loader, train_model
 
 
 DATA_FILE_PATH = "/Users/shlomibenshushan/Repositories/llm-from-scratch/datasets/sms_spam_collection/SMSSpamCollection.tsv"
@@ -58,6 +61,7 @@ def create_balanced_dataset(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def random_split(df: pd.DataFrame, train_frac: float, validation_frac: float) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+
     # Shuffle the entire DataFrame
     df = df.sample(frac=1, random_state=123).reset_index(drop=True)
 
@@ -104,6 +108,53 @@ def calc_loss_batch_last_token(input_batch: Tensor, target_batch: Tensor, model:
     return loss
 
 
+
+def plot_values(epochs_seen: list[int], examples_seen: list[int], train_values: list[float], val_values: list[float],
+                label: str = "loss") -> None:
+    fig, ax1 = plt.subplots(figsize=(5, 3))
+
+    # Plot training and validation loss against epochs
+    ax1.plot(epochs_seen, train_values, label=f"Training {label}")
+    ax1.plot(epochs_seen, val_values, linestyle="-.", label=f"Validation {label}")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel(label.capitalize())
+    ax1.legend()
+
+    # Create a second x-axis for examples seen
+    ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis
+    ax2.plot(examples_seen, train_values, alpha=0)  # Invisible plot for aligning ticks
+    ax2.set_xlabel("Examples seen")
+
+    fig.tight_layout()  # Adjust layout to make room
+    plt.savefig(f"{label}-plot.pdf")
+    plt.show()
+
+
+def classify_review(text: str, model: GptModel, tokenizer: tiktoken.Encoding, device: Device, max_length: int,
+                    pad_token_id: int = 50256):
+    model.eval()
+
+    # Verify that the input length does not exceed model context length
+    supported_context = model.pos_emb.weight.shape[0]
+    if max_length > supported_context:
+        raise ValueError(f"max_length ({max_length}) exceeds model context ({supported_context}).")
+
+    # Tokenize and truncate
+    input_ids = tokenizer.encode(text)[:max_length]
+
+    # Pad
+    input_ids += [pad_token_id] * (max_length - len(input_ids))
+    input_tensor = torch.tensor(input_ids, device=device).unsqueeze(0)
+
+    # Inference
+    with torch.no_grad():
+        logits = model(input_tensor)[:, -1]
+        label = logits.argmax(dim=-1).item()
+
+    # Decode label
+    return "spam" if label == 1 else "not spam"
+
+
 # Flow
 df = pd.read_csv(DATA_FILE_PATH, sep="\t", header=None, names=["Label", "Text"])
 balanced_df = create_balanced_dataset(df)
@@ -129,6 +180,8 @@ for loader in [train_loader, val_loader, test_loader]:
 assert len(train_loader) == 130 and len(val_loader) == 19 and len(test_loader) == 38
 config = GptConfig(emb_dim=768, n_layers=12, n_heads=12, drop_rate=0.0, qkv_bias=True)
 assert train_dataset.max_length <= config.context_length, "Dataset sequences are longer than the model's context length."
+if not os.path.exists("models/reference_gpt2_models/124M"):
+    download_gpt2("124M", "models/reference_gpt2_models")
 model = load_weights_into_gpt("124M", "models/reference_gpt2_models", config)
 model.eval()
 text_1 = "Every effort moves you"
@@ -190,3 +243,37 @@ with torch.no_grad(): # Disable gradient tracking for efficiency because we are 
 assert 2.4 <= train_loss <= 2.6, f"Unexpected train loss: {train_loss}"
 assert 2.5 <= val_loss <= 2.6, f"Unexpected validation loss: {val_loss}"
 assert 2.3 <= test_loss <= 2.4, f"Unexpected test loss: {test_loss}"
+start_time = time.time()
+torch.manual_seed(123)
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.1)
+n_epochs = 5
+# I HAVE A PROBLEM HERE WITH THE ACCURACY SAMPLING!
+training_results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, loss_func=calc_loss_batch_last_token, calc_accuracy_loader=calc_accuracy_loader)
+end_time = time.time()
+execution_time_minutes = (end_time - start_time) / 60
+print(f"Training completed in {execution_time_minutes:.2f} minutes.")
+
+import ipdb; ipdb.set_trace(context=11)
+epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
+examples_seen_tensor = torch.linspace(0, training_results.n_examples_seen, len(training_results.train_losses))
+plot_values(epochs_tensor, examples_seen_tensor, training_results.train_losses, training_results.val_losses)
+
+epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_accuracies))
+examples_seen_tensor = torch.linspace(0, training_results.n_examples_seen, len(training_results.train_accuracies))
+
+plot_values(epochs_tensor, examples_seen_tensor, training_results.train_accuracies, training_results.val_accuracies, label="accuracy")
+
+
+train_accuracy = calc_accuracy_loader(train_loader, model, device)
+val_accuracy = calc_accuracy_loader(val_loader, model, device)
+test_accuracy = calc_accuracy_loader(test_loader, model, device)
+assert 0.97 <= train_accuracy <= 0.98, f"Unexpected train accuracy: {train_accuracy}"
+assert 0.97 <= val_accuracy <= 0.98, f"Unexpected validation accuracy: {val_accuracy}"
+assert 0.95 <= test_accuracy <= 0.96, f"Unexpected test accuracy: {test_accuracy}"
+text_1 = "You are a winner you have been specially selected to receive $1000 cash or a $2000 award."
+assert classify_review(text_1, model, tokenizer, device, max_length=train_dataset.max_length) == "spam", f"Classification mismatch for text_1."
+text_2 = "Hey, just wanted to check if we're still on for dinner tonight? Let me know!"
+assert classify_review(text_2, model, tokenizer, device, max_length=train_dataset.max_length) == "not spam", f"Classification mismatch for text_2."
+torch.save(model.state_dict(), "review_classifier.pth")
+model_state_dict = torch.load("review_classifier.pth", map_location=device, weights_only=True)
+model.load_state_dict(model_state_dict)
