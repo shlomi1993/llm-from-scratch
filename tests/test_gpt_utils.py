@@ -10,9 +10,10 @@ import torch
 
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.config import GPT_CONFIG_124M, GptConfig
+from src.model.config import GPT_CONFIG_124M, GptConfig
+from src.evaluation import BatchLoss, calc_loss_loader
 from src.gpt import GptModel
-from src.gpt_utils import (
+from src.scripts import (
     FILES_TO_DOWNLOAD,
     download_gpt2,
     load_weights_into_gpt,
@@ -21,7 +22,7 @@ from src.gpt_utils import (
     train_test_split,
     evaluate_model,
     generate_and_print_sample,
-    train_model,
+    train_foundation_model,
     run_model_training_flow,
     run_model_generation_flow,
     run_model_interactive_flow
@@ -213,7 +214,7 @@ def test_train_model_runs(sample_model: GptModel, tokenizer: tiktoken.Encoding, 
     loader = dummy_loader
     sample_model.to(device)
     optimizer = torch.optim.AdamW(sample_model.parameters(), lr=1e-3)
-    train_losses, val_losses, tokens_seen = train_model(
+    train_losses, val_losses, tokens_seen = train_foundation_model(
         sample_model, loader, loader, optimizer, device, n_epochs=1, eval_freq=1, eval_iter=1, start_context="Hello world", tokenizer=tokenizer
     )
     assert len(train_losses) == 2 and all(l > 0 for l in train_losses), f"train_losses should be list of positive floats, got {train_losses}"
