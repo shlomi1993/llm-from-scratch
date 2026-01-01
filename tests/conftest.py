@@ -6,9 +6,9 @@ import torch
 
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.config import GptConfig
+from src.model.config import GptConfig
 from src.gpt import GptModel
-from src.gpt_utils.download import FILES_TO_DOWNLOAD, download_gpt2
+from src.scripts.download import FILES_TO_DOWNLOAD, download_gpt2
 from src.common import get_device
 
 
