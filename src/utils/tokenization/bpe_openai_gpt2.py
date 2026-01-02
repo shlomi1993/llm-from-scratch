@@ -40,12 +40,12 @@ import regex as re
 import requests
 
 from functools import lru_cache
-from logging import getLogger
+from logging import getLogger as get_logger
 from tqdm import tqdm
 from typing import Dict, List, Set, Tuple
 
 
-_logger = getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 @lru_cache()

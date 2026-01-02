@@ -1,7 +1,7 @@
 """
 Utils Package
 
-This package contains utility functions and classes for tasks such as data processing, metric calculations, and other helper functions used across the project.
+This package contains utility functions and classes for device management, logging, tokenization, and visualization
 """
 
 from .device import Device, get_device

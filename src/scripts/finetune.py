@@ -6,7 +6,7 @@ import time
 import torch
 
 from dataclasses import dataclass
-from logging import getLogger
+from logging import getLogger as get_logger
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
@@ -21,7 +21,7 @@ from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics
 
 
-_logger = getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 @dataclass
@@ -197,9 +197,6 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
     return FineTuningResults(model, train_losses, val_losses, train_accs, val_accs, examples_seen)
 
 
-
-
-
 def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, training_set_path: str,
                                        sep="\t", column_names=["Label", "Text"], train_frac: float = 0.7,
                                        validation_frac: float = 0.1, save_split_dir: str = ".", batch_size: int = 8,
@@ -213,12 +210,12 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
         training_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
     assert max_length <= config.context_length, "Dataset sequences are longer than the model's context length."
-    _logger.info(" Done.")
+    _logger.info("Done.")
 
     _logger.info("Loading pre-trained model...")
     model = load_weights_into_gpt(model_size, models_dir, config)
     model.eval()
-    _logger.info(" Done.")
+    _logger.info("Done.")
 
     ### TEST
     text_1 = "Every effort moves you"
@@ -255,7 +252,7 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
         param.requires_grad = True
     for param in model.final_norm.parameters():
         param.requires_grad = True
-    _logger.info(" Done.")
+    _logger.info("Done.")
 
     ### TEST
     with torch.no_grad():
@@ -277,7 +274,7 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     _logger.info(f"Load model to {device}...")
     device = get_device(device)
     model.to(device)
-    _logger.info(" Done.")
+    _logger.info("Done.")
 
     ### TEST
     torch.manual_seed(seed)
