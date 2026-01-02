@@ -23,7 +23,6 @@ FILES_TO_DOWNLOAD = [
 _logger = get_logger(__name__)
 
 
-
 def _download_file(url: str, destination: str) -> None:
 
     # Send a GET request to download the file
