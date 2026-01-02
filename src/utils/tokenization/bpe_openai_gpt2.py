@@ -34,14 +34,18 @@
 # - Enhanced error handling and progress reporting in download_vocab function
 # - Maintained full backward compatibility with original OpenAI implementation
 
-import os
 import json
+import os
 import regex as re
 import requests
 
-from tqdm import tqdm
 from functools import lru_cache
+from logging import getLogger
+from tqdm import tqdm
 from typing import Dict, List, Set, Tuple
+
+
+_logger = getLogger(__name__)
 
 
 @lru_cache()
@@ -322,7 +326,7 @@ def download_vocab() -> None:
     files_to_download = ["encoder.json", "vocab.bpe"]
 
     for filename in files_to_download:
-        print(f"Downloading {filename}...")
+        _logger.info(f"Downloading {filename}...")
         response = requests.get(base_url + filename, stream=True)
         response.raise_for_status()  # Raise an exception for bad responses
 
@@ -337,4 +341,4 @@ def download_vocab() -> None:
                     if chunk:  # Filter out keep-alive chunks
                         f.write(chunk)
                         progress_bar.update(len(chunk))
-    print("Download complete.")
+    _logger.info("Download complete.")

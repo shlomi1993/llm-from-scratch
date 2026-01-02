@@ -21,6 +21,9 @@ from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics
 
 
+_logger = getLogger(__name__)
+
+
 @dataclass
 class FineTuningResults:
     model: GptModel
@@ -182,13 +185,12 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
                 train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
-                print(f"Epoch {epoch} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                _logger.info(f"Epoch {epoch} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Calculate accuracy after each epoch
         train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
         val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
-        print(f"Training accuracy: {train_accuracy * 100:.2f}% | ", end="")
-        print(f"Validation accuracy: {val_accuracy * 100:.2f}%")
+        _logger.info(f"Training accuracy: {train_accuracy * 100:.2f}% | Validation accuracy: {val_accuracy * 100:.2f}%")
         train_accs.append(train_accuracy)
         val_accs.append(val_accuracy)
 
@@ -203,21 +205,20 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
                                        validation_frac: float = 0.1, save_split_dir: str = ".", batch_size: int = 8,
                                        seed: int = 123, device: str = "auto", lr: float = 5e-4, n_epochs: int = 10,
                                        weight_decay: float = 0.1, eval_freq: int = 500, eval_iter: int = 5) -> FineTuningResults:
-    logger = getLogger("Classification Fine-Tuning")
 
-    logger.info("Running classification fine-tuning flow...")
+    _logger.info("Running classification fine-tuning flow...")
 
-    logger.info("Preparing dataset...")
+    _logger.info("Preparing dataset...")
     train_loader, val_loader, test_loader, max_length = create_dataloaders(
         training_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
     assert max_length <= config.context_length, "Dataset sequences are longer than the model's context length."
-    logger.info(" Done.")
+    _logger.info(" Done.")
 
-    logger.info("Loading pre-trained model...")
+    _logger.info("Loading pre-trained model...")
     model = load_weights_into_gpt(model_size, models_dir, config)
     model.eval()
-    logger.info(" Done.")
+    _logger.info(" Done.")
 
     ### TEST
     text_1 = "Every effort moves you"
@@ -247,14 +248,14 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     assert inputs.shape == (1, 4), f"Input shape mismatch: got {inputs.shape}, expected (1, 4)"
     ### END TEST
 
-    logger.info("Preparing model for classification fine-tuning...")
+    _logger.info("Preparing model for classification fine-tuning...")
     torch.manual_seed(seed)
     model.out_head = torch.nn.Linear(in_features=config.emb_dim, out_features=2)
     for param in model.trf_blocks[-1].parameters():
         param.requires_grad = True
     for param in model.final_norm.parameters():
         param.requires_grad = True
-    logger.info(" Done.")
+    _logger.info(" Done.")
 
     ### TEST
     with torch.no_grad():
@@ -273,10 +274,10 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     assert label.item() == 1
     ### END TEST
 
-    logger.info(f"Load model to {device}...")
+    _logger.info(f"Load model to {device}...")
     device = get_device(device)
     model.to(device)
-    logger.info(" Done.")
+    _logger.info(" Done.")
 
     ### TEST
     torch.manual_seed(seed)
@@ -298,14 +299,14 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     assert 2.3 <= test_loss <= 2.4, f"Unexpected test loss: {test_loss}"
     ### END TEST
 
-    logger.info("Starting fine-tuning...")
+    _logger.info("Starting fine-tuning...")
     start_time = time.time()
     torch.manual_seed(seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     training_results = finetune_classifier(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq=50, eval_iter=5)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
-    logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
+    _logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
 
     import ipdb; ipdb.set_trace(context=11)
     epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))

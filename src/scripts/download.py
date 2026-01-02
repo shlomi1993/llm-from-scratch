@@ -2,6 +2,7 @@ import argparse
 import os
 import requests
 
+from logging import getLogger
 from tqdm import tqdm
 
 
@@ -19,6 +20,10 @@ FILES_TO_DOWNLOAD = [
 ]
 
 
+_logger = getLogger(__name__)
+
+
+
 def _download_file(url: str, destination: str) -> None:
 
     # Send a GET request to download the file
@@ -32,7 +37,7 @@ def _download_file(url: str, destination: str) -> None:
     if os.path.exists(destination):
         file_size_local = os.path.getsize(destination)
         if file_size and file_size == file_size_local:
-            print(f"File already exists and is up-to-date: {destination}")
+            _logger.info(f"File already exists and is up-to-date: {destination}")
             return
 
     # Define the block size for reading the file
@@ -47,7 +52,7 @@ def _download_file(url: str, destination: str) -> None:
                     file.write(chunk)
                     progress_bar.update(len(chunk))
 
-    print(f"Successfully downloaded {destination}")
+    _logger.info(f"Successfully downloaded {destination}")
 
 
 def download_gpt2(model_size: str, models_dir: str) -> str:
@@ -66,7 +71,7 @@ def download_gpt2(model_size: str, models_dir: str) -> str:
         try:
             _download_file(file_url, file_path)
         except requests.exceptions.RequestException:
-            print(f"\033[93mWARNING\033[0m: Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
+            _logger.warning(f"Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
             _download_file(backup_url, file_path)
 
     # Return model size directory
@@ -86,7 +91,7 @@ def main() -> None:
     add_arguments(parser)
     args = parser.parse_args()
     model_dir = download_gpt2(args.model_size, args.models_dir)
-    print(f"GPT-2 model files downloaded to: {model_dir}")
+    _logger.info(f"GPT-2 model files downloaded to: {model_dir}")
 
 
 if __name__ == "__main__":

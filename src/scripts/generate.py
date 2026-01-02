@@ -15,6 +15,9 @@ from src.utils.device import Device, get_device
 from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 
 
+_logger = getLogger(__name__)
+
+
 def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
 
     # Initialize parameters dictionary with empty blocks for each layer
@@ -138,11 +141,10 @@ def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: 
 def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, model_size: str,
                               max_new_tokens: int = 25, temperature: float = 1.0, top_k: int = 50, device: str = "auto",
                               seed: int = 123, measure_time: bool = False, measure_memory: bool = False) -> str:
-    logger = getLogger("Model Generation Flow")
 
-    logger.info("Running model generation flow...")
+    _logger.info("Running model generation flow...")
 
-    logger.info(f"Using device '{device}' and random seed {seed}.")
+    _logger.info(f"Using device '{device}' and random seed {seed}.")
     torch.manual_seed(seed)
     device = get_device(device)
 
@@ -157,9 +159,9 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
         requested_measurements.append("GPU memory")
         torch.cuda.reset_peak_memory_stats()
     if requested_measurements:
-        logger.info(f"Measuring {' and '.join(requested_measurements)} for model loading and generation")
+        _logger.info(f"Measuring {' and '.join(requested_measurements)} for model loading and generation")
 
-    logger.info(f"Loading GPT model of size '{model_size}' from '{models_dir}'")
+    _logger.info(f"Loading GPT model of size '{model_size}' from '{models_dir}'")
     gpt = None
     if measure_time or (measure_memory and torch.cuda.is_available()):
         if measure_memory and torch.cuda.is_available():
@@ -182,7 +184,7 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
     if measure_memory and torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
 
-    logger.info("Generating text...")
+    _logger.info("Generating text...")
     token_ids = gpt.generate(
         idx=text_to_token_ids(prompt).to(device),
         max_new_tokens=max_new_tokens,
@@ -202,18 +204,18 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
 
     generated_text = token_ids_to_text(token_ids)
 
-    logger.info(f"Output text:\n{generated_text}")
-    print("\n")
+    out_section_divider = "-" * 20
+    _logger.info(f"Output text:\n{out_section_divider}\n{generated_text}\n{out_section_divider}\n")
     if measure_time and load_duration is not None:
-        logger.info(f"[Model Load] Duration:   {load_duration:.2f} sec")
+        _logger.info(f"[Model Load] Duration:   {load_duration:.2f} sec")
     if measure_memory and load_max_mem_gb is not None:
-        logger.info(f"[Model Load] Max memory: {load_max_mem_gb:.2f} GB")
+        _logger.info(f"[Model Load] Max memory: {load_max_mem_gb:.2f} GB")
     if measure_time and gen_duration is not None:
-        logger.info(f"[Generation] Duration:   {gen_duration:.2f} sec")
+        _logger.info(f"[Generation] Duration:   {gen_duration:.2f} sec")
     if measure_time and tps is not None:
-        logger.info(f"[Generation] TPS:        {tps:.2f} tokens/sec")
+        _logger.info(f"[Generation] TPS:        {tps:.2f} tokens/sec")
     if measure_memory and gen_max_mem_gb is not None:
-        logger.info(f"[Generation] Max memory: {gen_max_mem_gb:.2f} GB")
+        _logger.info(f"[Generation] Max memory: {gen_max_mem_gb:.2f} GB")
 
     return generated_text
 
@@ -229,13 +231,13 @@ def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: s
     gpt = _load_eval_gpt(config, model_size, models_dir, device, seed)
 
     # Run interactive mode
-    print("\nInteractive mode. Type your prompt and press Enter. Press Ctrl+C/CMD+C to exit.\n")
+    _logger.info("Entering interactive mode. Type your prompt and press Enter. Press Ctrl+C/CMD+C to exit.")
     try:
         while True:
             try:
                 prompt = input("Prompt: ")
             except EOFError:
-                print("\nExiting interactive mode.")
+                _logger.info("Exiting interactive mode.")
                 break
             if not prompt.strip():
                 continue
@@ -247,9 +249,11 @@ def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: s
                 top_k=top_k
             )
             generated_text = token_ids_to_text(token_ids)
-            print("Output:\n", generated_text)
+            _logger.info("Output:\n" + generated_text)
     except KeyboardInterrupt:
-        print("\nExiting interactive mode.")
+        _logger.info("Exiting interactive mode.")
+    except Exception as e:
+        _logger.error(f"An error occurred: {e}")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
