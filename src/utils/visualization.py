@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 
 
-def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: list[float], val_losses: list[float]) -> None:
+def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: list[float], val_losses: list[float],
+                savefig_path: str = None) -> None:
     fig, ax1 = plt.subplots()
 
     # Plot training and validation loss against epochs
@@ -17,10 +18,14 @@ def plot_losses(epochs_seen: list[int], tokens_seen: list[int], train_losses: li
     ax2.set_xlabel("Tokens seen")
 
     fig.tight_layout()  # Adjust layout to make room
-    plt.show()
+    if savefig_path:
+        plt.savefig(savefig_path)
+    else:
+        plt.show()
 
 
-def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values: list[float], val_values: list[float], label: str = "loss") -> None:
+def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values: list[float], val_values: list[float],
+                 label: str = "loss", savefig_path: str = None) -> None:
     fig, ax1 = plt.subplots(figsize=(5, 3))
 
     # Plot training and validation loss against epochs
@@ -36,5 +41,7 @@ def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values:
     ax2.set_xlabel("Examples seen")
 
     fig.tight_layout()  # Adjust layout to make room
-    plt.savefig(f"{label}-plot.pdf")
-    plt.show()
+    if savefig_path:
+        plt.savefig(savefig_path)
+    else:
+        plt.show()

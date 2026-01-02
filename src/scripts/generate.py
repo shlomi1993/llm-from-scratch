@@ -17,6 +17,7 @@ from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 
 _logger = get_logger(__name__)
 
+
 def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
 
     # Initialize parameters dictionary with empty blocks for each layer

@@ -25,7 +25,7 @@ class ColoredFormatter(logging.Formatter):
 
 # Configure logging on import
 handler = logging.StreamHandler()
-handler.setFormatter(ColoredFormatter("[%(asctime)s] %(short_name)s :: %(colored_levelname)s :: %(message)s"))
+handler.setFormatter(ColoredFormatter("[%(asctime)s] :: %(short_name)s :: %(colored_levelname)s :: %(message)s"))
 
 root = logging.getLogger()
 root.handlers.clear()

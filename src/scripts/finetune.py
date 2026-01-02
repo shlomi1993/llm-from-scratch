@@ -172,6 +172,7 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
     for epoch in range(n_epochs):
         model.train()  # Set model to training mode
 
+        _logger.info(f"Epoch {epoch} / {n_epochs}")
         for input_batch, target_batch in train_loader:
             optimizer.zero_grad() # Reset loss gradients from previous batch iteration
             loss = calc_loss_last_token(input_batch, target_batch, model, device)
@@ -185,12 +186,12 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
                 train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
-                _logger.info(f"Epoch {epoch} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Calculate accuracy after each epoch
         train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
         val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
-        _logger.info(f"Training accuracy: {train_accuracy * 100:.2f}% | Validation accuracy: {val_accuracy * 100:.2f}%")
+        _logger.info(f"  Training accuracy: {train_accuracy * 100:.2f}% | Validation accuracy: {val_accuracy * 100:.2f}%")
         train_accs.append(train_accuracy)
         val_accs.append(val_accuracy)
 
@@ -200,22 +201,20 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
 def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, training_set_path: str,
                                        sep="\t", column_names=["Label", "Text"], train_frac: float = 0.7,
                                        validation_frac: float = 0.1, save_split_dir: str = ".", batch_size: int = 8,
-                                       seed: int = 123, device: str = "auto", lr: float = 5e-4, n_epochs: int = 10,
-                                       weight_decay: float = 0.1, eval_freq: int = 500, eval_iter: int = 5) -> FineTuningResults:
+                                       seed: int = 123, device: str = "auto", lr: float = 5e-4, n_epochs: int = 5,
+                                       weight_decay: float = 0.1, eval_freq: int = 50, eval_iter: int = 5) -> FineTuningResults:
 
     _logger.info("Running classification fine-tuning flow...")
 
-    _logger.info("Preparing dataset...")
+    _logger.info("Preparing dataset")
     train_loader, val_loader, test_loader, max_length = create_dataloaders(
         training_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
     assert max_length <= config.context_length, "Dataset sequences are longer than the model's context length."
-    _logger.info("Done.")
 
-    _logger.info("Loading pre-trained model...")
+    _logger.info("Loading pre-trained model")
     model = load_weights_into_gpt(model_size, models_dir, config)
     model.eval()
-    _logger.info("Done.")
 
     ### TEST
     text_1 = "Every effort moves you"
@@ -245,14 +244,13 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     assert inputs.shape == (1, 4), f"Input shape mismatch: got {inputs.shape}, expected (1, 4)"
     ### END TEST
 
-    _logger.info("Preparing model for classification fine-tuning...")
+    _logger.info("Preparing model for classification fine-tuning")
     torch.manual_seed(seed)
     model.out_head = torch.nn.Linear(in_features=config.emb_dim, out_features=2)
     for param in model.trf_blocks[-1].parameters():
         param.requires_grad = True
     for param in model.final_norm.parameters():
         param.requires_grad = True
-    _logger.info("Done.")
 
     ### TEST
     with torch.no_grad():
@@ -271,10 +269,9 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     assert label.item() == 1
     ### END TEST
 
-    _logger.info(f"Load model to {device}...")
+    _logger.info(f"Load model to {device}")
     device = get_device(device)
     model.to(device)
-    _logger.info("Done.")
 
     ### TEST
     torch.manual_seed(seed)
@@ -300,20 +297,19 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     start_time = time.time()
     torch.manual_seed(seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-    training_results = finetune_classifier(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq=50, eval_iter=5)
+    training_results = finetune_classifier(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
     _logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
 
-    import ipdb; ipdb.set_trace(context=11)
     epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
     examples_seen_tensor = torch.linspace(0, training_results.n_examples_seen, len(training_results.train_losses))
-    plot_metrics(epochs_tensor, examples_seen_tensor, training_results.train_losses, training_results.val_losses)
+    plot_metrics(epochs_tensor, examples_seen_tensor, training_results.train_losses, training_results.val_losses, savefig_path="finetune_loss.pdf", label="loss")
 
     epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_accuracies))
     examples_seen_tensor = torch.linspace(0, training_results.n_examples_seen, len(training_results.train_accuracies))
-
-    plot_metrics(epochs_tensor, examples_seen_tensor, training_results.train_accuracies, training_results.val_accuracies, label="accuracy")
+    import ipdb; ipdb.set_trace(context=11)
+    plot_metrics(epochs_tensor, examples_seen_tensor, training_results.train_accuracies, training_results.val_accuracies, savefig_path="finetune_accuracy.pdf", label="accuracy")
 
 
     train_accuracy = calc_accuracy_loader(train_loader, model, device)

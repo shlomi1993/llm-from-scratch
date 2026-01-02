@@ -129,8 +129,8 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
     if make_plot:
         _logger.info(f"Saving loss plot to {saved_plot_path}")
         epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
-        plot_losses(epochs_tensor, training_results.tokens_seen, training_results.train_losses, training_results.val_losses)
-        plt.savefig(saved_plot_path)
+        plot_losses(epochs_tensor, training_results.tokens_seen, training_results.train_losses,
+                    training_results.val_losses, saved_plot_path)
 
     _logger.info("Training flow completed.")
     return training_results
