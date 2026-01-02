@@ -2,7 +2,7 @@ import argparse
 import os
 import requests
 
-from logging import getLogger
+from logging import getLogger as get_logger
 from tqdm import tqdm
 
 
@@ -20,7 +20,7 @@ FILES_TO_DOWNLOAD = [
 ]
 
 
-_logger = getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 

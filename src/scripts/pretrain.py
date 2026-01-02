@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from dataclasses import dataclass
-from logging import getLogger
+from logging import getLogger as get_logger
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
@@ -17,7 +17,7 @@ from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_losses
 
 
-_logger = getLogger(__name__)
+_logger = get_logger(__name__)
 
 
 @dataclass
