@@ -17,6 +17,9 @@ from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_losses
 
 
+_logger = getLogger(__name__)
+
+
 @dataclass
 class FoundationTrainingResults:
     model: GptModel
@@ -44,7 +47,7 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
     with torch.no_grad():
         token_ids = model.generate_naive(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
         decoded_text = token_ids_to_text(token_ids)
-        print(decoded_text.replace("\n", " "))  # Compact print format
+        _logger.info(decoded_text.replace("\n", " "))  # Compact print format
     model.train()
 
 
@@ -76,7 +79,7 @@ def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 tokens_seen.append(n_tokens_seen)
-                print(f"Epoch {epoch} (Step {global_step:06d}): Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                _logger.info(f"[Epoch {epoch} / {n_epochs} (Step {global_step:06d})] Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Print a sample text after each epoch
         if start_context is not None:
@@ -91,46 +94,45 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
                             train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
                             start_context: str = "Every effort moves you", saved_model_path: str = "model.pth",
                             make_plot: bool = True, saved_plot_path: str = "loss.pdf") -> FoundationTrainingResults:
-    logger = getLogger("Foundation Model Training")
 
-    logger.info("Running foundation model training flow...")
+    _logger.info("Running foundation model training flow...")
 
     max_length = max_length or config.context_length
     stride = stride or max_length
 
-    logger.info(f"Using device '{device}' and random seed {seed}.")
+    _logger.info(f"Using device '{device}' and random seed {seed}.")
     torch.manual_seed(seed)
     device = get_device(device)
 
-    logger.info(f"Loading training data from {training_set_path}")
+    _logger.info(f"Loading training data from {training_set_path}")
     with open(training_set_path, "r", encoding=dataset_encoding) as file:
         text_data = file.read()
 
-    logger.info(f"Initializing GPT model with config: {config}")
+    _logger.info(f"Initializing GPT model with config: {config}")
     model = GptModel(config)
     model.to(device)
 
-    logger.info(f"Using AdamW optimizer with learning rate {lr} and weight decay {weight_decay}")
+    _logger.info(f"Using AdamW optimizer with learning rate {lr} and weight decay {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-    logger.info(f"Creating training and validation data loaders with train ratio of {train_ratio}")
+    _logger.info(f"Creating training and validation data loaders with train ratio of {train_ratio}")
     train_loader, val_loader = train_test_split(text_data, max_length, batch_size, stride, train_ratio)
 
-    logger.info(f"Training for {n_epochs} epochs...")
+    _logger.info(f"Training for {n_epochs} epochs...")
     training_results = train_foundation_model(
         model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context
     )
 
-    logger.info(f"Saving trained model to {saved_model_path}")
+    _logger.info(f"Saving trained model to {saved_model_path}")
     torch.save(model.state_dict(), saved_model_path)  # Load: model.load_state_dict(torch.load(saved_model_path, weights_only=True))
 
     if make_plot:
-        logger.info(f"Saving loss plot to {saved_plot_path}")
+        _logger.info(f"Saving loss plot to {saved_plot_path}")
         epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
         plot_losses(epochs_tensor, training_results.tokens_seen, training_results.train_losses, training_results.val_losses)
         plt.savefig(saved_plot_path)
 
-    logger.info("Training flow completed.")
+    _logger.info("Training flow completed.")
     return training_results
 
 
