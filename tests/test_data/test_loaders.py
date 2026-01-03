@@ -4,7 +4,7 @@ import tiktoken
 
 from importlib.metadata import version
 
-from src.dataloader import GptDataloaderV1
+from src.data.loaders import GptDataloaderV1
 
 
 def test_torch_version():

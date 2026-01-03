@@ -1,7 +1,7 @@
 import torch
 
 from src.model.config import GPT_CONFIG_124M
-from src.feed_forward import FeedForward
+from src.model.feed_forward import FeedForward
 
 
 def test_feedforward_output_shape() -> None:

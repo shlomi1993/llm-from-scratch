@@ -7,9 +7,9 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.model.config import GptConfig
-from src.gpt import GptModel
+from src.model.gpt import GptModel
 from src.scripts.download import FILES_TO_DOWNLOAD, download_gpt2
-from src.common import get_device
+from src.utils.device import get_device
 
 
 # Add the root directory to Python path for tools package
@@ -24,14 +24,14 @@ if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
 
+@pytest.fixture(autouse=True)
+def set_seed():
+    torch.manual_seed(123)
+
+
 @pytest.fixture(scope="session")
 def device() -> torch.device:
     return get_device()
-
-
-@pytest.fixture(scope="session")
-def tokenizer() -> tiktoken.Encoding:
-    return tiktoken.get_encoding("gpt2")
 
 
 @pytest.fixture(scope="session")
@@ -39,6 +39,7 @@ def the_verdict_dataset() -> str:
     with open("datasets/the-verdict.txt", "r", encoding="utf-8") as f:
         text = f.read()
     return text
+
 
 @pytest.fixture
 def dummy_loader():
@@ -90,3 +91,20 @@ def ref_model_dir() -> str:
         download_gpt2("124M", model_dir)
 
     return model_dir
+
+
+@pytest.fixture
+def pretrained_model() -> dict:
+    gpt_config_124m_256ctx = GptConfig(
+        vocab_size=50257,    # Vocabulary size
+        context_length=256,  # Shortened context length (orig: 1024)
+        emb_dim=768,         # Embedding dimension
+        n_heads=12,          # Number of attention heads
+        n_layers=12,         # Number of layers
+        drop_rate=0.1,       # Dropout rate
+        qkv_bias=False       # Query-key-value bias
+    )
+    torch.manual_seed(123)
+    model = GptModel(gpt_config_124m_256ctx)
+    model.eval();  # Disable dropout during inference
+    return model

@@ -16,13 +16,13 @@ class GptConfig:
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--emb-dim", type=int, required=True, help="Embedding dimension.")
-    parser.add_argument("--n-layers", type=int, required=True, help="Number of layers.")
-    parser.add_argument("--n-heads", type=int, required=True, help="Number of attention heads.")
+    parser.add_argument("--emb-dim", type=int, default=768, help="Embedding dimension.")
+    parser.add_argument("--n-layers", type=int, default=12, help="Number of layers.")
+    parser.add_argument("--n-heads", type=int, default=12, help="Number of attention heads.")
     parser.add_argument("--vocab-size", type=int, default=50257, help="Vocabulary size.")
     parser.add_argument("--context-length", type=int, default=1024, help="Context length.")
     parser.add_argument("--drop-rate", type=float, default=0.1, help="Dropout rate.")
-    parser.add_argument("--qkv-bias", action="store_true", help="Use bias in QKV projections.")
+    parser.add_argument("--use-qkv-bias", action="store_true", help="Use bias in QKV projections.")
     parser.add_argument("--kv-window-size", type=int, default=None, help="KV cache window size.")
 
 

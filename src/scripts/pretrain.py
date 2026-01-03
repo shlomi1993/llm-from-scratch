@@ -14,7 +14,7 @@ from src.model.gpt import GptModel
 from src.scripts.losses import calc_loss_batch, evaluate_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import text_to_token_ids, token_ids_to_text
-from src.utils.visualization import plot_losses
+from src.utils.visualization import plot_metrics
 
 
 _logger = get_logger(__name__)
@@ -90,19 +90,19 @@ def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader
 
 def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-4, n_epochs: int = 10,
                             batch_size: int = 2, weight_decay: float = 0.1, dataset_encoding: str = "utf-8",
-                            device: str = "auto", seed: int = 123, max_length: int = None, stride: int = None,
+                            device_type: str = "auto", seed: int = 123, max_length: int = None, stride: int = None,
                             train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
                             start_context: str = "Every effort moves you", saved_model_path: str = "model.pth",
-                            make_plot: bool = True, saved_plot_path: str = "loss.pdf") -> FoundationTrainingResults:
+                            saved_plot_path: str = None) -> FoundationTrainingResults:
 
     _logger.info("Running foundation model training flow...")
 
+    torch.manual_seed(seed)
+    device = get_device(device_type)
+    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+
     max_length = max_length or config.context_length
     stride = stride or max_length
-
-    _logger.info(f"Using device '{device}' and random seed {seed}.")
-    torch.manual_seed(seed)
-    device = get_device(device)
 
     _logger.info(f"Loading training data from {training_set_path}")
     with open(training_set_path, "r", encoding=dataset_encoding) as file:
@@ -123,14 +123,14 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
         model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context
     )
 
-    _logger.info(f"Saving trained model to {saved_model_path}")
+    _logger.info(f"Saving pre-trained model to {saved_model_path}")
     torch.save(model.state_dict(), saved_model_path)  # Load: model.load_state_dict(torch.load(saved_model_path, weights_only=True))
 
-    if make_plot:
+    if saved_plot_path:
         _logger.info(f"Saving loss plot to {saved_plot_path}")
         epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
-        plot_losses(epochs_tensor, training_results.tokens_seen, training_results.train_losses,
-                    training_results.val_losses, saved_plot_path)
+        plot_metrics(epochs_tensor, training_results.tokens_seen, training_results.train_losses,
+                     training_results.val_losses, "loss", saved_plot_path)
 
     _logger.info("Training flow completed.")
     return training_results
@@ -152,8 +152,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--eval-iter", type=int, default=1, help="Number of batches to use for evaluation.")
     parser.add_argument("--start-context", type=str, default="Every effort moves you", help="Starting context for sample generation.")
     parser.add_argument("--saved-model-path", type=str, default="model.pth", help="Path to save the trained model.")
-    parser.add_argument("--make-plot", action="store_true", help="Whether to plot training and validation losses.")
-    parser.add_argument("--saved-plot-path", type=str, default="loss.pdf", help="Path to save the loss plot.")
+    parser.add_argument("--saved-plot-path", type=str, default=None, help="Path to save the loss plot.")
 
 
 def main() -> None:
@@ -172,7 +171,7 @@ def main() -> None:
         vocab_size=args.vocab_size,
         context_length=args.context_length,
         drop_rate=args.drop_rate,
-        qkv_bias=args.qkv_bias,
+        qkv_bias=args.use_qkv_bias,
         kv_window_size=args.kv_window_size
     )
 
@@ -184,7 +183,7 @@ def main() -> None:
         batch_size=args.batch_size,
         weight_decay=args.weight_decay,
         dataset_encoding=args.dataset_encoding,
-        device=args.device,
+        device_type=args.device,
         seed=args.seed,
         max_length=args.max_length,
         stride=args.stride,

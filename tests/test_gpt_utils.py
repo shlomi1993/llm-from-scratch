@@ -11,23 +11,20 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.model.config import GPT_CONFIG_124M, GptConfig
-from src.evaluation import BatchLoss, calc_loss_loader
-from src.gpt import GptModel
-from src.scripts import (
-    FILES_TO_DOWNLOAD,
-    download_gpt2,
-    load_weights_into_gpt,
+from src.scripts.losses import BatchLoss, calc_loss_loader
+from src.model.gpt import GptModel
+from src.scripts.download import FILES_TO_DOWNLOAD, download_gpt2
+from src.scripts.generate import load_tf_weights_into_gpt, run_model_generation_flow, run_model_interactive_flow
+from src.scripts.pretrain import (
     calc_loss_batch,
     calc_loss_loader,
     train_test_split,
     evaluate_model,
     generate_and_print_sample,
     train_foundation_model,
-    run_model_training_flow,
-    run_model_generation_flow,
-    run_model_interactive_flow
+    run_model_training_flow
 )
-from src.common import text_to_token_ids, token_ids_to_text
+from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 
 
 @pytest.mark.skip(reason="Downloading files from the internet takes time; run manually when needed")
@@ -44,7 +41,7 @@ def test_download_and_load_gpt2_124m(tokenizer: tiktoken.Encoding):
 
         config = GptConfig(emb_dim=768, n_layers=12, n_heads=12, qkv_bias=True)
 
-        gpt = load_weights_into_gpt(model_size, temp_dir, config)
+        gpt = load_tf_weights_into_gpt(model_size, temp_dir, config)
         gpt.eval()
 
         input_ids = text_to_token_ids("Every effort moves you", tokenizer)
