@@ -66,7 +66,7 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(right))
 
 
-def load_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
+def load_tf_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
     params = _load_gpt2_params(model_size, models_dir)
 
     gpt = GptModel(config)
@@ -131,22 +131,22 @@ def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: 
 
     # Load model
     gpt = GptModel(gen_config)
-    load_weights_into_gpt(model_size, models_dir, gen_config)
+    load_tf_weights_into_gpt(model_size, models_dir, gen_config)
     gpt.to(device)
     gpt.eval()
 
     return gpt
 
 
-def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, model_size: str,
-                              max_new_tokens: int = 25, temperature: float = 1.0, top_k: int = 50, device: str = "auto",
-                              seed: int = 123, measure_time: bool = False, measure_memory: bool = False) -> str:
+def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, model_size: str, max_new_tokens: int = 25,
+                              temperature: float = 1.0, top_k: int = 50, device_type: str = "auto", seed: int = 123,
+                              measure_time: bool = False, measure_memory: bool = False) -> str:
 
     _logger.info("Running model generation flow...")
 
-    _logger.info(f"Using device '{device}' and random seed {seed}.")
     torch.manual_seed(seed)
-    device = get_device(device)
+    device = get_device(device_type)
+    _logger.info(f"Using device '{device.type}' and random seed {seed}")
 
     requested_measurements = []
     load_duration = load_max_mem_gb = gen_duration = gen_max_mem_gb = tps = None
@@ -221,11 +221,12 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
 
 
 def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: str, max_new_tokens: int = 25,
-                               temperature: float = 1.0, top_k: int = 50, device: str = "auto", seed: int = 123) -> None:
+                               temperature: float = 1.0, top_k: int = 50, device_type: str = "auto", seed: int = 123) -> None:
 
     # General setup
     torch.manual_seed(seed)
-    device = get_device(device)
+    device = get_device(device_type)
+    _logger.info(f"Using device '{device.type}' and random seed {seed}.")
 
     # Load model
     gpt = _load_eval_gpt(config, model_size, models_dir, device, seed)
@@ -286,7 +287,7 @@ def main() -> None:
         vocab_size=args.vocab_size,
         context_length=args.context_length,
         drop_rate=args.drop_rate,
-        qkv_bias=args.qkv_bias,
+        qkv_bias=args.use_qkv_bias,
         kv_window_size=args.kv_window_size
     )
 
@@ -299,7 +300,7 @@ def main() -> None:
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             top_k=args.top_k,
-            device=args.device,
+            device_type=args.device,
             seed=args.seed,
             measure_time=args.measure_time,
             measure_memory=args.measure_memory
@@ -312,7 +313,7 @@ def main() -> None:
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             top_k=args.top_k,
-            device=args.device,
+            device_type=args.device,
             seed=args.seed
         )
 

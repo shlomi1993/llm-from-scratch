@@ -7,7 +7,7 @@ This package contains utility functions and classes for device management, loggi
 from .device import Device, get_device
 from .tokenization import tokenizer
 from .tokenization.tokenizer import TOKENIZER, encode, decode, text_to_token_ids, token_ids_to_text
-from .visualization import plot_losses
+from .visualization import plot_metrics
 
 __all__ = [
     "Device",
@@ -18,5 +18,5 @@ __all__ = [
     "decode",
     "text_to_token_ids",
     "token_ids_to_text",
-    "plot_losses",
+    "plot_metrics",
 ]

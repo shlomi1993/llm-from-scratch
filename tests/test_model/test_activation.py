@@ -1,6 +1,6 @@
 import torch
 
-from src.activation import GELU
+from src.model.activation import GELU
 
 
 def test_gelu_forward_basic():

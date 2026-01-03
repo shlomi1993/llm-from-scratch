@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.normalization import LayerNorm
+from src.model.normalization import LayerNorm
 
 
 def test_layernorm_output_mean_and_var_are_zero_and_one() -> None:

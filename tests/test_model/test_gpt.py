@@ -4,7 +4,7 @@ import torch.nn as nn
 import tiktoken
 
 from src.model.config import GptConfig, GPT_CONFIG_124M, GPT_CONFIG_355M, GPT_CONFIG_774M, GPT_CONFIG_1558M
-from src.gpt import GptModel
+from src.model.gpt import GptModel
 
 
 def _gpt2_total_params(cfg):
