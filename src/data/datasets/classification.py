@@ -7,7 +7,7 @@ from src.utils.tokenization import tokenizer
 
 class SpamDataset(Dataset):
 
-    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = 50256) -> None:
+    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> None:
         self.data = pd.read_csv(csv_file)
 
         # Pre-tokenize texts
