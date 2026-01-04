@@ -109,7 +109,8 @@ class GptModel(nn.Module):
                     idx = torch.cat([idx, next_idx], dim=1)
         return idx
 
-    def generate(self, idx: Tensor, max_new_tokens: int, context_size: int, temperature: float = 0.0, top_k: int = None, eos_id: int = None) -> Tensor:
+    def generate(self, idx: Tensor, max_new_tokens: int, context_size: int, temperature: float = 0.0, top_k: int = None,
+                 eos_id: int = None) -> Tensor:
         for _ in range(max_new_tokens):
 
             # Trim context

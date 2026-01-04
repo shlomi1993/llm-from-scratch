@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from src.data.loaders import GptDataloaderV1
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
-from src.scripts.losses import calc_loss_batch, evaluate_model
+from src.scripts.common import calc_loss_batch, evaluate_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
@@ -21,7 +21,7 @@ _logger = get_logger(__name__)
 
 
 @dataclass
-class FoundationTrainingResults:
+class TrainingResults:
     model: GptModel
     train_losses: list[float]
     val_losses: list[float]
@@ -53,7 +53,7 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
 
 def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer,
                            device: Device, n_epochs: int, eval_freq: int = 50, eval_iter: int = 5,
-                           start_context: str = None) -> FoundationTrainingResults:
+                           start_context: str = None) -> TrainingResults:
 
     # Initialize lists to track losses and tokens/examples seen
     train_losses, val_losses, tokens_seen = [], [], []
@@ -85,7 +85,7 @@ def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader
         if start_context is not None:
             generate_and_print_sample(model, device, start_context)
 
-    return FoundationTrainingResults(model=model, train_losses=train_losses, val_losses=val_losses, tokens_seen=tokens_seen)
+    return TrainingResults(model=model, train_losses=train_losses, val_losses=val_losses, tokens_seen=tokens_seen)
 
 
 def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-4, n_epochs: int = 10,
@@ -93,7 +93,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
                             device_type: str = "auto", seed: int = 123, max_length: int = None, stride: int = None,
                             train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
                             start_context: str = "Every effort moves you", saved_model_path: str = "model.pth",
-                            saved_plot_path: str = None) -> FoundationTrainingResults:
+                            saved_plot_path: str = None) -> TrainingResults:
 
     _logger.info("Running foundation model training flow...")
 
@@ -130,7 +130,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
         _logger.info(f"Saving loss plot to {saved_plot_path}")
         epochs_tensor = torch.linspace(0, n_epochs, len(training_results.train_losses))
         plot_metrics(epochs_tensor, training_results.tokens_seen, training_results.train_losses,
-                     training_results.val_losses, "loss", saved_plot_path)
+                     training_results.val_losses, "loss", saved_plot_path, legend_loc="upper right")
 
     _logger.info("Training flow completed.")
     return training_results

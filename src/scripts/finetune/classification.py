@@ -144,7 +144,7 @@ def load_finetuned_model(model_path: str, config: GptConfig, device: Device, n_c
 
 
 
-def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = 50256):
+def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> str:
     model.eval()
 
     # Verify that the input length does not exceed model context length
@@ -205,13 +205,13 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
     return FineTuningResults(model, train_losses, val_losses, train_accs, val_accs, examples_seen)
 
 
-def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, training_set_path: str,
+def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, tuning_set_path: str,
                                        sep="\t", column_names=["Label", "Text"], train_frac: float = 0.7,
                                        validation_frac: float = 0.1, save_split_dir: str = ".", batch_size: int = 8,
                                        seed: int = 123, device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 5,
                                        weight_decay: float = 0.1, eval_freq: int = 50, eval_iter: int = 5,
                                        loss_plot_save_path: str = None, accuracy_plot_save_path: str = None,
-                                       model_save_path: str = "review_classifier.pth") -> FineTuningResults:
+                                       model_save_path: str = "spam-classifier.pth") -> FineTuningResults:
 
     _logger.info("Running classification fine-tuning flow...")
 
@@ -219,9 +219,9 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     device = get_device(device_type)
     _logger.info(f"Using device '{device.type}' and random seed {seed}")
 
-    _logger.info("Preparing fine-tuning dataset")
+    _logger.info("Preparing classification fine-tuning dataset")
     train_loader, val_loader, test_loader = create_dataloaders(
-        training_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
+        tuning_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
     assert train_loader.dataset.max_length <= config.context_length, "Dataset sequences are longer than the model's context length."
 
@@ -241,10 +241,12 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     _logger.info("Moving model to device")
     model.to(device)
 
-    _logger.info("Starting fine-tuning...")
-    start_time = time.time()
-    torch.manual_seed(seed)
+    _logger.info(f"Setting up optimizer with learning rate {lr} and weight decay {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    torch.manual_seed(seed)
+    _logger.info("Starting classification fine-tuning...")
+    start_time = time.time()
     results = finetune_classifier(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
@@ -267,7 +269,7 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
         loss_epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
         loss_examples_seen_tensor = torch.linspace(0, results.n_examples_seen, len(results.train_losses))
         plot_metrics(loss_epochs_tensor, loss_examples_seen_tensor, results.train_losses, results.val_losses,
-                    savefig_path=loss_plot_save_path, label="loss")
+                    savefig_path=loss_plot_save_path, label="loss", legend_loc="upper right")
 
     if accuracy_plot_save_path:
         accu_epochs_tensor = torch.linspace(0, n_epochs, len(results.train_accuracies))
@@ -327,7 +329,7 @@ def main() -> None:
         config=config,
         models_dir=args.models_dir,
         model_size=args.model_size,
-        training_set_path=args.training_set_path,
+        tuning_set_path=args.training_set_path,
         sep=args.sep,
         column_names=args.column_names,
         train_frac=args.train_frac,
