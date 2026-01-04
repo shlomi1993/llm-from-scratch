@@ -13,8 +13,7 @@ from torch.utils.data import DataLoader
 from src.data.datasets.classification import SpamDataset
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
-from src.scripts.losses import calc_loss_last_token, calc_loss_loader, evaluate_model
-from src.scripts.generate import load_tf_weights_into_gpt
+from src.scripts.common import load_tf_weights_into_gpt, calc_loss_last_token, calc_loss_loader, evaluate_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics

@@ -5,6 +5,10 @@ import torch
 TOKENIZER = tiktoken.get_encoding("gpt2")
 
 
+PAD_TOKEN_ID = 50656  # <|endoftext|>
+IGNORE_INDEX = -100  # Used to ignore padding tokens in cross-entropy loss computation
+
+
 def encode(text: str) -> list[int]:
     return TOKENIZER.encode(text)
 
@@ -22,3 +26,7 @@ def text_to_token_ids(text: str) -> torch.Tensor:
 def token_ids_to_text(token_ids: torch.Tensor) -> str:
     flat = token_ids.squeeze(0)  # remove batch dimension
     return TOKENIZER.decode(flat.tolist())
+
+
+def tokenize(v: str | torch.Tensor) -> torch.Tensor | str:
+    return text_to_token_ids(v) if isinstance(v, str) else token_ids_to_text(v)
