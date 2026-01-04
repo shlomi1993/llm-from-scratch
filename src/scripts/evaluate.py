@@ -73,28 +73,30 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", type=str, default="llama3", help="Model name to use with Ollama API")
 
 
-def run_ollama_evaluation_flow():
+def run_ollama_evaluation_flow(file_path: str = None, model: str = "llama3") -> None:
     ollama_running = is_ollama_running()
     if not ollama_running:
         raise RuntimeError("Ollama not running. Launch ollama before proceeding.")
 
-
-    parser = argparse.ArgumentParser(
-        description="Evaluate model responses with the Ollama API",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    add_arguments(parser)
-    args = parser.parse_args()
-
-    with open(args.file_path, "r") as file:
+    with open(file_path, "r") as file:
         test_data = json.load(file)
 
-    scores = generate_model_scores(test_data, "model_response", args.model)
+    scores = generate_model_scores(test_data, "model_response", model)
     avg_score = sum(scores) / len(scores) if scores else 0
 
     _logger.info(f"Number of scores: {len(scores)} of {len(test_data)}")
     _logger.info(f"Average score: {avg_score:.2f}\n")
 
 
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Evaluate model responses using Ollama API",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    add_arguments(parser)
+    args = parser.parse_args()
+    run_ollama_evaluation_flow(args.file_path, args.model)
+
+
 if __name__ == "__main__":
-    run_ollama_evaluation_flow()
+    main()
