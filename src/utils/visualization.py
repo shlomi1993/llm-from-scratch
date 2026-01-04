@@ -3,12 +3,14 @@ import matplotlib.pyplot as plt
 
 from logging import getLogger as get_logger
 
+from matplotlib.ticker import MaxNLocator
+
 
 _logger = get_logger(__name__)
 
 
 def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values: list[float], val_values: list[float],
-                 label: str, savefig_path: str = None, legend_loc: str = None) -> None:
+                 label: str, savefig_path: str = None, legend_loc: str = None, simplify_x_axis: bool = False) -> None:
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
     # Plot training and validation loss against epochs
@@ -17,6 +19,8 @@ def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values:
     ax1.set_xlabel("Epochs")
     ax1.set_ylabel(label.title())
     ax1.legend(loc=legend_loc)
+    if simplify_x_axis:
+        ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # only show integer labels on x-axis
 
     # Create a second x-axis for examples seen
     ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis

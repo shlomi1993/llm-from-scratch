@@ -10,7 +10,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.datasets.classification import SpamDataset
+from src.data.datasets import SpamDataset
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
 from src.scripts.common import load_tf_weights_into_gpt, calc_loss_last_token, calc_loss_loader, evaluate_model
@@ -125,7 +125,7 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
     return correct_predictions / n_examples
 
 
-def load_finetuned_model(model_path: str, config: GptConfig, device: Device, n_classes: int) -> GptModel:
+def load_classification_finetuned_model(model_path: str, config: GptConfig, device: Device, n_classes: int) -> GptModel:
 
     # Create model with the same architecture
     model = GptModel(config)

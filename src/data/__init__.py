@@ -4,9 +4,7 @@ Data module
 This module contains data-related classes and functions, including datasets and dataloaders for training and evaluation.
 """
 
-from .datasets.instruction import InstructionDataset
-from .datasets.classification import SpamDataset
-from .datasets.pretrain import GptDatasetV1
+from .datasets import GptDatasetV1, SpamDataset, InstructionDataset
 from .formatting import format_input
 from .loaders import GptDataloaderV1
 
