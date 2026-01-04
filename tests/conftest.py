@@ -25,7 +25,7 @@ if src_path not in sys.path:
 
 
 @pytest.fixture(autouse=True)
-def set_seed():
+def set_torch_seed():
     torch.manual_seed(123)
 
 
