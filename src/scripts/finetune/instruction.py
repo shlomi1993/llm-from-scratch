@@ -8,9 +8,10 @@ from functools import partial
 from logging import getLogger as get_logger
 from torch.utils.data import DataLoader
 
-from src.data.datasets.instruction import InstructionDataset
+from src.data.datasets import InstructionDataset
 from src.data.formatting import format_input
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
+from src.model.gpt import GptModel
 from src.scripts.common import load_tf_weights_into_gpt, calc_loss_loader, calc_loss_batch
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
@@ -26,9 +27,8 @@ def custom_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_
     # Find the longest sequence in the batch
     batch_max_length = max(len(item) + 1 for item in batch)
 
-    # Pad and prepare inputs and targets
+    # Pad and create inputs and targets
     inputs_lst, targets_lst = [], []
-
     for item in batch:
         item: list[int]
         new_item = item.copy()
@@ -101,6 +101,38 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
         num_workers=n_workers
     )
     return train_loader, val_loader, test_data  # NOTE: Test data is returned as a list of dicts
+
+
+def load_instruction_finetuned_model(model_path: str, config: GptConfig, device: Device) -> GptModel:
+
+    # Create model with the same architecture
+    model = GptModel(config)
+
+    # Load the fine-tuned weights
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+
+    # Move to device and set to eval mode
+    model.to(device)
+    model.eval()
+
+    return model
+
+
+def extract_response(response_text: str, input_text: str) -> str:
+    return response_text[len(input_text):].replace("### Response:", "").strip()
+
+
+def generate_response(model: GptModel, context_length: int, prompt: str, max_new_tokens: int = 35, seed: int = 123) -> str:
+    torch.manual_seed(seed)
+    token_ids = model.generate(
+        idx=text_to_token_ids(prompt),
+        max_new_tokens=max_new_tokens,
+        context_size=context_length,
+        eos_id=PAD_TOKEN_ID
+    )
+    response = token_ids_to_text(token_ids)
+    response = extract_response(response, prompt)
+    return response
 
 
 def run_instruction_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, tuning_set_path: str,

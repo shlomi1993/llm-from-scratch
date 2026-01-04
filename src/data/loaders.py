@@ -1,9 +1,10 @@
 from torch.utils.data import DataLoader
 
-from src.data.datasets.pretrain import GptDatasetV1
+from src.data.datasets import GptDatasetV1
 
 
 class GptDataloaderV1(DataLoader):
+
     def __init__(self, txt: str, batch_size: int, max_length: int, stride: int, shuffle: bool = True,
                  drop_last: bool = True, num_workers: int = 0) -> None:
         dataset = GptDatasetV1(txt, max_length, stride)
