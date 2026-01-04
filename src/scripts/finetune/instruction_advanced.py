@@ -271,7 +271,7 @@ def run_instruction_finetuning_advanced_flow(
         _logger.info(f"Saving loss plot to {loss_plot_save_path}")
         epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
         plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses,
-                    label="loss", savefig_path=loss_plot_save_path, legend_loc="upper right")
+                    label="loss", savefig_path=loss_plot_save_path, legend_loc="upper right", simplify_x_axis=True)
 
     # Generate responses on test set
     _logger.info("Generating responses on test set...")
