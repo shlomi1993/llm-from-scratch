@@ -74,6 +74,7 @@ def download_gpt2(model_size: str, models_dir: str) -> str:
             _download_file(backup_url, file_path)
 
     # Return model size directory
+    _logger.info(f"GPT-2 model files downloaded to: {model_dir}")
     return model_dir
 
 
@@ -89,8 +90,7 @@ def main() -> None:
     )
     add_arguments(parser)
     args = parser.parse_args()
-    model_dir = download_gpt2(args.model_size, args.models_dir)
-    _logger.info(f"GPT-2 model files downloaded to: {model_dir}")
+    download_gpt2(args.model_size, args.models_dir)
 
 
 if __name__ == "__main__":

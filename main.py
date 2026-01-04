@@ -1,138 +1,260 @@
-# import argparse
-# import tiktoken
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
+from logging import getLogger as get_logger
 
-# from src.model.config import GptConfig
-# from src.scripts import run_model_training_flow, run_model_generation_flow, run_model_interactive_flow, download_gpt2
-
-
-# class InputError(ValueError):
-#     pass
-
-
-# def parse_args() -> argparse.Namespace:
-#     parser = argparse.ArgumentParser(description="GPT Demonstration Tool")
-
-#     # Parent parser for common arguments
-#     parent = argparse.ArgumentParser(add_help=False)
-#     parent.add_argument("--device", default="auto", choices=["cpu", "cuda", "mps", "auto"], help="Device to run the model on (cpu, cuda, mps, or auto). Default: auto.")
-#     parent.add_argument("--dtype", type=str, default="float32", choices=["float32", "float16", "bfloat16"], help="Data type for model parameters (float32, float16, bfloat16). Default: float32.")
-#     parent.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility. Default: 123.")
-
-#     # Architecture
-#     arch_parent = argparse.ArgumentParser(add_help=False)
-#     arch_parent.add_argument("--context-length", type=int, default=1024, help="Maximum context length for the model. Default: 1024.")
-#     arch_parent.add_argument("--drop-rate", type=float, default=0.1, help="Dropout rate for regularization. Default: 0.1.")
-#     arch_parent.add_argument("--emb-dim", type=int, default=768, help="Embedding dimension size. Default: 768.")
-#     arch_parent.add_argument("--kv-window-size", type=int, default=None, help="KV cache window size for optimized cache. Default: None.")
-#     arch_parent.add_argument("--n-layers", type=int, default=12, help="Number of transformer layers. Default: 12.")
-#     arch_parent.add_argument("--n-heads", type=int, default=12, help="Number of attention heads. Default: 12.")
-#     arch_parent.add_argument("--qkv-bias", action="store_true", help="Enable bias in QKV projections.")
-#     arch_parent.add_argument("--vocab-size", type=int, default=50257, help="Vocabulary size for the tokenizer. Default: 50257.")
-
-#     # Sub-commands
-#     subparsers = parser.add_subparsers(dest="command", required=True, help="Sub-command to run")
-
-#     # Train subcommand - architecture and training args
-#     train_parser = subparsers.add_parser("train", parents=[parent, arch_parent], help="Train a new model from scratch.")
-#     train_parser.add_argument("--batch-size", type=int, default=2, help="Training batch size. Default: 2.")
-#     train_parser.add_argument("--data-file", type=str, default="the-verdict.txt", help="Path to the training text file. Default: the-verdict.txt.")
-#     train_parser.add_argument("--lr", type=float, default=5e-4, help="Learning rate for optimizer. Default: 5e-4.")
-#     train_parser.add_argument("--n-epochs", type=int, default=10, help="Number of training epochs. Default: 10.")
-#     train_parser.add_argument("--plot-path", type=str, default="loss.pdf", help="Path to save the loss plot. Default: loss.pdf.")
-#     train_parser.add_argument("--save-path", type=str, default="gpt2.pth", help="Path to save the trained model. Default: gpt2.pth.")
-#     train_parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for optimizer. Default: 0.1.")
-
-#     # Generate subcommand
-#     gen_parser = subparsers.add_parser("generate", parents=[parent, arch_parent], help="Generate text using a local (trained or downloaded) model.")
-#     gen_parser.add_argument("--interactive", action="store_true", help="Run in interactive prompt mode.")
-#     gen_parser.add_argument("--max-new-tokens", type=int, default=25, help="Number of new tokens to generate. Default: 25.")
-#     gen_parser.add_argument("--model-size", type=str, default="124M", choices=["124M", "355M", "774M", "1558M"], help="Model size to use (for pretrained models). Default: 124M.")
-#     gen_parser.add_argument("--models-dir", type=str, default="gpt2", help="Directory containing model weights. Default: gpt2.")
-#     gen_parser.add_argument("--measure-memory", action="store_true", help="Measure memory usage (GPU only, non-interactive mode).")
-#     gen_parser.add_argument("--measure-time", action="store_true", help="Measure generation time (non-interactive mode).")
-#     gen_parser.add_argument("--prompt", type=str, default="Hello, I am", help="Input prompt for generation. Default: 'Hello, I am'.")
-#     gen_parser.add_argument("--temperature", type=float, default=1.0, help="Sampling temperature for generation. Default: 1.0.")
-#     gen_parser.add_argument("--top-k", type=int, default=50, help="Top-k sampling for generation. Default: 50.")
-#     gen_parser.add_argument("--use-cache", action="store_true", help="Enable KV-cache optimization during generation.")
-
-#     # Download subcommand
-#     download_parser = subparsers.add_parser("download", parents=[parent], help="Download a pretrained GPT-2 model.")
-#     download_parser.add_argument("--model-size", type=str, default="124M", choices=["124M", "355M", "774M", "1558M"], help="Size of the GPT-2 model to download. Default: 124M.")
-#     download_parser.add_argument("--models-dir", type=str, default="gpt2", help="Directory to save downloaded model weights. Default: gpt2.")
-
-#     return parser.parse_args()
+from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
+from src.scripts.download import download_gpt2, add_arguments as add_download_arguments
+from src.scripts.evaluate import run_ollama_evaluation_flow, add_arguments as add_evaluate_arguments
+from src.scripts.finetune.classification import run_classification_finetuning_flow, add_arguments as add_classification_arguments
+from src.scripts.finetune.instruction import run_instruction_finetuning_flow, add_arguments as add_instruction_arguments
+from src.scripts.finetune.instruction_advanced import run_instruction_finetuning_advanced_flow, add_arguments as add_instruction_advanced_arguments
+from src.scripts.generate import run_model_generation_flow, run_model_interactive_flow, add_arguments as add_generate_arguments
+from src.scripts.pretrain import run_model_training_flow, add_arguments as add_pretrain_arguments
 
 
-# def args_to_gpt_config(args: argparse.Namespace) -> GptConfig:
-#     return GptConfig(
-#         emb_dim=args.emb_dim,
-#         n_layers=args.n_layers,
-#         n_heads=args.n_heads,
-#         vocab_size=args.vocab_size,
-#         context_length=args.context_length,
-#         drop_rate=args.drop_rate,
-#         qkv_bias=args.qkv_bias,
-#         kv_window_size=args.kv_window_size,
-#     )
+_logger = get_logger(__name__)
 
 
-# def main() -> None:
-
-#     args = parse_args()
-
-#     tokenizer = tiktoken.get_encoding("gpt2")
-
-#     if args.command == "train":
-#         run_model_training_flow(
-#             config=args_to_gpt_config(args),
-#             training_set_path=args.data_file,
-#             tokenizer=tokenizer,
-#             learning_rate=args.lr,
-#             n_epochs=args.n_epochs,
-#             batch_size=args.batch_size,
-#             weight_decay=args.weight_decay,
-#             device=args.device,
-#             seed=args.seed,
-#             saved_model_path=args.save_path,
-#             saved_plot_path=args.plot_path
-#         )
-#     elif args.command == "generate":
-#         if getattr(args, "interactive", False):
-#             if getattr(args, "measure_time", False) or getattr(args, "measure_memory", False):
-#                 raise InputError("--measure-time and --measure-memory are only allowed in non-interactive mode.")
-#             run_model_interactive_flow(
-#                 config=args_to_gpt_config(args),
-#                 models_dir=args.models_dir,
-#                 model_size=args.model_size,
-#                 tokenizer=tokenizer,
-#                 max_new_tokens=args.max_new_tokens,
-#                 temperature=args.temperature,
-#                 top_k=args.top_k,
-#                 device=args.device,
-#                 seed=args.seed
-#             )
-#         else:
-#             run_model_generation_flow(
-#                 config=args_to_gpt_config(args),
-#                 prompt=args.prompt,
-#                 models_dir=args.models_dir,
-#                 model_size=args.model_size,
-#                 tokenizer=tokenizer,
-#                 max_new_tokens=args.max_new_tokens,
-#                 temperature=args.temperature,
-#                 top_k=args.top_k,
-#                 device=args.device,
-#                 seed=args.seed,
-#                 measure_time=args.measure_time,
-#                 measure_memory=args.measure_memory
-#             )
-#     elif args.command == "download":
-#         download_gpt2(model_size=args.model_size, models_dir=args.models_dir)
-#     else:
-#         raise InputError(f"Unknown command {args.command}")
-
-#     print("Done.")
+def create_gpt_config_from_args(args: Namespace) -> GptConfig:
+    return GptConfig(
+        emb_dim=args.emb_dim,
+        n_layers=args.n_layers,
+        n_heads=args.n_heads,
+        vocab_size=args.vocab_size,
+        context_length=args.context_length,
+        drop_rate=args.drop_rate,
+        qkv_bias=args.use_qkv_bias,
+        kv_window_size=args.kv_window_size
+    )
 
 
-# if __name__ == "__main__":
-#     main()
+def run_pretrain(args: Namespace) -> None:
+    config = create_gpt_config_from_args(args)
+    run_model_training_flow(
+        config=config,
+        training_set_path=args.training_set_path,
+        lr=args.lr,
+        n_epochs=args.n_epochs,
+        batch_size=args.batch_size,
+        weight_decay=args.weight_decay,
+        dataset_encoding=args.dataset_encoding,
+        device_type=args.device,
+        seed=args.seed,
+        max_length=args.max_length,
+        stride=args.stride,
+        train_ratio=args.train_ratio,
+        eval_freq=args.eval_freq,
+        eval_iter=args.eval_iter,
+        start_context=args.start_context,
+        saved_model_path=args.saved_model_path,
+        saved_plot_path=args.saved_plot_path
+    )
+
+
+def run_generate(args: Namespace) -> None:
+    config = create_gpt_config_from_args(args)
+    if args.prompt is not None:
+        run_model_generation_flow(
+            config=config,
+            prompt=args.prompt,
+            models_dir=args.models_dir,
+            model_size=args.model_size,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            device_type=args.device,
+            seed=args.seed,
+            measure_time=args.measure_time,
+            measure_memory=args.measure_memory
+        )
+    else:
+        run_model_interactive_flow(
+            config=config,
+            models_dir=args.models_dir,
+            model_size=args.model_size,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            device_type=args.device,
+            seed=args.seed
+        )
+
+
+def run_finetune_classification(args: Namespace) -> None:
+    config = create_gpt_config_from_args(args)
+    run_classification_finetuning_flow(
+        config=config,
+        models_dir=args.models_dir,
+        model_size=args.model_size,
+        tuning_set_path=args.tuning_set_path,
+        sep=args.sep,
+        column_names=args.column_names,
+        train_frac=args.train_frac,
+        validation_frac=args.validation_frac,
+        save_split_dir=args.save_split_dir,
+        batch_size=args.batch_size,
+        seed=args.seed,
+        device_type=args.device,
+        lr=args.lr,
+        n_epochs=args.n_epochs,
+        weight_decay=args.weight_decay,
+        eval_freq=args.eval_freq,
+        eval_iter=args.eval_iter,
+        loss_plot_save_path=args.loss_plot_save_path,
+        accuracy_plot_save_path=args.accuracy_plot_save_path,
+        model_save_path=args.model_save_path
+    )
+
+
+def run_finetune_instruction(args: Namespace) -> None:
+    config = create_gpt_config_from_args(args)
+    run_instruction_finetuning_flow(
+        config=config,
+        models_dir=args.models_dir,
+        model_size=args.model_size,
+        tuning_set_path=args.tuning_set_path,
+        train_frac=args.train_frac,
+        test_frac=args.test_frac,
+        batch_size=args.batch_size,
+        seed=args.seed,
+        device_type=args.device,
+        lr=args.lr,
+        n_epochs=args.n_epochs,
+        weight_decay=args.weight_decay,
+        eval_freq=args.eval_freq,
+        eval_iter=args.eval_iter,
+        loss_plot_save_path=args.loss_plot_save_path,
+        model_save_path=args.model_save_path,
+        max_new_tokens=args.max_new_tokens,
+        pad_token_id=args.pad_token_id,
+        test_output_path=args.test_output_path
+    )
+
+
+def run_finetune_instruction_advanced(args: Namespace) -> None:
+    _logger.warning("Running advanced instruction fine-tuning ")
+    config = create_gpt_config_from_args(args)
+    run_instruction_finetuning_advanced_flow(
+        config=config,
+        models_dir=args.models_dir,
+        model_size=args.model_size,
+        tuning_set_path=args.tuning_set_path,
+        use_alpaca52k=args.use_alpaca52k,
+        mask_instructions=args.mask_instructions,
+        use_phi3_prompt=args.use_phi3_prompt,
+        use_lora=args.use_lora,
+        lora_rank=args.lora_rank,
+        lora_alpha=args.lora_alpha,
+        train_frac=args.train_frac,
+        test_frac=args.test_frac,
+        batch_size=args.batch_size,
+        seed=args.seed,
+        device_type=args.device,
+        lr=args.lr,
+        n_epochs=args.n_epochs,
+        weight_decay=args.weight_decay,
+        eval_freq=args.eval_freq,
+        eval_iter=args.eval_iter,
+        loss_plot_save_path=args.loss_plot_save_path,
+        model_save_path=args.model_save_path,
+        max_new_tokens=args.max_new_tokens,
+        test_output_path=args.test_output_path
+    )
+
+
+def run_download(args: Namespace) -> None:
+    download_gpt2(args.model_size, args.models_dir)
+
+
+def run_evaluate(args: Namespace) -> None:
+    run_ollama_evaluation_flow(args.file_path, args.model)
+
+
+def main() -> None:
+    parser = ArgumentParser(description="LLM from Scratch - Main CLI", formatter_class=ArgumentDefaultsHelpFormatter)
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    subparsers.required = True
+
+    # Pretrain command
+    pretrain_parser = subparsers.add_parser(
+        "pretrain",
+        help="Train a GPT model from scratch",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_gpt_config_arguments(pretrain_parser)
+    add_pretrain_arguments(pretrain_parser)
+    pretrain_parser.set_defaults(func=run_pretrain)
+
+    # Generate command
+    generate_parser = subparsers.add_parser(
+        "generate",
+        help="Generate text using a pre-trained GPT model",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_gpt_config_arguments(generate_parser)
+    add_generate_arguments(generate_parser)
+    generate_parser.set_defaults(func=run_generate)
+
+    # Finetune command with subcommands
+    finetune_parser = subparsers.add_parser(
+        "finetune",
+        help="Fine-tune a pre-trained model",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    finetune_subparsers = finetune_parser.add_subparsers(dest="finetune_type", help="Fine-tuning type")
+    finetune_subparsers.required = True
+
+    # Finetune - Classification
+    classification_parser = finetune_subparsers.add_parser(
+        "classification",
+        help="Fine-tune for classification tasks",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_gpt_config_arguments(classification_parser)
+    add_classification_arguments(classification_parser)
+    classification_parser.set_defaults(func=run_finetune_classification)
+
+    # Finetune - Instruction
+    instruction_parser = finetune_subparsers.add_parser(
+        "instruction",
+        help="Fine-tune for instruction following",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_gpt_config_arguments(instruction_parser)
+    add_instruction_arguments(instruction_parser)
+    instruction_parser.set_defaults(func=run_finetune_instruction)
+
+    # Finetune - Instruction Advanced
+    instruction_advanced_parser = finetune_subparsers.add_parser(
+        "instruction-advanced",
+        help="Fine-tune for instruction following with advanced features (LoRA, masking, Phi-3, Alpaca52k)",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_gpt_config_arguments(instruction_advanced_parser)
+    add_instruction_advanced_arguments(instruction_advanced_parser)
+    instruction_advanced_parser.set_defaults(func=run_finetune_instruction_advanced)
+
+    # Download command
+    download_parser = subparsers.add_parser(
+        "download",
+        help="Download GPT-2 model files",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_download_arguments(download_parser)
+    download_parser.set_defaults(func=run_download)
+
+    # Evaluate command
+    evaluate_parser = subparsers.add_parser(
+        "evaluate",
+        help="Evaluate model responses with Ollama API",
+        formatter_class=ArgumentDefaultsHelpFormatter
+    )
+    add_evaluate_arguments(evaluate_parser)
+    evaluate_parser.set_defaults(func=run_evaluate)
+
+    # Parse and execute
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
