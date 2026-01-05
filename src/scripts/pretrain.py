@@ -64,10 +64,11 @@ def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader
     for epoch in range(1, n_epochs + 1):
         model.train()  # Set model to training mode
 
+        _logger.info(f"Epoch {epoch}/{n_epochs}:")
         for input_batch, target_batch in train_loader:
             input_batch: Tensor
             optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
-            loss: Tensor = calc_loss_batch(model, input_batch, target_batch)
+            loss: Tensor = calc_loss_batch(input_batch, target_batch, model, device)
             loss.backward()  # Calculate loss gradients
             optimizer.step()  # Update model weights using loss gradients
             n_tokens_seen += input_batch.numel()
@@ -79,7 +80,7 @@ def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 tokens_seen.append(n_tokens_seen)
-                _logger.info(f"[Epoch {epoch} / {n_epochs} (Step {global_step:06d})] Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
         # Print a sample text after each epoch
         if start_context is not None:

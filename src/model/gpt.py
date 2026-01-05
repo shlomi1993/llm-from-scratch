@@ -12,6 +12,7 @@ class GptModel(nn.Module):
 
     def __init__(self, config: GptConfig) -> None:
         super().__init__()
+        self._config = config
 
         # Embedding layers
         self.tok_emb = nn.Embedding(config.vocab_size, config.emb_dim)
@@ -27,6 +28,10 @@ class GptModel(nn.Module):
         # Final normalization and output head
         self.final_norm = LayerNorm(config.emb_dim)
         self.out_head = nn.Linear(config.emb_dim, config.vocab_size, bias=False)
+
+    @property
+    def config(self) -> GptConfig:
+        return self._config
 
     def forward(self, in_idx: Tensor, use_cache: bool = False) -> Tensor:
         batch_size, seq_len = in_idx.shape

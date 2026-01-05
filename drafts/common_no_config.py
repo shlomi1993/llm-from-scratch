@@ -69,14 +69,20 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
     return torch.nn.Parameter(torch.tensor(right))
 
 
-def load_tf_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
+def load_tf_weights_into_gpt(model_size: str, models_dir: str, drop_rate: float = 0.1, qkv_bias: bool = False,
+                             kv_window_size: int = None) -> GptModel:
     params, settings = _load_gpt2_params(model_size, models_dir)
 
-    assert config.vocab_size == settings["n_vocab"], "Vocabulary size mismatch."
-    assert config.context_length == settings["n_ctx"], "Context length mismatch."
-    assert config.emb_dim == settings["n_embd"], "Embedding dimension mismatch."
-    assert config.n_heads == settings["n_head"], "Number of heads mismatch."
-    assert config.n_layers == settings["n_layer"], "Number of layers mismatch."
+    config = GptConfig(
+        emb_dim=settings["n_embd"],
+        n_layers=settings["n_layer"],
+        n_heads=settings["n_head"],
+        vocab_size=settings["n_vocab"],
+        context_length=settings["n_ctx"],
+        drop_rate=drop_rate,
+        qkv_bias=qkv_bias,
+        kv_window_size=kv_window_size
+    )
 
     gpt = GptModel(config)
     gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])

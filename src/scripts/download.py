@@ -71,7 +71,11 @@ def download_gpt2(model_size: str, models_dir: str) -> str:
             _download_file(file_url, file_path)
         except requests.exceptions.RequestException:
             _logger.warning(f"Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
-            _download_file(backup_url, file_path)
+            try:
+                _download_file(backup_url, file_path)
+            except requests.exceptions.RequestException as e:
+                _logger.error(f"Failed to download {filename} from both primary and backup URLs.")
+                raise e
 
     # Return model size directory
     _logger.info(f"GPT-2 model files downloaded to: {model_dir}")
