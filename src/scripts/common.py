@@ -2,10 +2,11 @@ import json
 import numpy as np
 import os
 import tensorflow as tf
-import time
 import torch
 
+from dataclasses import dataclass
 from torch import Tensor
+from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from typing import Callable
 
@@ -52,14 +53,14 @@ def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[st
     return params
 
 
-def _load_gpt2_params(model_size: str, models_dir: str) -> dict:
+def _load_gpt2_params(model_size: str, models_dir: str) -> tuple[dict, dict]:
     model_dir = os.path.join(models_dir, model_size)
     if not os.path.exists(model_dir):
-        raise ValueError(f"Model directory '{model_dir}' does not exist. Please download the model first.")
+        raise FileNotFoundError(f"Model directory '{model_dir}' does not exist. Please download the model first.")
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
     params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
-    return params
+    return params, settings
 
 
 def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
@@ -69,7 +70,13 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
 
 
 def load_tf_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
-    params = _load_gpt2_params(model_size, models_dir)
+    params, settings = _load_gpt2_params(model_size, models_dir)
+
+    assert config.vocab_size == settings["n_vocab"], "Vocabulary size mismatch."
+    assert config.context_length == settings["n_ctx"], "Context length mismatch."
+    assert config.emb_dim == settings["n_embd"], "Embedding dimension mismatch."
+    assert config.n_heads == settings["n_head"], "Number of heads mismatch."
+    assert config.n_layers == settings["n_layer"], "Number of layers mismatch."
 
     gpt = GptModel(config)
     gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])
@@ -162,3 +169,43 @@ def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLo
         val_loss = calc_loss_loader(val_loader, criterion, model, device, n_batches)
     model.train()
     return train_loss, val_loss
+
+
+########################################################################################################################
+################################################# Model Save and Load ##################################################
+########################################################################################################################
+
+
+@dataclass
+class ModelCheckpoint:
+    model: GptModel
+    config: GptConfig
+    optimizer: Optimizer
+
+
+def save_checkpoint(model: GptModel, config: GptConfig, optimizer: Optimizer, learning_rate: float, weight_decay: float,
+                    saved_model_path: str) -> None:
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "config": config.__dict__,
+        "optimizer_state_dict": optimizer.state_dict(),
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay
+    }
+    torch.save(checkpoint, saved_model_path)
+
+
+def load_checkpoint(saved_model_path: str, device: Device) -> ModelCheckpoint:
+    checkpoint = torch.load(saved_model_path, map_location=device, weights_only=False)
+    model_state_dict = checkpoint["model_state_dict"]
+    config = checkpoint["config"]
+    optimizer_state_dict = checkpoint["optimizer_state_dict"]
+    learning_rate = checkpoint["learning_rate"]
+    weight_decay = checkpoint["weight_decay"]
+    gpt_config = GptConfig(**config)
+    model = GptModel(gpt_config)
+    model.load_state_dict(model_state_dict)
+    model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer.load_state_dict(optimizer_state_dict)
+    return ModelCheckpoint(model=model, config=gpt_config, optimizer=optimizer)

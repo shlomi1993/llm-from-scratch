@@ -4,17 +4,18 @@ import torch
 
 TOKENIZER = tiktoken.get_encoding("gpt2")
 
-
+# Special tokens
+EOT = "<|endoftext|>"
 PAD_TOKEN_ID = 50656  # <|endoftext|>
 IGNORE_INDEX = -100  # Used to ignore padding tokens in cross-entropy loss computation
 
 
-def encode(text: str) -> list[int]:
-    return TOKENIZER.encode(text)
+def encode(text: str, **kwargs) -> list[int]:
+    return TOKENIZER.encode(text, **kwargs)
 
 
-def decode(tokens: list[int]) -> str:
-    return TOKENIZER.decode(tokens)
+def decode(tokens: list[int], **kwargs) -> str:
+    return TOKENIZER.decode(tokens, **kwargs)
 
 
 def text_to_token_ids(text: str) -> torch.Tensor:
