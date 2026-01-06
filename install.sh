@@ -21,9 +21,10 @@ echo "Installing requirements..."
 
 # Install requirements
 pip install --upgrade pip
-pip install -r "$SCRIPT_DIR/requirements.txt"
+pip install -e "$SCRIPT_DIR[dev]"
 
 echo "Installation completed successfully!"
 echo "Virtual environment '$VENV_NAME' is ready to use."
+echo "The 'gpt2' command is now available in the virtual environment."
 echo "To activate it manually, run: source $VENV_NAME/bin/activate"
 echo "Or use the activate.sh script: source activate.sh"
