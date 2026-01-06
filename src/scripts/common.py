@@ -1,3 +1,4 @@
+import os
 import torch
 
 from torch import Tensor
@@ -74,6 +75,7 @@ Project saved model format:
 
 
 def save_model(model: GptModel, save_path: str, optimizer: Optimizer = None) -> None:
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     checkpoint = {
         "model_state_dict": model.state_dict(),
         "config": model.config.__dict__
