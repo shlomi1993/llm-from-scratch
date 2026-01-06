@@ -86,8 +86,7 @@ def run_model_generation_flow(model_path: str, prompt: str, max_new_tokens: int 
 
     generated_text = token_ids_to_text(token_ids)
 
-    out_section_divider = "-" * 20
-    _logger.info(f"Output text:\n{out_section_divider}\n{generated_text}\n{out_section_divider}\n")
+    _logger.info(f"Output text:\n{generated_text.strip()}")
     if measure_time and load_duration is not None:
         _logger.info(f"[Model Load] Duration:   {load_duration:.2f} sec")
     if measure_memory and load_max_mem_gb is not None:
@@ -114,27 +113,28 @@ def run_model_interactive_flow(model_path: str, max_new_tokens: int = 25, temper
     gpt = _load_eval_gpt(model_path, device, seed)
 
     # Run interactive mode
-    _logger.info("Entering interactive mode. Type your prompt and press Enter. Press Ctrl+C/CMD+C to exit.")
+    _logger.info("Entering interactive mode. Type your prompt and press Enter. Type /bye to exit.")
     try:
         while True:
             try:
-                prompt = input("Prompt: ")
+                prompt = input(">>> ")
+                if prompt == "/bye":
+                    _logger.info("Exiting interactive mode.")
+                    break
             except EOFError:
                 _logger.info("Exiting interactive mode.")
                 break
             if not prompt.strip():
                 continue
-            token_ids = gpt.generate(
+            gpt.generate(
                 idx=text_to_token_ids(prompt).to(device),
                 max_new_tokens=max_new_tokens,
                 context_size=gpt.config.context_length,
                 temperature=temperature,
-                top_k=top_k
+                top_k=top_k,
+                live=True,
             )
-            generated_text = token_ids_to_text(token_ids)
-            _logger.info("Output:\n" + generated_text)
-    except KeyboardInterrupt:
-        _logger.info("Exiting interactive mode.")
+            print()
     except Exception as e:
         _logger.error(f"An error occurred: {e}")
 
@@ -143,8 +143,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model-path", type=str, required=True, help="Path to a pre-trained GPT2 model saved in Pytorch format (as described in src/scripts/common.py).")
     parser.add_argument("--prompt", type=str, default=None, help="Prompt text for generation. If not provided, enters interactive mode.")
     parser.add_argument("--max-new-tokens", type=int, default=25, help="Maximum number of new tokens to generate.")
-    parser.add_argument("--temperature", type=float, default=1.0, help="Sampling temperature for generation.")
-    parser.add_argument("--top-k", type=int, default=50, help="Top-K sampling parameter.")
+    parser.add_argument("--temperature", type=float, default=1.0, help="Sampling temperature for generation. Use 0 for greedy decoding.")
+    parser.add_argument("--top-k", type=int, default=50, help="Top-K sampling parameter. Use 0 to disable Top-K sampling.")
     parser.add_argument("--device", type=str, default="auto", help="Device to run the model on (e.g., 'cpu', 'cuda', or 'auto').")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
     parser.add_argument("--measure-time", action="store_true", help="Measure and report time taken for model loading and generation.")
@@ -165,19 +165,21 @@ def main() -> None:
             model_path=args.model_path,
             prompt=args.prompt,
             max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature,
-            top_k=args.top_k,
+            temperature=args.temperature or None,
+            top_k=args.top_k or None,
             device_type=args.device,
             seed=args.seed,
             measure_time=args.measure_time,
             measure_memory=args.measure_memory
         )
     else:
+        if args.measure_time or args.measure_memory:
+            raise ValueError("Measuring time or memory is not supported in interactive mode.")
         run_model_interactive_flow(
             model_path=args.model_path,
             max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature,
-            top_k=args.top_k,
+            temperature=args.temperature or None,
+            top_k=args.top_k or None,
             device_type=args.device,
             seed=args.seed
         )

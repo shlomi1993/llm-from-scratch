@@ -45,13 +45,10 @@ def run_pretrain(args: Namespace) -> None:
 
 def run_generate(args: Namespace) -> None:
     from src.scripts.generate import run_model_generation_flow, run_model_interactive_flow
-    config = create_gpt_config_from_args(args)
     if args.prompt is not None:
         run_model_generation_flow(
-            config=config,
+            model_path=args.model_path,
             prompt=args.prompt,
-            models_dir=args.models_dir,
-            model_size=args.model_size,
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             top_k=args.top_k,
@@ -62,9 +59,7 @@ def run_generate(args: Namespace) -> None:
         )
     else:
         run_model_interactive_flow(
-            config=config,
-            models_dir=args.models_dir,
-            model_size=args.model_size,
+            model_path=args.model_path,
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             top_k=args.top_k,
