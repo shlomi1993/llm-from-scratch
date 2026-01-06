@@ -190,7 +190,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
         token_ids = model.generate(
             idx=text_to_token_ids(input_text).to(device),
             max_new_tokens=max_new_tokens,
-            context_size=config.context_length,
+            context_size=model.config.context_length,
             eos_id=pad_token_id
         )
         generated_text = token_ids_to_text(token_ids)

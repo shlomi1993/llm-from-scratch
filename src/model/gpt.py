@@ -6,6 +6,7 @@ from torch import Tensor
 from .config import GptConfig
 from .normalization import LayerNorm
 from .transformer import TransformerBlock
+from src.utils.tokenization import tokenizer
 
 
 class GptModel(nn.Module):
@@ -115,7 +116,7 @@ class GptModel(nn.Module):
         return idx
 
     def generate(self, idx: Tensor, max_new_tokens: int, context_size: int, temperature: float = 0.0, top_k: int = None,
-                 eos_id: int = None) -> Tensor:
+                 eos_id: int = None, live: bool = False) -> Tensor:
         for _ in range(max_new_tokens):
 
             # Trim context
@@ -146,6 +147,11 @@ class GptModel(nn.Module):
             # Stop if EOS token is generated
             if idx_next == eos_id:
                 break
+
+            # Live generation print
+            if live:
+                token_str = tokenizer.decode([idx_next.item()])
+                print(token_str, end="", flush=True)
 
             # Append to sequence
             idx = torch.cat((idx, idx_next), dim=1)
