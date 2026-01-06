@@ -159,8 +159,8 @@ def run_finetune_instruction_advanced(args: Namespace) -> None:
 
 
 def run_download(args: Namespace) -> None:
-    from src.scripts.download import download_gpt2
-    download_gpt2(args.model_size, args.models_dir)
+    from src.scripts.download import run_download_flow
+    run_download_flow(args.size, args.dir, args.convert)
 
 
 def run_evaluate(args: Namespace) -> None:
