@@ -1,5 +1,4 @@
 import argparse
-import matplotlib.pyplot as plt
 import torch
 
 from dataclasses import dataclass
@@ -11,7 +10,7 @@ from torch.utils.data import DataLoader
 from src.data.loaders import GptDataloaderV1
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_batch, evaluate_model
+from src.scripts.common import calc_loss_batch, evaluate_model, save_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
@@ -47,7 +46,7 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
     with torch.no_grad():
         token_ids = model.generate_naive(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
         decoded_text = token_ids_to_text(token_ids)
-        _logger.info(decoded_text.replace("\n", " "))  # Compact print format
+        _logger.info("Generated sample:" + decoded_text.replace("\n", " "))
     model.train()
 
 
@@ -109,7 +108,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
     with open(training_set_path, "r", encoding=dataset_encoding) as file:
         text_data = file.read()
 
-    _logger.info(f"Initializing GPT model with config: {config}")
+    _logger.info(f"Initializing GPT model with config: {config.__dict__}")
     model = GptModel(config)
     model.to(device)
 
@@ -125,7 +124,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
     )
 
     _logger.info(f"Saving pre-trained model to {saved_model_path}")
-    torch.save(model.state_dict(), saved_model_path)  # Load: model.load_state_dict(torch.load(saved_model_path, weights_only=True))
+    save_model(model, saved_model_path, optimizer)
 
     if saved_plot_path:
         _logger.info(f"Saving loss plot to {saved_plot_path}")
