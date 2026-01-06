@@ -1,10 +1,5 @@
-import json
-import numpy as np
-import os
-import tensorflow as tf
 import torch
 
-from dataclasses import dataclass
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
@@ -12,114 +7,7 @@ from typing import Callable
 
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
-from src.model.transformer import TransformerBlock
 from src.utils.device import Device
-
-
-########################################################################################################################
-################################################# GPT-2 Weight Loading #################################################
-########################################################################################################################
-
-
-def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
-
-    # Initialize parameters dictionary with empty blocks for each layer
-    params = {"blocks": [{} for _ in range(settings["n_layer"])]}
-
-    # Iterate over each variable in the checkpoint
-    for name, _ in tf.train.list_variables(ckpt_path):
-        name: str
-
-        # Load the variable and remove singleton dimensions
-        variable_array = np.squeeze(tf.train.load_variable(ckpt_path, name))
-
-        # Process the variable name to extract relevant parts
-        variable_name_parts = name.split("/")[1:]  # Skip the 'model/' prefix
-
-        # Identify the target dictionary for the variable
-        target_dict = params
-        if variable_name_parts[0].startswith("h"):
-            layer_number = int(variable_name_parts[0][1:])
-            target_dict = params["blocks"][layer_number]
-
-        # Recursively access or create nested dictionaries
-        for key in variable_name_parts[1:-1]:
-            target_dict = target_dict.setdefault(key, {})
-
-        # Assign the variable array to the last key
-        last_key = variable_name_parts[-1]
-        target_dict[last_key] = variable_array
-
-    return params
-
-
-def _load_gpt2_params(model_size: str, models_dir: str) -> tuple[dict, dict]:
-    model_dir = os.path.join(models_dir, model_size)
-    if not os.path.exists(model_dir):
-        raise FileNotFoundError(f"Model directory '{model_dir}' does not exist. Please download the model first.")
-    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
-    params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
-    return params, settings
-
-
-def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
-    if left.shape != right.shape:
-        raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
-    return torch.nn.Parameter(torch.tensor(right))
-
-
-def load_tf_weights_into_gpt(model_size: str, models_dir: str, config: GptConfig) -> GptModel:
-    params, settings = _load_gpt2_params(model_size, models_dir)
-
-    assert config.vocab_size == settings["n_vocab"], "Vocabulary size mismatch."
-    assert config.context_length == settings["n_ctx"], "Context length mismatch."
-    assert config.emb_dim == settings["n_embd"], "Embedding dimension mismatch."
-    assert config.n_heads == settings["n_head"], "Number of heads mismatch."
-    assert config.n_layers == settings["n_layer"], "Number of layers mismatch."
-
-    gpt = GptModel(config)
-    gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])
-    gpt.tok_emb.weight = _assign(gpt.tok_emb.weight, params["wte"])
-
-    # Load transformer block weights
-    for i in range(len(params["blocks"])):
-        block: TransformerBlock = gpt.trf_blocks[i]
-
-        # Attention weights
-        q_w, k_w, v_w = np.split((params["blocks"][i]["attn"]["c_attn"])["w"], 3, axis=-1)
-        block.att.W_query.weight = _assign(block.att.W_query.weight, q_w.T)
-        block.att.W_key.weight = _assign(block.att.W_key.weight, k_w.T)
-        block.att.W_value.weight = _assign(block.att.W_value.weight, v_w.T)
-
-        # Attention biases
-        q_b, k_b, v_b = np.split((params["blocks"][i]["attn"]["c_attn"])["b"], 3, axis=-1)
-        block.att.W_query.bias = _assign(block.att.W_query.bias, q_b)
-        block.att.W_key.bias = _assign(block.att.W_key.bias, k_b)
-        block.att.W_value.bias = _assign(block.att.W_value.bias, v_b)
-
-        # Output projection
-        block.att.out_proj.weight = _assign(block.att.out_proj.weight, params["blocks"][i]["attn"]["c_proj"]["w"].T)
-        block.att.out_proj.bias = _assign(block.att.out_proj.bias, params["blocks"][i]["attn"]["c_proj"]["b"])
-
-        # Feed-forward weights and biases
-        block.ff.layers[0].weight = _assign(block.ff.layers[0].weight, params["blocks"][i]["mlp"]["c_fc"]["w"].T)
-        block.ff.layers[0].bias = _assign(block.ff.layers[0].bias, params["blocks"][i]["mlp"]["c_fc"]["b"])
-        block.ff.layers[2].weight = _assign(block.ff.layers[2].weight, params["blocks"][i]["mlp"]["c_proj"]["w"].T)
-        block.ff.layers[2].bias = _assign(block.ff.layers[2].bias, params["blocks"][i]["mlp"]["c_proj"]["b"])
-
-        # Layer norm parameters
-        block.norm1.scale = _assign(block.norm1.scale, params["blocks"][i]["ln_1"]["g"])
-        block.norm1.shift = _assign(block.norm1.shift, params["blocks"][i]["ln_1"]["b"])
-        block.norm2.scale = _assign(block.norm2.scale, params["blocks"][i]["ln_2"]["g"])
-        block.norm2.shift = _assign(block.norm2.shift, params["blocks"][i]["ln_2"]["b"])
-
-    # Final layer norm and output head
-    gpt.final_norm.scale = _assign(gpt.final_norm.scale, params["g"])
-    gpt.final_norm.shift = _assign(gpt.final_norm.shift, params["b"])
-    gpt.out_head.weight = _assign(gpt.out_head.weight, params["wte"])
-
-    return gpt
 
 
 ########################################################################################################################
@@ -175,37 +63,42 @@ def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLo
 ################################################# Model Save and Load ##################################################
 ########################################################################################################################
 
+"""
+Project saved model format:
+{
+    "model_state_dict": <state dict of the model>,
+    "config": <model config as a dict>,
+    "optimizer_state_dict": <state dict of the optimizer> (optional)
+}
+"""
 
-@dataclass
-class ModelCheckpoint:
-    model: GptModel
-    config: GptConfig
-    optimizer: Optimizer
 
-
-def save_checkpoint(model: GptModel, config: GptConfig, optimizer: Optimizer, learning_rate: float, weight_decay: float,
-                    saved_model_path: str) -> None:
+def save_model(model: GptModel, save_path: str, optimizer: Optimizer = None) -> None:
     checkpoint = {
         "model_state_dict": model.state_dict(),
-        "config": config.__dict__,
-        "optimizer_state_dict": optimizer.state_dict(),
-        "learning_rate": learning_rate,
-        "weight_decay": weight_decay
+        "config": model.config.__dict__
     }
-    torch.save(checkpoint, saved_model_path)
+    if optimizer is not None:
+        checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+    torch.save(checkpoint, save_path)
 
 
-def load_checkpoint(saved_model_path: str, device: Device) -> ModelCheckpoint:
-    checkpoint = torch.load(saved_model_path, map_location=device, weights_only=False)
+def load_model(saved_model_path: str, device: Device) -> tuple[GptModel, Optimizer | None]:
+    checkpoint: dict = torch.load(saved_model_path, map_location=device, weights_only=False)
     model_state_dict = checkpoint["model_state_dict"]
     config = checkpoint["config"]
-    optimizer_state_dict = checkpoint["optimizer_state_dict"]
-    learning_rate = checkpoint["learning_rate"]
-    weight_decay = checkpoint["weight_decay"]
+    optimizer_state_dict = checkpoint.get("optimizer_state_dict", None)
+
     gpt_config = GptConfig(**config)
     model = GptModel(gpt_config)
     model.load_state_dict(model_state_dict)
     model.to(device)
+
+    if optimizer_state_dict is None:
+        return model, None
+
+    learning_rate = optimizer_state_dict['param_groups'][0]['lr']
+    weight_decay = optimizer_state_dict['param_groups'][0]['weight_decay']
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     optimizer.load_state_dict(optimizer_state_dict)
-    return ModelCheckpoint(model=model, config=gpt_config, optimizer=optimizer)
+    return model, optimizer
