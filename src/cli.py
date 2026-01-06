@@ -70,13 +70,9 @@ def run_generate(args: Namespace) -> None:
 
 def run_finetune_classification(args: Namespace) -> None:
     from src.scripts.finetune.classification import run_classification_finetuning_flow
-    config = create_gpt_config_from_args(args)
     run_classification_finetuning_flow(
-        config=config,
-        models_dir=args.models_dir,
-        model_size=args.model_size,
+        pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
-        sep=args.sep,
         column_names=args.column_names,
         train_frac=args.train_frac,
         validation_frac=args.validation_frac,
@@ -97,11 +93,8 @@ def run_finetune_classification(args: Namespace) -> None:
 
 def run_finetune_instruction(args: Namespace) -> None:
     from src.scripts.finetune.instruction import run_instruction_finetuning_flow
-    config = create_gpt_config_from_args(args)
     run_instruction_finetuning_flow(
-        config=config,
-        models_dir=args.models_dir,
-        model_size=args.model_size,
+        pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
         train_frac=args.train_frac,
         test_frac=args.test_frac,
@@ -124,11 +117,8 @@ def run_finetune_instruction(args: Namespace) -> None:
 def run_finetune_instruction_advanced(args: Namespace) -> None:
     from src.scripts.finetune.instruction_advanced import run_instruction_finetuning_advanced_flow
     _logger.warning("Running advanced instruction fine-tuning ")
-    config = create_gpt_config_from_args(args)
     run_instruction_finetuning_advanced_flow(
-        config=config,
-        models_dir=args.models_dir,
-        model_size=args.model_size,
+        pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
         use_alpaca52k=args.use_alpaca52k,
         mask_instructions=args.mask_instructions,
@@ -228,7 +218,6 @@ def cli() -> None:
             help="Fine-tune for classification tasks",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
-        add_gpt_config_arguments(classification_parser)
         add_classification_arguments(classification_parser)
         classification_parser.set_defaults(func=run_finetune_classification)
 
@@ -237,7 +226,6 @@ def cli() -> None:
             help="Fine-tune for instruction following",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
-        add_gpt_config_arguments(instruction_parser)
         add_instruction_arguments(instruction_parser)
         instruction_parser.set_defaults(func=run_finetune_instruction)
 
@@ -246,7 +234,6 @@ def cli() -> None:
             help="Fine-tune for instruction following with advanced features (LoRA, masking, Phi-3, Alpaca52k)",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
-        add_gpt_config_arguments(instruction_advanced_parser)
         add_instruction_advanced_arguments(instruction_advanced_parser)
         instruction_advanced_parser.set_defaults(func=run_finetune_instruction_advanced)
 
