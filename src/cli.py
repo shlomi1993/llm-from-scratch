@@ -187,8 +187,6 @@ def cli() -> None:
             parser.print_help()
             return
 
-    # Now do the real heavy imports only for the specific command
-    from src.model.config import add_arguments as add_gpt_config_arguments
 
     # Rebuild parser with full details for the specific command
     parser = ArgumentParser(description="LLM from Scratch - Main CLI", formatter_class=ArgumentDefaultsHelpFormatter)
@@ -197,6 +195,7 @@ def cli() -> None:
 
     if args.command == "pretrain":
         from src.scripts.pretrain import add_arguments as add_pretrain_arguments
+        from src.model.config import add_arguments as add_gpt_config_arguments
         pretrain_parser = subparsers.add_parser(
             "pretrain",
             help="Train a GPT model from scratch",
@@ -205,6 +204,7 @@ def cli() -> None:
         add_gpt_config_arguments(pretrain_parser)
         add_pretrain_arguments(pretrain_parser)
         pretrain_parser.set_defaults(func=run_pretrain)
+
     elif args.command == "generate":
         from src.scripts.generate import add_arguments as add_generate_arguments
         generate_parser = subparsers.add_parser(
@@ -212,9 +212,9 @@ def cli() -> None:
             help="Generate text using a pre-trained GPT2 model",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
-        add_gpt_config_arguments(generate_parser)
         add_generate_arguments(generate_parser)
         generate_parser.set_defaults(func=run_generate)
+
     elif args.command == "finetune":
         from src.scripts.finetune.classification import add_arguments as add_classification_arguments
         from src.scripts.finetune.instruction import add_arguments as add_instruction_arguments
@@ -247,13 +247,14 @@ def cli() -> None:
         instruction_parser.set_defaults(func=run_finetune_instruction)
 
         instruction_advanced_parser = finetune_subparsers.add_parser(
-            "instruction-advanced",
+            "instruction-adv",
             help="Fine-tune for instruction following with advanced features (LoRA, masking, Phi-3, Alpaca52k)",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
         add_gpt_config_arguments(instruction_advanced_parser)
         add_instruction_advanced_arguments(instruction_advanced_parser)
         instruction_advanced_parser.set_defaults(func=run_finetune_instruction_advanced)
+
     elif args.command == "download":
         from src.scripts.download import add_arguments as add_download_arguments
         download_parser = subparsers.add_parser(
@@ -263,6 +264,7 @@ def cli() -> None:
         )
         add_download_arguments(download_parser)
         download_parser.set_defaults(func=run_download)
+
     elif args.command == "evaluate":
         from src.scripts.evaluate import add_arguments as add_evaluate_arguments
         evaluate_parser = subparsers.add_parser(

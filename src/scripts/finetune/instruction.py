@@ -10,9 +10,9 @@ from torch.utils.data import DataLoader
 
 from src.data.datasets import InstructionDataset
 from src.data.formatting import format_input
-from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
+from src.model.config import GptConfig
 from src.model.gpt import GptModel
-from src.scripts.common import load_tf_weights_into_gpt, calc_loss_loader, calc_loss_batch
+from src.scripts.common import calc_loss_loader, calc_loss_batch, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
 from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
@@ -135,9 +135,9 @@ def generate_response(model: GptModel, context_length: int, prompt: str, max_new
     return response
 
 
-def run_instruction_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, tuning_set_path: str,
-                                    train_frac: float = 0.85, test_frac: float = 0.1, batch_size: int = 8,
-                                    seed: int = 123, device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 2,
+def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
+                                    test_frac: float = 0.1, batch_size: int = 8, seed: int = 123,
+                                    device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 2,
                                     weight_decay: float = 0.1, eval_freq: int = 5, eval_iter: int = 5,
                                     loss_plot_save_path: str = None, model_save_path: str = "assistant.pth",
                                     max_new_tokens: int = 256, pad_token_id: int = PAD_TOKEN_ID,
@@ -149,17 +149,15 @@ def run_instruction_finetuning_flow(config: GptConfig, models_dir: str, model_si
     device = get_device(device_type)
     _logger.info(f"Using device '{device.type}' and random seed {seed}")
 
+    _logger.info("Loading pre-trained model on device")
+    model = load_model(pretrained_model_path, device)[0]
+    model.eval()
+    model.to(device)
+
     _logger.info("Preparing instruction fine-tuning dataset")
     train_loader, val_loader, test_data = create_dataloaders(
-        tuning_set_path, train_frac, test_frac, device, batch_size, config.context_length, seed
+        tuning_set_path, train_frac, test_frac, device, batch_size, model.config.context_length, seed
     )
-
-    _logger.info("Loading pre-trained model")
-    model = load_tf_weights_into_gpt(model_size, models_dir, config)
-    model.eval()
-
-    _logger.info("Moving model to device")
-    model.to(device)
 
     _logger.info("Calculating initial losses before fine-tuning")
     with torch.no_grad():
@@ -208,8 +206,7 @@ def run_instruction_finetuning_flow(config: GptConfig, models_dir: str, model_si
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--models-dir", type=str, default="models/reference_gpt2_models", help="Directory containing pretrained models.")
-    parser.add_argument("--model-size", type=str, default="124M", help="Size of the pretrained model (e.g., 124M, 355M).")
+    parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
     parser.add_argument("--tuning-set-path", type=str, required=True, help="Path to the instruction tuning JSON file.")
     parser.add_argument("--train-frac", type=float, default=0.85, help="Fraction of data for training.")
     parser.add_argument("--test-frac", type=float, default=0.1, help="Fraction of data for testing.")
@@ -232,25 +229,11 @@ def main() -> None:
         description="Fine-tune a GPT model for instruction following.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    add_gpt_config_arguments(parser)
     add_arguments(parser)
     args = parser.parse_args()
 
-    config = GptConfig(
-        emb_dim=args.emb_dim,
-        n_layers=args.n_layers,
-        n_heads=args.n_heads,
-        vocab_size=args.vocab_size,
-        context_length=args.context_length,
-        drop_rate=args.drop_rate,
-        qkv_bias=args.use_qkv_bias,
-        kv_window_size=args.kv_window_size
-    )
-
     run_instruction_finetuning_flow(
-        config=config,
-        models_dir=args.models_dir,
-        model_size=args.model_size,
+        pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
         train_frac=args.train_frac,
         test_frac=args.test_frac,
