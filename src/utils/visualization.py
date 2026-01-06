@@ -1,5 +1,5 @@
+import os
 import matplotlib.pyplot as plt
-
 
 from logging import getLogger as get_logger
 
@@ -29,6 +29,7 @@ def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values:
 
     fig.tight_layout()  # Adjust layout to make room
     if savefig_path:
+        os.makedirs(os.path.dirname(savefig_path), exist_ok=True)
         plt.savefig(savefig_path)
         _logger.info(f"Saved {label} plot to {savefig_path}")
     else:

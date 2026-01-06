@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from src.data.datasets import SpamDataset
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_model, load_model
+from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_model, save_model, load_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics
@@ -268,7 +268,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
         loss_epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
         loss_examples_seen_tensor = torch.linspace(0, results.n_examples_seen, len(results.train_losses))
         plot_metrics(loss_epochs_tensor, loss_examples_seen_tensor, results.train_losses, results.val_losses,
-                    savefig_path=loss_plot_save_path, label="loss", legend_loc="upper right")
+                     savefig_path=loss_plot_save_path, label="loss", legend_loc="upper right")
 
     if accuracy_plot_save_path:
         accu_epochs_tensor = torch.linspace(0, n_epochs, len(results.train_accuracies))
@@ -276,7 +276,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
         plot_metrics(accu_epochs_tensor, accu_examples_seen_tensor, results.train_accuracies, results.val_accuracies,
                      savefig_path=accuracy_plot_save_path, label="accuracy")
 
-    torch.save(model.state_dict(), model_save_path)
+    save_model(model, model_save_path, optimizer)
     _logger.info(f"Model saved to {model_save_path}")
 
     return results
@@ -284,8 +284,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
-    parser.add_argument("--tuning-set-path", type=str, required=True, help="Path to the training text file.")
-    parser.add_argument("--sep", type=str, default="\t", help="Separator for CSV file.")
+    parser.add_argument("--tuning-set-path", type=str, required=True, help="Path to the training .tsv (tab-separated) file.")
     parser.add_argument("--column-names", type=str, nargs="+", default=["Label", "Text"], help="Column names for the dataset.")
     parser.add_argument("--train-frac", type=float, default=0.7, help="Fraction of data for training.")
     parser.add_argument("--validation-frac", type=float, default=0.1, help="Fraction of data for validation.")
@@ -300,7 +299,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--eval-iter", type=int, default=5, help="Number of batches to evaluate.")
     parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot (None to skip).")
     parser.add_argument("--accuracy-plot-save-path", type=str, default=None, help="Path to save accuracy plot (None to skip).")
-    parser.add_argument("--model-save-path", type=str, default="review_classifier.pth", help="Path to save the fine-tuned model.")
+    parser.add_argument("--model-save-path", type=str, default="spam_classifier.pth", help="Path to save the fine-tuned model.")
 
 
 def main() -> None:
@@ -314,7 +313,6 @@ def main() -> None:
     run_classification_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
-        sep=args.sep,
         column_names=args.column_names,
         train_frac=args.train_frac,
         validation_frac=args.validation_frac,

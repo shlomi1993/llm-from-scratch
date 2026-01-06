@@ -137,12 +137,12 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--training-set-path", type=str, required=True, help="Path to the training text file.")
+    parser.add_argument("--training-set-path", type=str, required=True, help="Path to the training .txt file.")
     parser.add_argument("--lr", type=float, default=5e-4, help="Learning rate for the optimizer.")
     parser.add_argument("--n-epochs", type=int, default=10, help="Number of training epochs.")
     parser.add_argument("--batch-size", type=int, default=2, help="Batch size for training.")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for the optimizer.")
-    parser.add_argument("--dataset-encoding", type=str, default="utf-8", help="Encoding of the training text file.")
+    parser.add_argument("--dataset-encoding", type=str, default="utf-8", help="Encoding of the training .txt file.")
     parser.add_argument("--device", type=str, default="auto", help="Device to use for training (cpu, cuda, auto).")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
     parser.add_argument("--max-length", type=int, default=None, help="Maximum sequence length for training samples.")
