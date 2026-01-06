@@ -4,9 +4,8 @@ import torch
 
 from logging import getLogger as get_logger
 
-from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
-from src.scripts.common import load_tf_weights_into_gpt
+from src.scripts.common import load_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 
@@ -14,34 +13,16 @@ from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 _logger = get_logger(__name__)
 
 
-def _load_eval_gpt(config: GptConfig, model_size: str, models_dir: str, device: Device, seed: int = 123) -> GptModel:
-
-    # General setup
+def _load_eval_gpt(saved_model_path: str, device: Device, seed: int = 123) -> GptModel:
     torch.manual_seed(seed)
-
-    # Set generation configs
-    gen_config = GptConfig(
-        context_length = config.context_length,
-        vocab_size = config.vocab_size,
-        emb_dim = config.emb_dim,
-        n_layers = config.n_layers,
-        n_heads = config.n_heads,
-        drop_rate = 0.0,  # No dropout during generation
-        qkv_bias = True  # TODO needed only for downloaded models or also trained locally?
-    )
-
-    # Load model
-    gpt = GptModel(gen_config)
-    load_tf_weights_into_gpt(model_size, models_dir, gen_config)
-    gpt.to(device)
+    gpt = load_model(saved_model_path, device)[0]
     gpt.eval()
-
     return gpt
 
 
-def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, model_size: str, max_new_tokens: int = 25,
-                              temperature: float = 1.0, top_k: int = 50, device_type: str = "auto", seed: int = 123,
-                              measure_time: bool = False, measure_memory: bool = False) -> str:
+def run_model_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, temperature: float = 1.0,
+                              top_k: int = 50, device_type: str = "auto", seed: int = 123, measure_time: bool = False,
+                              measure_memory: bool = False) -> str:
 
     _logger.info("Running model generation flow...")
 
@@ -62,12 +43,12 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
     if requested_measurements:
         _logger.info(f"Measuring {' and '.join(requested_measurements)} for model loading and generation")
 
-    _logger.info(f"Loading GPT model of size '{model_size}' from '{models_dir}'")
+    _logger.info(f"Loading GPT2 model from '{model_path}'")
     gpt = None
     if measure_time or (measure_memory and torch.cuda.is_available()):
         if measure_memory and torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
-        gpt = _load_eval_gpt(config, model_size, models_dir, device, seed)
+        gpt = _load_eval_gpt(model_path, device, seed)
         if measure_time:
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
@@ -76,7 +57,7 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
             load_max_mem_bytes = torch.cuda.max_memory_allocated()
             load_max_mem_gb = load_max_mem_bytes / (1024 ** 3)
     else:
-        gpt = _load_eval_gpt(config, model_size, models_dir, device, seed)
+        gpt = _load_eval_gpt(model_path, device, seed)
 
     if measure_time:
         if torch.cuda.is_available():
@@ -89,7 +70,7 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
     token_ids = gpt.generate(
         idx=text_to_token_ids(prompt).to(device),
         max_new_tokens=max_new_tokens,
-        context_size=config.context_length,
+        context_size=gpt.config.context_length,
         temperature=temperature,
         top_k=top_k
     )
@@ -121,8 +102,8 @@ def run_model_generation_flow(config: GptConfig, prompt: str, models_dir: str, m
     return generated_text
 
 
-def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: str, max_new_tokens: int = 25,
-                               temperature: float = 1.0, top_k: int = 50, device_type: str = "auto", seed: int = 123) -> None:
+def run_model_interactive_flow(model_path: str, max_new_tokens: int = 25, temperature: float = 1.0, top_k: int = 50,
+                               device_type: str = "auto", seed: int = 123) -> None:
 
     # General setup
     torch.manual_seed(seed)
@@ -130,7 +111,7 @@ def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: s
     _logger.info(f"Using device '{device.type}' and random seed {seed}.")
 
     # Load model
-    gpt = _load_eval_gpt(config, model_size, models_dir, device, seed)
+    gpt = _load_eval_gpt(model_path, device, seed)
 
     # Run interactive mode
     _logger.info("Entering interactive mode. Type your prompt and press Enter. Press Ctrl+C/CMD+C to exit.")
@@ -146,7 +127,7 @@ def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: s
             token_ids = gpt.generate(
                 idx=text_to_token_ids(prompt).to(device),
                 max_new_tokens=max_new_tokens,
-                context_size=config.context_length,
+                context_size=gpt.config.context_length,
                 temperature=temperature,
                 top_k=top_k
             )
@@ -159,13 +140,12 @@ def run_model_interactive_flow(config: GptConfig, models_dir: str, model_size: s
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--model-path", type=str, required=True, help="Path to a pre-trained GPT2 model saved in Pytorch format (as described in src/scripts/common.py).")
     parser.add_argument("--prompt", type=str, default=None, help="Prompt text for generation. If not provided, enters interactive mode.")
     parser.add_argument("--max-new-tokens", type=int, default=25, help="Maximum number of new tokens to generate.")
     parser.add_argument("--temperature", type=float, default=1.0, help="Sampling temperature for generation.")
     parser.add_argument("--top-k", type=int, default=50, help="Top-K sampling parameter.")
     parser.add_argument("--device", type=str, default="auto", help="Device to run the model on (e.g., 'cpu', 'cuda', or 'auto').")
-    parser.add_argument("--models-dir", type=str, default="models", help="Directory where the GPT-2 models are stored.")
-    parser.add_argument("--model-size", type=str, default="124M", choices=["124M", "355M", "774M", "1558M"], help="Size of the GPT-2 model to use.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
     parser.add_argument("--measure-time", action="store_true", help="Measure and report time taken for model loading and generation.")
     parser.add_argument("--measure-memory", action="store_true", help="Measure and report peak GPU memory usage for model loading and generation.")
@@ -177,27 +157,13 @@ def main() -> None:
         description="Generate text using a pre-trained GPT model.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    add_gpt_config_arguments(parser)
     add_arguments(parser)
     args = parser.parse_args()
 
-    config = GptConfig(
-        emb_dim=args.emb_dim,
-        n_layers=args.n_layers,
-        n_heads=args.n_heads,
-        vocab_size=args.vocab_size,
-        context_length=args.context_length,
-        drop_rate=args.drop_rate,
-        qkv_bias=args.use_qkv_bias,
-        kv_window_size=args.kv_window_size
-    )
-
     if args.prompt is not None:
         run_model_generation_flow(
-            config=config,
+            model_path=args.model_path,
             prompt=args.prompt,
-            models_dir=args.models_dir,
-            model_size=args.model_size,
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             top_k=args.top_k,
@@ -208,9 +174,7 @@ def main() -> None:
         )
     else:
         run_model_interactive_flow(
-            config=config,
-            models_dir=args.models_dir,
-            model_size=args.model_size,
+            model_path=args.model_path,
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
             top_k=args.top_k,

@@ -14,8 +14,8 @@ from tqdm import tqdm
 
 from src.data.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
 from src.data.formatting import format_input
-from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
-from src.scripts.common import load_tf_weights_into_gpt, calc_loss_batch, calc_loss_loader
+from src.model.config import GptConfig
+from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
 from src.utils.tokenization import tokenizer as tok
@@ -128,9 +128,7 @@ def fetch_json(file_path: str, url: str) -> list[dict]:
 
 
 def run_instruction_finetuning_advanced_flow(
-    config: GptConfig,
-    models_dir: str,
-    model_size: str,
+    pretrained_model_path: str,
     tuning_set_path: str = None,
     use_alpaca52k: bool = False,
     mask_instructions: bool = False,
@@ -164,6 +162,11 @@ def run_instruction_finetuning_advanced_flow(
     device = get_device(device_type)
     _logger.info(f"Using device '{device.type}' and random seed {seed}")
 
+    # Load pretrained model
+    _logger.info(f"Loading pretrained model from '{pretrained_model_path}'")
+    model = load_model(pretrained_model_path, device)[0]
+    model.eval()
+
     # Download and prepare dataset
     if tuning_set_path is None:
         tuning_set_path = "instruction-data.json"
@@ -186,7 +189,7 @@ def run_instruction_finetuning_advanced_flow(
     _logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data)} testing samples")
 
     # Configure dataset and collate function based on options
-    allowed_max_length = 512 if use_alpaca52k else config.context_length
+    allowed_max_length = 512 if use_alpaca52k else model.config.context_length
     customized_collate_fn = partial(custom_collate_fn, device=device, max_allowed_length=allowed_max_length)
 
     if mask_instructions:
@@ -220,10 +223,7 @@ def run_instruction_finetuning_advanced_flow(
         num_workers=0
     )
 
-    # Load pretrained model
-    _logger.info(f"Loading pretrained model of size '{model_size}' from '{models_dir}'")
-    model = load_tf_weights_into_gpt(model_size, models_dir, config)
-    model.eval()
+
 
     # Apply LoRA if requested
     if use_lora:
@@ -281,7 +281,7 @@ def run_instruction_finetuning_advanced_flow(
         token_ids = model.generate(
             idx=tok.text_to_token_ids(input_text).to(device),
             max_new_tokens=max_new_tokens,
-            context_size=config.context_length,
+            context_size=model.config.context_length,
             eos_id=tok.PAD_TOKEN_ID
         )
         generated_text = tok.token_ids_to_text(token_ids)
@@ -304,8 +304,7 @@ def run_instruction_finetuning_advanced_flow(
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--models-dir", type=str, default="models/reference_gpt2_models", help="Directory containing pretrained models.")
-    parser.add_argument("--model-size", type=str, default="355M", help="Size of the pretrained model (124M, 355M, 774M, 1558M).")
+    parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
     parser.add_argument("--tuning-set-path", type=str, default=None, help="Path to the instruction tuning JSON file (downloads default if not provided).")
     parser.add_argument("--use-alpaca52k", action="store_true", help="Use Alpaca 52k dataset instead of default.")
     parser.add_argument("--mask-instructions", action="store_true", help="Mask instruction tokens in loss calculation.")
@@ -334,25 +333,11 @@ def main() -> None:
         description="Advanced instruction fine-tuning with LoRA, masking, and alternative prompts.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    add_gpt_config_arguments(parser)
     add_arguments(parser)
     args = parser.parse_args()
 
-    config = GptConfig(
-        emb_dim=args.emb_dim,
-        n_layers=args.n_layers,
-        n_heads=args.n_heads,
-        vocab_size=args.vocab_size,
-        context_length=args.context_length,
-        drop_rate=args.drop_rate,
-        qkv_bias=args.use_qkv_bias,
-        kv_window_size=args.kv_window_size
-    )
-
     run_instruction_finetuning_advanced_flow(
-        config=config,
-        models_dir=args.models_dir,
-        model_size=args.model_size,
+        pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
         use_alpaca52k=args.use_alpaca52k,
         mask_instructions=args.mask_instructions,

@@ -11,9 +11,9 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from src.data.datasets import SpamDataset
-from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
+from src.model.config import GptConfig
 from src.model.gpt import GptModel
-from src.scripts.common import load_tf_weights_into_gpt, calc_loss_last_token, calc_loss_loader, evaluate_model
+from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_model, load_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics
@@ -143,7 +143,6 @@ def load_classification_finetuned_model(model_path: str, config: GptConfig, devi
     return model
 
 
-
 def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> str:
     model.eval()
 
@@ -205,8 +204,8 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
     return FineTuningResults(model, train_losses, val_losses, train_accs, val_accs, examples_seen)
 
 
-def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model_size: str, tuning_set_path: str,
-                                       sep="\t", column_names=["Label", "Text"], train_frac: float = 0.7,
+def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, sep="\t",
+                                       column_names=["Label", "Text"], train_frac: float = 0.7,
                                        validation_frac: float = 0.1, save_split_dir: str = ".", batch_size: int = 8,
                                        seed: int = 123, device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 5,
                                        weight_decay: float = 0.1, eval_freq: int = 50, eval_iter: int = 5,
@@ -219,20 +218,20 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
     device = get_device(device_type)
     _logger.info(f"Using device '{device.type}' and random seed {seed}")
 
+    _logger.info("Loading pre-trained model")
+    model = load_model(pretrained_model_path, device)[0]
+    model.eval()
+
     _logger.info("Preparing classification fine-tuning dataset")
     train_loader, val_loader, test_loader = create_dataloaders(
         tuning_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
-    assert train_loader.dataset.max_length <= config.context_length, "Dataset sequences are longer than the model's context length."
-
-    _logger.info("Loading pre-trained model")
-    model = load_tf_weights_into_gpt(model_size, models_dir, config)
-    model.eval()
+    assert train_loader.dataset.max_length <= model.config.context_length, "Dataset sequences are longer than the model's context length."
 
     _logger.info("Modifying model for classification fine-tuning")
     for param in model.parameters():
         param.requires_grad = False
-    model.out_head = torch.nn.Linear(in_features=config.emb_dim, out_features=2)
+    model.out_head = torch.nn.Linear(in_features=model.config.emb_dim, out_features=2)
     for param in model.trf_blocks[-1].parameters():
         param.requires_grad = True
     for param in model.final_norm.parameters():
@@ -284,9 +283,8 @@ def run_classification_finetuning_flow(config: GptConfig, models_dir: str, model
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--models-dir", type=str, default="models/reference_gpt2_models", help="Directory containing pretrained models.")
-    parser.add_argument("--model-size", type=str, default="124M", help="Size of the pretrained model (e.g., 124M, 355M).")
-    parser.add_argument("--training-set-path", type=str, required=True, help="Path to the training text file.")
+    parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
+    parser.add_argument("--tuning-set-path", type=str, required=True, help="Path to the training text file.")
     parser.add_argument("--sep", type=str, default="\t", help="Separator for CSV file.")
     parser.add_argument("--column-names", type=str, nargs="+", default=["Label", "Text"], help="Column names for the dataset.")
     parser.add_argument("--train-frac", type=float, default=0.7, help="Fraction of data for training.")
@@ -310,26 +308,12 @@ def main() -> None:
         description="Fine-tune a GPT model for SMS spam classification.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    add_gpt_config_arguments(parser)
     add_arguments(parser)
     args = parser.parse_args()
 
-    config = GptConfig(
-        emb_dim=args.emb_dim,
-        n_layers=args.n_layers,
-        n_heads=args.n_heads,
-        vocab_size=args.vocab_size,
-        context_length=args.context_length,
-        drop_rate=args.drop_rate,
-        qkv_bias=args.use_qkv_bias,
-        kv_window_size=args.kv_window_size
-    )
-
     run_classification_finetuning_flow(
-        config=config,
-        models_dir=args.models_dir,
-        model_size=args.model_size,
-        tuning_set_path=args.training_set_path,
+        pretrained_model_path=args.pretrained_model_path,
+        tuning_set_path=args.tuning_set_path,
         sep=args.sep,
         column_names=args.column_names,
         train_frac=args.train_frac,
