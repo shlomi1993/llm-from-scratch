@@ -125,16 +125,20 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
     return correct_predictions / n_examples
 
 
-def load_classification_finetuned_model(model_path: str, config: GptConfig, device: Device, n_classes: int) -> GptModel:
+def load_classification_finetuned_model(model_path: str, device: Device, n_classes: int) -> GptModel:
+
+    # Load the checkpoint to extract config
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+    config = GptConfig(**checkpoint["config"])
 
     # Create model with the same architecture
     model = GptModel(config)
 
-    # Replace output head with classification head
+    # Replace output head with classification head BEFORE loading weights
     model.out_head = torch.nn.Linear(in_features=config.emb_dim, out_features=n_classes)
 
     # Load the fine-tuned weights
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model.load_state_dict(checkpoint["model_state_dict"])
 
     # Move to device and set to eval mode
     model.to(device)
@@ -143,7 +147,7 @@ def load_classification_finetuned_model(model_path: str, config: GptConfig, devi
     return model
 
 
-def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> str:
+def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> tuple[str, float]:
     model.eval()
 
     # Verify that the input length does not exceed model context length
@@ -161,10 +165,15 @@ def classify_review(text: str, model: GptModel, device: Device, max_length: int,
     # Inference
     with torch.no_grad():
         logits: Tensor = model(input_tensor)[:, -1]
-        label = logits.argmax(dim=-1).item()
+
+    # Get predicted label and confidence
+    probabilities = torch.softmax(logits, dim=-1)
+    label_id = torch.argmax(probabilities, dim=-1).item()
+    label = "spam" if label_id == 1 else "not spam"
+    confidence = probabilities[0, label_id].item()
 
     # Decode label
-    return "spam" if label == 1 else "not spam"
+    return label, confidence
 
 
 def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer,

@@ -153,6 +153,23 @@ def run_evaluate(args: Namespace) -> None:
     run_ollama_evaluation_flow(args.file_path, args.model)
 
 
+def run_classify(args: Namespace) -> None:
+    from src.scripts.classify_review import run_classification_flow, run_classification_interactive_flow
+    if args.text is not None:
+        run_classification_flow(
+            model_path=args.model_path,
+            text=args.text,
+            device_type=args.device,
+            seed=args.seed
+        )
+    else:
+        run_classification_interactive_flow(
+            model_path=args.model_path,
+            device_type=args.device,
+            seed=args.seed
+        )
+
+
 def cli() -> None:
     parser = ArgumentParser(description="LLM from Scratch - Main CLI", formatter_class=ArgumentDefaultsHelpFormatter)
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -164,6 +181,7 @@ def cli() -> None:
     subparsers.add_parser("finetune", help="Fine-tune a pre-trained GPT2 model", add_help=False)
     subparsers.add_parser("download", help="Download GPT2 model files", add_help=False)
     subparsers.add_parser("evaluate", help="Evaluate model responses with Ollama API", add_help=False)
+    subparsers.add_parser("classify", help="Classify text to spam or ham using a fine-tuned classification model", add_help=False)
 
     # Quick parse to see if we're just showing help
     args, remaining = parser.parse_known_args()
@@ -256,6 +274,16 @@ def cli() -> None:
         )
         add_evaluate_arguments(evaluate_parser)
         evaluate_parser.set_defaults(func=run_evaluate)
+
+    elif args.command == "classify":
+        from src.scripts.classify_review import add_arguments as add_classify_arguments
+        classify_parser = subparsers.add_parser(
+            "classify",
+            help="Classify text using a fine-tuned classification model",
+            formatter_class=ArgumentDefaultsHelpFormatter
+        )
+        add_classify_arguments(classify_parser)
+        classify_parser.set_defaults(func=run_classify)
 
     # Parse and execute
     args = parser.parse_args()
