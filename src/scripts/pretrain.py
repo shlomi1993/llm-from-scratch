@@ -46,7 +46,7 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
     with torch.no_grad():
         token_ids = model.generate_naive(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
         decoded_text = token_ids_to_text(token_ids)
-        _logger.info("Generated sample:" + decoded_text.replace("\n", " "))
+        _logger.info("Generated sample: " + decoded_text.replace("\n", " "))
     model.train()
 
 
