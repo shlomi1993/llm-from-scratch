@@ -35,18 +35,8 @@ def extract_training_metrics(output: str) -> dict:
 
 def test_pretrain_cli_vs_script():
 
-    # Test parameters - must match chapter script for deterministic results
-    training_file = "datasets/the-verdict.txt"
-    batch_size = 2
-    lr = 5e-4
-    weight_decay = 0.1
-    seed = 123
-    device = "cpu"
-    context_length = 256
-    eval_freq = 5
-    eval_iter = 1
-
     # Paths
+    training_file = "datasets/the-verdict.txt"
     cli_model_path = "tests/test_model_cli.pth"
     script_path = "../chapters/ch05/01_main-chapter-code/gpt_train.py"  # Relative to tests/ directory
 
@@ -55,9 +45,7 @@ def test_pretrain_cli_vs_script():
 
     try:
         # Run the chapter script with live output
-        print("\n" + "=" * 80)
-        print("Running chapter script")
-        print("=" * 80)
+        print("\n" + "=" * 80 + "\nRunning chapter script\n" + "=" * 80)
         chapter_cmd = [sys.executable, "-u", script_path]
 
         # Capture output while streaming it live
@@ -74,23 +62,21 @@ def test_pretrain_cli_vs_script():
         script_metrics = extract_training_metrics(''.join(script_output))
 
         # Run the CLI pretrain command with live output
-        print("\n" + "=" * 80)
-        print("Running CLI command")
-        print("=" * 80)
-        cli_cmd = [
+        print("\n" + "=" * 80 + "\nRunning CLI command\n" + "=" * 80)
+        cli_cmd = [  # Parameters must match chapter script for deterministic results
             "gpt2", "pretrain",
             "--training-set-path", training_file,
             "--n-epochs", "10",
-            "--batch-size", str(batch_size),
-            "--lr", str(lr),
-            "--weight-decay", str(weight_decay),
-            "--seed", str(seed),
-            "--device", device,
-            "--max-length", str(context_length),
-            "--eval-freq", str(eval_freq),
-            "--eval-iter", str(eval_iter),
+            "--batch-size", "2",
+            "--lr", "5e-4",
+            "--weight-decay", "0.1",
+            "--seed", "123",
+            "--device", "cpu",
+            "--max-length", "256",
+            "--eval-freq", "5",
+            "--eval-iter", "1",
             "--saved-model-path", cli_model_path,
-            "--context-length", str(context_length),
+            "--context-length", "256",
             "--emb-dim", "768",
             "--n-layers", "12",
             "--n-heads", "12",
@@ -113,9 +99,7 @@ def test_pretrain_cli_vs_script():
         cli_metrics = extract_training_metrics(''.join(cli_output))
 
         # Compare metrics
-        print("\n" + "=" * 80)
-        print("Comparing training metrics")
-        print("=" * 80)
+        print("\n" + "=" * 80 + "\nComparing training metrics\n" + "=" * 80)
         assert len(script_metrics['train_losses']) == len(cli_metrics['train_losses']), \
             f"Different number of training checkpoints: Script={len(script_metrics['train_losses'])}, CLI={len(cli_metrics['train_losses'])}"
 
