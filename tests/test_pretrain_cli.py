@@ -131,6 +131,6 @@ def test_pretrain_cli_vs_script():
                 print(f"  Diff   - Train: {train_diff:.2e}, Val: {val_diff:.2e}")
                 assert False, f"Training metrics differ at checkpoint {i+1}"
     finally:
-        for f in [cli_model_path, "the-verdict.txt", "tests/model.pth", "tests/loss.pdf"]:
+        for f in [cli_model_path, "tests/the-verdict.txt", "tests/model.pth", "tests/loss.pdf"]:
             if os.path.exists(f):
                 os.remove(f)
