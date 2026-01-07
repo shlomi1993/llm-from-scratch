@@ -1,7 +1,7 @@
-import subprocess
-import sys
 import os
 import re
+import subprocess
+import sys
 
 
 def extract_training_metrics(output: str) -> dict:
