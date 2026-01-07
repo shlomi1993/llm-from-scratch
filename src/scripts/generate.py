@@ -13,20 +13,12 @@ from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 _logger = get_logger(__name__)
 
 
-def _load_eval_gpt(saved_model_path: str, device: Device, seed: int = 123) -> GptModel:
-    torch.manual_seed(seed)
-    gpt = load_model(saved_model_path, device)[0]
-    gpt.eval()
-    return gpt
-
-
 def run_model_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, temperature: float = 1.0,
                               top_k: int = 50, device_type: str = "auto", seed: int = 123, measure_time: bool = False,
                               measure_memory: bool = False) -> str:
 
     _logger.info("Running model generation flow...")
 
-    torch.manual_seed(seed)
     device = get_device(device_type)
     _logger.info(f"Using device '{device.type}' and random seed {seed}")
 
@@ -48,7 +40,8 @@ def run_model_generation_flow(model_path: str, prompt: str, max_new_tokens: int 
     if measure_time or (measure_memory and torch.cuda.is_available()):
         if measure_memory and torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
-        gpt = _load_eval_gpt(model_path, device, seed)
+        gpt = load_model(model_path, device)[0]
+        gpt.eval()
         if measure_time:
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
@@ -57,7 +50,8 @@ def run_model_generation_flow(model_path: str, prompt: str, max_new_tokens: int 
             load_max_mem_bytes = torch.cuda.max_memory_allocated()
             load_max_mem_gb = load_max_mem_bytes / (1024 ** 3)
     else:
-        gpt = _load_eval_gpt(model_path, device, seed)
+        gpt = load_model(model_path, device)[0]
+        gpt.eval()
 
     if measure_time:
         if torch.cuda.is_available():
@@ -65,6 +59,9 @@ def run_model_generation_flow(model_path: str, prompt: str, max_new_tokens: int 
         gen_start_time = time.time()
     if measure_memory and torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
+
+    # Reset random seed immediately before generation for reproducibility
+    torch.manual_seed(seed)
 
     _logger.info("Generating text...")
     token_ids = gpt.generate(
@@ -110,7 +107,8 @@ def run_model_interactive_flow(model_path: str, max_new_tokens: int = 25, temper
     _logger.info(f"Using device '{device.type}' and random seed {seed}.")
 
     # Load model
-    gpt = _load_eval_gpt(model_path, device, seed)
+    gpt = load_model(model_path, device)[0]
+    gpt.eval()
 
     # Run interactive mode
     _logger.info("Entering interactive mode. Type your prompt and press Enter. Type /bye to exit.")
