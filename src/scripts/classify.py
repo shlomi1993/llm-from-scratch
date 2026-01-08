@@ -7,6 +7,10 @@ from src.model.gpt import GptModel
 from src.scripts.finetune.classification import load_classifier, classify_review
 from src.utils.device import Device, get_device
 
+"""
+WARNING: There are no dedicated tests for this script. Classification tuning and prediction are covered in the file
+tests/test_classifier_cli.py by validating scripts/finetune/classification.py flow and classify_review function.
+"""
 
 _logger = get_logger(__name__)
 
@@ -26,7 +30,7 @@ def run_classification_flow(model_path: str, text: str, device_type: str = "auto
     _logger.info("Classifying text...")
     result = classify_review(text, model, device, model.config.context_length)
     _logger.info(f"Input text: {text}")
-    _logger.info(f"Classification: {result}")
+    _logger.info(f"Prediction: {result}")
     return result
 
 
