@@ -25,7 +25,7 @@ from .finetune.classification import (
     random_split,
     create_dataloaders,
     calc_accuracy_loader,
-    load_classification_finetuned_model,
+    load_classifier,
     classify_review,
     finetune_classifier,
     run_classification_finetuning_flow
@@ -61,7 +61,7 @@ __all__ = [
     "random_split",
     "create_dataloaders",
     "calc_accuracy_loader",
-    "load_classification_finetuned_model",
+    "load_classifier",
     "classify_review",
     "finetune_classifier",
     "run_classification_finetuning_flow",

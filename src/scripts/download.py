@@ -221,14 +221,14 @@ def convert_tf_weights_into_pytorch_model(model_size: str, models_dir: str, file
 ########################################################################################################################
 
 
-def run_download_flow(model_size: str, models_dir: str, convert: bool = False) -> None:
-    download_gpt2(model_size, models_dir)
-    if convert:
-        convert_tf_weights_into_pytorch_model(model_size, models_dir)
-
+def run_download_flow(model_sizes: list[str], models_dir: str, convert: bool = False) -> None:
+    for model_size in model_sizes:
+        download_gpt2(model_size, models_dir)
+        if convert:
+            convert_tf_weights_into_pytorch_model(model_size, models_dir)
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--size", type=str, default="124M", choices=ALLOWED_MODEL_SIZES, help="Size of the GPT-2 model to download.")
+    parser.add_argument("--sizes", type=str, nargs="+", default=["124M"], choices=ALLOWED_MODEL_SIZES, help="Size(s) of the GPT-2 model(s) to download. You can specify multiple sizes.")
     parser.add_argument("--dir", type=str, default="models", help="Directory to save the downloaded model files.")
     parser.add_argument("--convert", action="store_true", help="Whether to convert and save the model in PyTorch format.")
     parser.add_argument("--converted-filename", type=str, default="model.pth", help="Filename for the converted PyTorch model.")
@@ -241,7 +241,7 @@ def main() -> None:
     )
     add_arguments(parser)
     args = parser.parse_args()
-    run_download_flow(args.size, args.dir, args.convert)
+    run_download_flow(args.sizes, args.dir, args.convert)
 
 
 if __name__ == "__main__":

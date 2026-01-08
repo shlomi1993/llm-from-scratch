@@ -4,7 +4,7 @@ import torch
 from logging import getLogger as get_logger
 
 from src.model.gpt import GptModel
-from src.scripts.finetune.classification import load_classification_finetuned_model, classify_review
+from src.scripts.finetune.classification import load_classifier, classify_review
 from src.utils.device import Device, get_device
 
 
@@ -17,7 +17,7 @@ def _classification_setup(model_path: str, device_type: str, seed: int) -> tuple
     device = get_device(device_type)
     _logger.info(f"Using device '{device.type}' and random seed {seed}.")
     _logger.info(f"Loading review classification model from '{model_path}'")
-    model = load_classification_finetuned_model(model_path, device, n_classes=2)
+    model = load_classifier(model_path, device, n_classes=2)
     return model, device
 
 

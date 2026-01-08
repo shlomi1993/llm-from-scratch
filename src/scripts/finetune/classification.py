@@ -125,7 +125,7 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
     return correct_predictions / n_examples
 
 
-def load_classification_finetuned_model(model_path: str, device: Device, n_classes: int) -> GptModel:
+def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel:
 
     # Load the checkpoint to extract config
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
