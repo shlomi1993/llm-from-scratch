@@ -1,13 +1,11 @@
 import os
 import re
-import subprocess
 import sys
+
+from tests.common import run_subprocess
 
 
 def extract_training_metrics(output: str) -> dict:
-    """
-    Extract training metrics from output text.
-    """
     metrics = {
         'train_losses': [],
         'val_losses': [],
@@ -47,18 +45,7 @@ def test_pretrain_cli_vs_script():
         # Run the chapter script with live output
         print("\n" + "=" * 80 + "\nRunning chapter script\n" + "=" * 80)
         chapter_cmd = [sys.executable, "-u", script_path]
-
-        # Capture output while streaming it live
-        script_output = []
-        process = subprocess.Popen(chapter_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                   text=True, cwd="tests", bufsize=1)
-        for line in process.stdout:
-            print(line, end='')
-            sys.stdout.flush()  # Force immediate display
-            script_output.append(line)
-        process.wait()
-        assert process.returncode == 0, f"Chapter script failed with return code {process.returncode}"
-
+        script_output = run_subprocess(chapter_cmd, cwd="tests")
         script_metrics = extract_training_metrics(''.join(script_output))
 
         # Run the CLI pretrain command with live output
@@ -84,18 +71,7 @@ def test_pretrain_cli_vs_script():
             "--drop-rate", "0.1"
             # qkv_bias defaults to False, so we don't need to pass --use-qkv-bias
         ]
-
-        # Capture output while streaming it live
-        cli_output = []
-        process = subprocess.Popen(cli_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                   text=True, bufsize=1)
-        for line in process.stdout:
-            print(line, end='')
-            sys.stdout.flush()  # Force immediate display
-            cli_output.append(line)
-        process.wait()
-        assert process.returncode == 0, f"CLI command failed with return code {process.returncode}"
-
+        cli_output = run_subprocess(cli_cmd)
         cli_metrics = extract_training_metrics(''.join(cli_output))
 
         # Compare metrics
@@ -109,11 +85,11 @@ def test_pretrain_cli_vs_script():
             train_diff = abs(script_metrics['train_losses'][i] - cli_metrics['train_losses'][i])
             val_diff = abs(script_metrics['val_losses'][i] - cli_metrics['val_losses'][i])
             if train_diff > tolerance or val_diff > tolerance:
-                print(f"\nCheckpoint {i+1}:")
+                print(f"\nCheckpoint {i + 1}:")
                 print(f"  Script - Train: {script_metrics['train_losses'][i]:.6f}, Val: {script_metrics['val_losses'][i]:.6f}")
                 print(f"  CLI    - Train: {cli_metrics['train_losses'][i]:.6f}, Val: {cli_metrics['val_losses'][i]:.6f}")
                 print(f"  Diff   - Train: {train_diff:.2e}, Val: {val_diff:.2e}")
-                assert False, f"Training metrics differ at checkpoint {i+1}"
+                assert False, f"Training metrics differ at checkpoint {i + 1}"
     finally:
         for f in [cli_model_path, "tests/the-verdict.txt", "tests/model.pth", "tests/loss.pdf"]:
             if os.path.exists(f):
