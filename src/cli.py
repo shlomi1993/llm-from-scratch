@@ -154,7 +154,7 @@ def run_evaluate(args: Namespace) -> None:
 
 
 def run_classify(args: Namespace) -> None:
-    from src.scripts.classify_review import run_classification_flow, run_classification_interactive_flow
+    from src.scripts.classify import run_classification_flow, run_classification_interactive_flow
     if args.text is not None:
         run_classification_flow(
             model_path=args.model_path,
@@ -276,7 +276,7 @@ def cli() -> None:
         evaluate_parser.set_defaults(func=run_evaluate)
 
     elif args.command == "classify":
-        from src.scripts.classify_review import add_arguments as add_classify_arguments
+        from src.scripts.classify import add_arguments as add_classify_arguments
         classify_parser = subparsers.add_parser(
             "classify",
             help="Classify text using a fine-tuned classification model",
