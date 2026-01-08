@@ -145,7 +145,7 @@ def run_finetune_instruction_advanced(args: Namespace) -> None:
 
 def run_download(args: Namespace) -> None:
     from src.scripts.download import run_download_flow
-    run_download_flow(args.size, args.dir, args.convert)
+    run_download_flow(args.sizes, args.dir, args.convert)
 
 
 def run_evaluate(args: Namespace) -> None:
