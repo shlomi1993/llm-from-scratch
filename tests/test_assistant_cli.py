@@ -30,11 +30,11 @@ def validate_evaluation_score(output: str, min_score: float = 90.0) -> None:
     assert score > min_score, f"Assistant score is too low: {score:.2f}/100"
 
 
-def test_finetune_instruction_cli_vs_script(temp_path: Path):
+def test_finetune_instruction_cli_vs_script(tmp_path: Path):
 
     # Paths
-    cli_model_path = temp_path / "test_instruction_model.pth"
-    cli_test_output = temp_path / "instruction-test-responses.json"
+    cli_model_path = tmp_path / "test_instruction_model.pth"
+    cli_test_output = tmp_path / "instruction-test-responses.json"
     chapter_path = "../chapters/ch07/01_main-chapter-code/gpt_instruction_finetuning.py"
     pretrained_model_path = "models/355M/model.pth"
     instruction_data_path = "datasets/instruction_data/instruction-data.json"
@@ -53,11 +53,11 @@ def test_finetune_instruction_cli_vs_script(temp_path: Path):
     # Run the chapter script with live output
     print_title("Running chapter script")
     chapter_cmd = [sys.executable, "-u", chapter_path]
-    chapter_output = run_subprocess(chapter_cmd, cwd=temp_path)
+    chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
     chapter_metrics = extract_training_metrics(chapter_output)
 
     # Clean up chapter script output files
-    for f in temp_path / "instruction-data.json", temp_path / "instruction-data-with-response.json", temp_path / "loss-plot-standalone.pdf":
+    for f in tmp_path / "instruction-data.json", tmp_path / "instruction-data-with-response.json", tmp_path / "loss-plot-standalone.pdf":
         if os.path.exists(f):
             os.remove(f)
 

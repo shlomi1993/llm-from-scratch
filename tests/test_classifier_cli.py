@@ -145,21 +145,21 @@ def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
     print("✓ All inference predictions match!")
 
 
-def test_finetune_classifier_cli_vs_script(temp_path: Path):
+def test_finetune_classifier_cli_vs_script(tmp_path: Path):
 
     # Paths
-    cli_model_path = temp_path / "test_classifier_model.pth"
+    cli_model_path = tmp_path / "test_classifier_model.pth"
     chapter_path = "../chapters/ch06/01_main-chapter-code/gpt_class_finetune.py"
     pretrained_model_path = "models/124M/model.pth"
 
     # Run the chapter script with live output
     print_title("Running chapter script")
     chapter_cmd = [sys.executable, "-u", chapter_path]
-    chapter_output = run_subprocess(chapter_cmd, cwd=temp_path)
+    chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
     chapter_metrics = extract_losses_and_accuracies(chapter_output)
 
     # Clean up split files
-    for f in temp_path / "train.csv", temp_path / "validation.csv", temp_path / "test.csv":
+    for f in tmp_path / "train.csv", tmp_path / "validation.csv", tmp_path / "test.csv":
         if os.path.exists(f):
             os.remove(f)
 
@@ -172,7 +172,7 @@ def test_finetune_classifier_cli_vs_script(temp_path: Path):
         "--column-names", "Label", "Text",
         "--train-frac", "0.7",
         "--validation-frac", "0.1",
-        "--save-split-dir", str(temp_path),
+        "--save-split-dir", str(tmp_path),
         "--batch-size", "8",
         "--seed", "123",
         "--device", "cpu",
