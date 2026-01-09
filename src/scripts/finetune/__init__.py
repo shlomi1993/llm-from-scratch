@@ -19,9 +19,7 @@ from .classification import (
 from .instruction import (
     custom_collate_fn,
     create_dataloaders,
-    load_assistant,
-    extract_response,
-    generate_response,
+    test_assistant,
     run_instruction_finetuning_flow,
 )
 
@@ -37,8 +35,6 @@ __all__ = [
     "run_classification_finetuning_flow",
     "custom_collate_fn",
     "create_dataloaders",
-    "load_assistant",
-    "extract_response",
-    "generate_response",
+    "test_assistant",
     "run_instruction_finetuning_flow",
 ]

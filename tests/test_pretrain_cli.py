@@ -2,10 +2,12 @@ import os
 import re
 import sys
 
-from tests.common import run_subprocess
+from pathlib import Path
+
+from tests.common import run_subprocess, print_title, compare_losses
 
 
-def extract_training_metrics(output: str) -> dict:
+def extract_losses(output: str) -> dict:
     metrics = {
         'train_losses': [],
         'val_losses': [],
@@ -31,66 +33,45 @@ def extract_training_metrics(output: str) -> dict:
     return metrics
 
 
-def test_pretrain_cli_vs_script():
+def test_pretrain_cli_vs_script(tmp_path: Path):
 
     # Paths
+    chapter_path = "../chapters/ch05/01_main-chapter-code/gpt_train.py"  # Relative to tests/ directory
+    cli_model_path = tmp_path / "test_model_cli.pth"
     training_file = "datasets/the-verdict.txt"
-    cli_model_path = "tests/test_model_cli.pth"
-    script_path = "../chapters/ch05/01_main-chapter-code/gpt_train.py"  # Relative to tests/ directory
-
-    # Make sure training file exists
     assert os.path.exists(training_file), f"Training file {training_file} not found"
 
-    try:
-        # Run the chapter script with live output
-        print("\n" + "=" * 80 + "\nRunning chapter script\n" + "=" * 80)
-        chapter_cmd = [sys.executable, "-u", script_path]
-        script_output = run_subprocess(chapter_cmd, cwd="tests")
-        script_metrics = extract_training_metrics(script_output)
+    # Run the chapter script with live output
+    print_title("Running chapter script")
+    chapter_cmd = [sys.executable, "-u", chapter_path]
+    chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
+    chapter_losses = extract_losses(chapter_output)
 
-        # Run the CLI pretrain command with live output
-        print("\n" + "=" * 80 + "\nRunning CLI command\n" + "=" * 80)
-        cli_cmd = [  # Parameters must match chapter script for deterministic results
-            "gpt2", "pretrain",
-            "--training-set-path", training_file,
-            "--n-epochs", "10",
-            "--batch-size", "2",
-            "--lr", "5e-4",
-            "--weight-decay", "0.1",
-            "--seed", "123",
-            "--device", "cpu",
-            "--max-length", "256",
-            "--eval-freq", "5",
-            "--eval-iter", "1",
-            "--saved-model-path", cli_model_path,
-            "--context-length", "256",
-            "--emb-dim", "768",
-            "--n-layers", "12",
-            "--n-heads", "12",
-            "--vocab-size", "50257",
-            "--drop-rate", "0.1"
-            # qkv_bias defaults to False, so we don't need to pass --use-qkv-bias
-        ]
-        cli_output = run_subprocess(cli_cmd)
-        cli_metrics = extract_training_metrics(cli_output)
+    # Run the CLI pretrain command with live output
+    print_title("Running CLI command")
+    cli_cmd = [  # Parameters must match chapter script for deterministic results
+        "gpt2", "pretrain",
+        "--training-set-path", training_file,
+        "--n-epochs", "10",
+        "--batch-size", "2",
+        "--lr", "5e-4",
+        "--weight-decay", "0.1",
+        "--seed", "123",
+        "--device", "cpu",
+        "--max-length", "256",
+        "--eval-freq", "5",
+        "--eval-iter", "1",
+        "--saved-model-path", str(cli_model_path),
+        "--context-length", "256",
+        "--emb-dim", "768",
+        "--n-layers", "12",
+        "--n-heads", "12",
+        "--vocab-size", "50257",
+        "--drop-rate", "0.1"
+        # qkv_bias defaults to False, so we don't need to pass --use-qkv-bias
+    ]
+    cli_output = run_subprocess(cli_cmd)
+    cli_losses = extract_losses(cli_output)
 
-        # Compare metrics
-        print("\n" + "=" * 80 + "\nComparing training metrics\n" + "=" * 80)
-        assert len(script_metrics['train_losses']) == len(cli_metrics['train_losses']), \
-            f"Different number of training checkpoints: Script={len(script_metrics['train_losses'])}, CLI={len(cli_metrics['train_losses'])}"
-
-        # Compare losses (allowing small floating point differences)
-        tolerance = 1e-5
-        for i in range(len(script_metrics['train_losses'])):
-            train_diff = abs(script_metrics['train_losses'][i] - cli_metrics['train_losses'][i])
-            val_diff = abs(script_metrics['val_losses'][i] - cli_metrics['val_losses'][i])
-            if train_diff > tolerance or val_diff > tolerance:
-                print(f"\nCheckpoint {i + 1}:")
-                print(f"  Script - Train: {script_metrics['train_losses'][i]:.6f}, Val: {script_metrics['val_losses'][i]:.6f}")
-                print(f"  CLI    - Train: {cli_metrics['train_losses'][i]:.6f}, Val: {cli_metrics['val_losses'][i]:.6f}")
-                print(f"  Diff   - Train: {train_diff:.2e}, Val: {val_diff:.2e}")
-                assert False, f"Training metrics differ at checkpoint {i + 1}"
-    finally:
-        for f in [cli_model_path, "tests/the-verdict.txt", "tests/model.pth", "tests/loss.pdf"]:
-            if os.path.exists(f):
-                os.remove(f)
+    # Validation
+    compare_losses(actual_losses=cli_losses, expected_losses=chapter_losses, tolerance=1e-5)

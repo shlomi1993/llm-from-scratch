@@ -13,11 +13,10 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.data.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
-from src.data.formatting import format_input
-from src.model.config import GptConfig
 from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
+from src.utils.ollama import format_input
 from src.utils.tokenization import tokenizer as tok
 from src.utils.visualization import plot_metrics
 
