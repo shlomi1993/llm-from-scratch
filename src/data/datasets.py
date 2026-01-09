@@ -4,7 +4,7 @@ from torch import Tensor, tensor, long
 from torch.utils.data import Dataset
 from typing import Tuple
 
-from src.data.formatting import format_input
+from src.utils.ollama import format_input
 from src.utils.tokenization import tokenizer, EOT
 
 
