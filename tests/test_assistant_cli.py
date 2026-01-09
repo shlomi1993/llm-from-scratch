@@ -36,7 +36,7 @@ def test_finetune_instruction_cli_vs_script(temp_path: Path):
     cli_model_path = temp_path / "test_instruction_model.pth"
     cli_test_output = temp_path / "instruction-test-responses.json"
     chapter_path = "../chapters/ch07/01_main-chapter-code/gpt_instruction_finetuning.py"
-    pretrained_model_path = "models/124M/model.pth"
+    pretrained_model_path = "models/355M/model.pth"
     instruction_data_path = "datasets/instruction_data/instruction-data.json"
 
     # Make sure instruction data exists
@@ -55,6 +55,11 @@ def test_finetune_instruction_cli_vs_script(temp_path: Path):
     chapter_cmd = [sys.executable, "-u", chapter_path]
     chapter_output = run_subprocess(chapter_cmd, cwd=temp_path)
     chapter_metrics = extract_training_metrics(chapter_output)
+
+    # Clean up chapter script output files
+    for f in temp_path / "instruction-data.json", temp_path / "instruction-data-with-response.json", temp_path / "loss-plot-standalone.pdf":
+        if os.path.exists(f):
+            os.remove(f)
 
     # Run the CLI finetune instruction command with live output
     print_title("Running CLI command")
