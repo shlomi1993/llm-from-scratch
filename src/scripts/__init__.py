@@ -33,7 +33,7 @@ from .finetune.classification import (
 from .finetune.instruction import (
     custom_collate_fn,
     create_dataloaders,
-    load_instruction_finetuned_model,
+    load_assistant,
     extract_response,
     generate_response,
     run_instruction_finetuning_flow,
@@ -67,7 +67,7 @@ __all__ = [
     "run_classification_finetuning_flow",
     "custom_collate_fn",
     "create_dataloaders",
-    "load_instruction_finetuned_model",
+    "load_assistant",
     "extract_response",
     "generate_response",
     "run_instruction_finetuning_flow",
