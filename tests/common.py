@@ -12,4 +12,4 @@ def run_subprocess(cmd: list[str] | str, cwd: str = None) -> list[str]:
         output_lines.append(line)
     process.wait()
     assert process.returncode == 0, f"Subprocess failed: {' '.join(cmd) if not shell else cmd}"
-    return output_lines
+    return "\n".join(output_lines)

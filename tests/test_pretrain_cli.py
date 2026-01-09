@@ -46,7 +46,7 @@ def test_pretrain_cli_vs_script():
         print("\n" + "=" * 80 + "\nRunning chapter script\n" + "=" * 80)
         chapter_cmd = [sys.executable, "-u", script_path]
         script_output = run_subprocess(chapter_cmd, cwd="tests")
-        script_metrics = extract_training_metrics(''.join(script_output))
+        script_metrics = extract_training_metrics(script_output)
 
         # Run the CLI pretrain command with live output
         print("\n" + "=" * 80 + "\nRunning CLI command\n" + "=" * 80)
@@ -72,7 +72,7 @@ def test_pretrain_cli_vs_script():
             # qkv_bias defaults to False, so we don't need to pass --use-qkv-bias
         ]
         cli_output = run_subprocess(cli_cmd)
-        cli_metrics = extract_training_metrics(''.join(cli_output))
+        cli_metrics = extract_training_metrics(cli_output)
 
         # Compare metrics
         print("\n" + "=" * 80 + "\nComparing training metrics\n" + "=" * 80)

@@ -103,7 +103,7 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
     return train_loader, val_loader, test_data  # NOTE: Test data is returned as a list of dicts
 
 
-def load_instruction_finetuned_model(model_path: str, config: GptConfig, device: Device) -> GptModel:
+def load_assistant(model_path: str, config: GptConfig, device: Device) -> GptModel:
 
     # Create model with the same architecture
     model = GptModel(config)
@@ -156,7 +156,8 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
 
     _logger.info("Preparing instruction fine-tuning dataset")
     train_loader, val_loader, test_data = create_dataloaders(
-        tuning_set_path, train_frac, test_frac, device, batch_size, model.config.context_length, seed
+        tuning_set_path, train_frac, test_frac, device, batch_size, max_allowed_length=model.config.context_length,
+        n_workers=0, seed=seed
     )
 
     _logger.info("Calculating initial losses before fine-tuning")
@@ -221,6 +222,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot (None to skip).")
     parser.add_argument("--model-save-path", type=str, default="assistant.pth", help="Path to save the fine-tuned model.")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum number of tokens to generate for test responses.")
+    parser.add_argument("--pad-token-id", type=int, default=PAD_TOKEN_ID, help="Token ID to use for padding.")
     parser.add_argument("--test-output-path", type=str, default="instruction-test-responses.json", help="Path to save test responses JSON.")
 
 
@@ -248,6 +250,7 @@ def main() -> None:
         loss_plot_save_path=args.loss_plot_save_path,
         model_save_path=args.model_save_path,
         max_new_tokens=args.max_new_tokens,
+        pad_token_id=args.pad_token_id,
         test_output_path=args.test_output_path
     )
 
