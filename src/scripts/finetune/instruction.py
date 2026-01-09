@@ -2,20 +2,18 @@ import argparse
 import json
 import time
 import torch
-import tqdm
 
 from functools import partial
 from logging import getLogger as get_logger
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.data.datasets import InstructionDataset
-from src.data.formatting import format_input
-from src.model.config import GptConfig
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
-from src.utils.ollama import OllamaEvaluator
+from src.utils.ollama import OllamaEvaluator, format_input
 from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
 

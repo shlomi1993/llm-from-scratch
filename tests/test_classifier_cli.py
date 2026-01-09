@@ -1,16 +1,25 @@
 import os
 import re
 import sys
-import shutil
 import torch
 import tiktoken
 
+from pathlib import Path
+
 from src.scripts.finetune.classification import load_classifier, classify_review
 from tests.chapters_code import GPTModel
-from tests.common import run_subprocess
+from tests.common import run_subprocess, print_title, compare_all_metrics
 
 
-def extract_training_metrics(output: str) -> dict:
+PREDICTION_TEST_SAMPLES = [
+    "You are a winner you have been specially selected to receive $1000 cash or a $2000 award.",
+    "Hey, just wanted to check if we're still on for dinner tonight? Let me know!",
+    "URGENT! Your account has been compromised. Click here to verify your identity now.",
+    "Thanks for the meeting notes. I'll review them and get back to you tomorrow."
+]
+
+
+def extract_losses_and_accuracies(output: str) -> dict:
     metrics = {
         'train_losses': [],
         'val_losses': [],
@@ -71,6 +80,7 @@ def load_chapter_model(model_path: str, device: torch.device) -> GPTModel:
     # Load checkpoint
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
 
+    # Model configuration
     config = {
         "vocab_size": 50257,
         "context_length": 1024,
@@ -97,6 +107,7 @@ def load_chapter_model(model_path: str, device: torch.device) -> GPTModel:
 
 
 def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
+    print_title("Comparing inference predictions")
     device = torch.device("cpu")
     tokenizer = tiktoken.get_encoding("gpt2")
 
@@ -134,105 +145,49 @@ def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
     print("✓ All inference predictions match!")
 
 
-def test_finetune_classifier_cli_vs_script():
+def test_finetune_classifier_cli_vs_script(temp_path: Path):
 
     # Paths
-    cli_model_path = "tests/test_classifier_model.pth"
-    script_path = "../chapters/ch06/01_main-chapter-code/gpt_class_finetune.py"
+    cli_model_path = temp_path / "test_classifier_model.pth"
+    chapter_path = "../chapters/ch06/01_main-chapter-code/gpt_class_finetune.py"
     pretrained_model_path = "models/124M/model.pth"
 
-    try:
-        # Run the chapter script with live output
-        print("\n" + "=" * 80 + "\nRunning chapter script\n" + "=" * 80)
-        chapter_cmd = [sys.executable, "-u", script_path]
-        script_output = run_subprocess(chapter_cmd, cwd="tests")
-        script_metrics = extract_training_metrics(script_output)
+    # Run the chapter script with live output
+    print_title("Running chapter script")
+    chapter_cmd = [sys.executable, "-u", chapter_path]
+    chapter_output = run_subprocess(chapter_cmd, cwd=temp_path)
+    chapter_metrics = extract_losses_and_accuracies(chapter_output)
 
-        # Clean up split files
-        for f in "tests/train.csv", "tests/validation.csv", "tests/test.csv":
-            if os.path.exists(f):
-                os.remove(f)
+    # Clean up split files
+    for f in temp_path / "train.csv", temp_path / "validation.csv", temp_path / "test.csv":
+        if os.path.exists(f):
+            os.remove(f)
 
-        # Run the CLI finetune classification command with live output
-        print("\n" + "=" * 80 + "\nRunning CLI command\n" + "=" * 80)
-        cli_cmd = [
-            "gpt2", "finetune", "classification",
-            "--pretrained-model-path", pretrained_model_path,
-            "--tuning-set-path", "datasets/sms_spam_collection/SMSSpamCollection.tsv",
-            "--column-names", "Label", "Text",
-            "--train-frac", "0.7",
-            "--validation-frac", "0.1",
-            "--save-split-dir", "tests",
-            "--batch-size", "8",
-            "--seed", "123",
-            "--device", "cpu",
-            "--lr", "5e-5",
-            "--n-epochs", "5",
-            "--weight-decay", "0.1",
-            "--eval-freq", "50",
-            "--eval-iter", "5",
-            "--model-save-path", cli_model_path
-        ]
+    # Run the CLI finetune classification command with live output
+    print_title("Running CLI command")
+    cli_cmd = [
+        "gpt2", "finetune", "classification",
+        "--pretrained-model-path", pretrained_model_path,
+        "--tuning-set-path", "datasets/sms_spam_collection/SMSSpamCollection.tsv",
+        "--column-names", "Label", "Text",
+        "--train-frac", "0.7",
+        "--validation-frac", "0.1",
+        "--save-split-dir", str(temp_path),
+        "--batch-size", "8",
+        "--seed", "123",
+        "--device", "cpu",
+        "--lr", "5e-5",
+        "--n-epochs", "5",
+        "--weight-decay", "0.1",
+        "--eval-freq", "50",
+        "--eval-iter", "5",
+        "--model-save-path", str(cli_model_path)
+    ]
 
-        # Capture output while streaming it live
-        cli_output = run_subprocess(cli_cmd)
-        cli_metrics = extract_training_metrics(cli_output)
+    # Capture output while streaming it live
+    cli_output = run_subprocess(cli_cmd)
+    cli_metrics = extract_losses_and_accuracies(cli_output)
 
-        # Compare metrics
-        print("\n" + "=" * 80 + "\nComparing training metrics\n" + "=" * 80)
-        assert len(script_metrics['train_losses']) == len(cli_metrics['train_losses']), \
-            f"Different number of training checkpoints: Script={len(script_metrics['train_losses'])}, CLI={len(cli_metrics['train_losses'])}"
-        assert len(script_metrics['train_accs']) == len(cli_metrics['train_accs']), \
-            f"Different number of accuracy measurements: Script={len(script_metrics['train_accs'])}, CLI={len(cli_metrics['train_accs'])}"
-
-        # Compare losses (allowing small floating point differences)
-        tolerance = 1e-2  # Larger tolerance for classification tasks
-        for i in range(len(script_metrics['train_losses'])):
-            train_diff = abs(script_metrics['train_losses'][i] - cli_metrics['train_losses'][i])
-            val_diff = abs(script_metrics['val_losses'][i] - cli_metrics['val_losses'][i])
-            if train_diff > tolerance or val_diff > tolerance:
-                print(f"\nLoss checkpoint {i+1}:")
-                print(f"  Script - Train: {script_metrics['train_losses'][i]:.6f}, Val: {script_metrics['val_losses'][i]:.6f}")
-                print(f"  CLI    - Train: {cli_metrics['train_losses'][i]:.6f}, Val: {cli_metrics['val_losses'][i]:.6f}")
-                print(f"  Diff   - Train: {train_diff:.2e}, Val: {val_diff:.2e}")
-                assert False, f"Training losses differ at checkpoint {i + 1}"
-
-        # Compare accuracies
-        acc_tolerance = 1.0  # 1% tolerance for accuracy
-        for i in range(len(script_metrics['train_accs'])):
-            train_acc_diff = abs(script_metrics['train_accs'][i] - cli_metrics['train_accs'][i])
-            val_acc_diff = abs(script_metrics['val_accs'][i] - cli_metrics['val_accs'][i])
-            if train_acc_diff > acc_tolerance or val_acc_diff > acc_tolerance:
-                print(f"\nAccuracy checkpoint {i + 1}:")
-                print(f"  Script - Train: {script_metrics['train_accs'][i]:.2f}%, Val: {script_metrics['val_accs'][i]:.2f}%")
-                print(f"  CLI    - Train: {cli_metrics['train_accs'][i]:.2f}%, Val: {cli_metrics['val_accs'][i]:.2f}%")
-                print(f"  Diff   - Train: {train_acc_diff:.2f}%, Val: {val_acc_diff:.2f}%")
-                assert False, f"Training accuracies differ at checkpoint {i + 1}"
-
-        print("✓ All metrics match!")
-
-        # Compare inference predictions
-        print("\n" + "=" * 80 + "\nComparing inference predictions\n" + "=" * 80)
-        test_samples = [
-            "You are a winner you have been specially selected to receive $1000 cash or a $2000 award.",
-            "Hey, just wanted to check if we're still on for dinner tonight? Let me know!",
-            "URGENT! Your account has been compromised. Click here to verify your identity now.",
-            "Thanks for the meeting notes. I'll review them and get back to you tomorrow."
-        ]
-        compare_model_predictions(test_samples, cli_model_path)
-
-    finally:
-        cleanup_files = [
-            cli_model_path,
-            "tests/train.csv",
-            "tests/validation.csv",
-            "tests/test.csv",
-            "tests/loss-plot.pdf",
-            "tests/accuracy-plot.pdf",
-            "tests/sms_spam_collection.zip"
-        ]
-        for f in cleanup_files:
-            if os.path.exists(f):
-                os.remove(f)
-        if os.path.exists("tests/sms_spam_collection"):
-            shutil.rmtree("tests/sms_spam_collection")
+    # Validation
+    compare_all_metrics(actual_metrics=cli_metrics, expected_metrics=chapter_metrics)
+    compare_model_predictions(PREDICTION_TEST_SAMPLES, cli_model_path)

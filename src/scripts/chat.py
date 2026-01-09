@@ -3,9 +3,9 @@ import torch
 
 from logging import getLogger as get_logger
 
-from src.data.formatting import format_input
 from src.scripts.common import load_model
 from src.utils.device import get_device
+from src.utils.ollama import format_input
 from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, text_to_token_ids
 
 
