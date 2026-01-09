@@ -19,6 +19,11 @@ def create_gpt_config_from_args(args: Namespace):
     )
 
 
+def run_download(args: Namespace) -> None:
+    from src.scripts.download import run_download_flow
+    run_download_flow(args.sizes, args.dir, args.convert)
+
+
 def run_pretrain(args: Namespace) -> None:
     from src.scripts.pretrain import run_model_training_flow
     config = create_gpt_config_from_args(args)
@@ -109,7 +114,6 @@ def run_finetune_instruction(args: Namespace) -> None:
         loss_plot_save_path=args.loss_plot_save_path,
         model_save_path=args.model_save_path,
         max_new_tokens=args.max_new_tokens,
-        pad_token_id=args.pad_token_id,
         test_output_path=args.test_output_path
     )
 
@@ -143,31 +147,31 @@ def run_finetune_instruction_advanced(args: Namespace) -> None:
     )
 
 
-def run_download(args: Namespace) -> None:
-    from src.scripts.download import run_download_flow
-    run_download_flow(args.sizes, args.dir, args.convert)
-
-
-def run_evaluate(args: Namespace) -> None:
-    from src.scripts.evaluate import run_ollama_evaluation_flow
-    run_ollama_evaluation_flow(args.file_path, args.model)
-
-
-def run_classify(args: Namespace) -> None:
-    from src.scripts.classify import run_classification_flow, run_classification_interactive_flow
+def run_spam_ham(args: Namespace) -> None:
+    from src.scripts.classify import run_spam_ham_flow, run_spam_ham_interactive_flow
     if args.text is not None:
-        run_classification_flow(
+        run_spam_ham_flow(
             model_path=args.model_path,
             text=args.text,
             device_type=args.device,
             seed=args.seed
         )
     else:
-        run_classification_interactive_flow(
+        run_spam_ham_interactive_flow(
             model_path=args.model_path,
             device_type=args.device,
             seed=args.seed
         )
+
+
+def run_chat(args: Namespace) -> None:
+    from src.scripts.chat import run_chat_flow
+    run_chat_flow(
+        model_path=args.model_path,
+        max_new_tokens=args.max_new_tokens,
+        device_type=args.device,
+        seed=args.seed
+    )
 
 
 def cli() -> None:
@@ -176,12 +180,12 @@ def cli() -> None:
     subparsers.required = False
 
     # Add minimal subcommand stubs without importing anything
+    subparsers.add_parser("download", help="Download GPT2 model files", add_help=False)
     subparsers.add_parser("pretrain", help="Train a GPT2 foundation model from scratch", add_help=False)
     subparsers.add_parser("generate", help="Generate text using a pre-trained GPT2 model", add_help=False)
-    subparsers.add_parser("finetune", help="Fine-tune a pre-trained GPT2 model", add_help=False)
-    subparsers.add_parser("download", help="Download GPT2 model files", add_help=False)
-    subparsers.add_parser("evaluate", help="Evaluate model responses with Ollama API", add_help=False)
-    subparsers.add_parser("classify", help="Classify text to spam or ham using a fine-tuned classification model", add_help=False)
+    subparsers.add_parser("finetune", help="Fine-tune a pre-trained GPT2 foundation model", add_help=False)
+    subparsers.add_parser("spam-ham", help="Classify text as spam or ham using a classification fine-tuned model", add_help=False)
+    subparsers.add_parser("chat-bot", help="Chat with an instruction fine-tuned assistant model", add_help=False)
 
     # Quick parse to see if we're just showing help
     args, remaining = parser.parse_known_args()
@@ -196,7 +200,17 @@ def cli() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     subparsers.required = True
 
-    if args.command == "pretrain":
+    if args.command == "download":
+        from src.scripts.download import add_arguments as add_download_arguments
+        download_parser = subparsers.add_parser(
+            "download",
+            help="Download GPT-2 model files",
+            formatter_class=ArgumentDefaultsHelpFormatter
+        )
+        add_download_arguments(download_parser)
+        download_parser.set_defaults(func=run_download)
+
+    elif args.command == "pretrain":
         from src.scripts.pretrain import add_arguments as add_pretrain_arguments
         from src.model.config import add_arguments as add_gpt_config_arguments
         pretrain_parser = subparsers.add_parser(
@@ -255,35 +269,25 @@ def cli() -> None:
         add_instruction_advanced_arguments(instruction_advanced_parser)
         instruction_advanced_parser.set_defaults(func=run_finetune_instruction_advanced)
 
-    elif args.command == "download":
-        from src.scripts.download import add_arguments as add_download_arguments
-        download_parser = subparsers.add_parser(
-            "download",
-            help="Download GPT-2 model files",
+    elif args.command == "spam-ham":
+        from src.scripts.classify import add_arguments as add_spam_ham_arguments
+        spam_ham_parser = subparsers.add_parser(
+            "spam-ham",
+            help="Classify text as spam or ham using a fine-tuned classification model",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
-        add_download_arguments(download_parser)
-        download_parser.set_defaults(func=run_download)
+        add_spam_ham_arguments(spam_ham_parser)
+        spam_ham_parser.set_defaults(func=run_spam_ham)
 
-    elif args.command == "evaluate":
-        from src.scripts.evaluate import add_arguments as add_evaluate_arguments
-        evaluate_parser = subparsers.add_parser(
-            "evaluate",
-            help="Evaluate model responses with Ollama API",
+    elif args.command == "chat":
+        from src.scripts.chat import add_arguments as add_chat_arguments
+        chat_parser = subparsers.add_parser(
+            "chat-bot",
+            help="Chat with an instruction fine-tuned assistant model",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
-        add_evaluate_arguments(evaluate_parser)
-        evaluate_parser.set_defaults(func=run_evaluate)
-
-    elif args.command == "classify":
-        from src.scripts.classify import add_arguments as add_classify_arguments
-        classify_parser = subparsers.add_parser(
-            "classify",
-            help="Classify text using a fine-tuned classification model",
-            formatter_class=ArgumentDefaultsHelpFormatter
-        )
-        add_classify_arguments(classify_parser)
-        classify_parser.set_defaults(func=run_classify)
+        add_chat_arguments(chat_parser)
+        chat_parser.set_defaults(func=run_chat)
 
     # Parse and execute
     args = parser.parse_args()

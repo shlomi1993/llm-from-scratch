@@ -4,9 +4,8 @@ import torch
 
 from logging import getLogger as get_logger
 
-from src.model.gpt import GptModel
 from src.scripts.common import load_model
-from src.utils.device import Device, get_device
+from src.utils.device import get_device
 from src.utils.tokenization import text_to_token_ids, token_ids_to_text
 
 
