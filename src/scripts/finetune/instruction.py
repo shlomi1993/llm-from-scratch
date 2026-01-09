@@ -15,9 +15,9 @@ from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
+from src.utils.ollama import OllamaEvaluator
 from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
-
 
 _logger = get_logger(__name__)
 
@@ -103,37 +103,19 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
     return train_loader, val_loader, test_data  # NOTE: Test data is returned as a list of dicts
 
 
-def load_assistant(model_path: str, config: GptConfig, device: Device) -> GptModel:
-
-    # Create model with the same architecture
-    model = GptModel(config)
-
-    # Load the fine-tuned weights
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
-
-    # Move to device and set to eval mode
-    model.to(device)
-    model.eval()
-
-    return model
-
-
-def extract_response(response_text: str, input_text: str) -> str:
-    return response_text[len(input_text):].replace("### Response:", "").strip()
-
-
-def generate_response(model: GptModel, context_length: int, prompt: str, max_new_tokens: int = 35, seed: int = 123) -> str:
-    torch.manual_seed(seed)
-    token_ids = model.generate(
-        idx=text_to_token_ids(prompt),
-        max_new_tokens=max_new_tokens,
-        context_size=context_length,
-        eos_id=PAD_TOKEN_ID
-    )
-    response = token_ids_to_text(token_ids)
-    response = extract_response(response, prompt)
-    return response
-
+def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int) -> None:
+    _logger.info("Generating model responses...")
+    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses"):
+        prompt = format_input(entry)
+        token_ids = model.generate(
+            idx=text_to_token_ids(prompt).to(device),
+            max_new_tokens=max_new_tokens,
+            context_size=model.config.context_length,
+            eos_id=PAD_TOKEN_ID
+        )
+        generated_text = token_ids_to_text(token_ids)
+        response = generated_text[len(prompt):].replace("### Response:", "").strip()
+        test_data[i]["model_response"] = response  # Add response to the entry in-place
 
 def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
                                     test_frac: float = 0.1, batch_size: int = 8, seed: int = 123,
@@ -141,7 +123,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
                                     weight_decay: float = 0.1, eval_freq: int = 5, eval_iter: int = 5,
                                     loss_plot_save_path: str = None, model_save_path: str = "assistant.pth",
                                     max_new_tokens: int = 256, pad_token_id: int = PAD_TOKEN_ID,
-                                    test_output_path: str = "instruction-test-responses.json") -> None:
+                                    test_output_path: str = "instruction-test-responses.json", evaluate: bool = False) -> None:
 
     _logger.info("Starting instruction finetuning flow")
 
@@ -184,19 +166,8 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
                  savefig_path=loss_plot_save_path, legend_loc="upper right")
 
-
     _logger.info("Generating responses...")
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data)):
-        input_text = format_input(entry)
-        token_ids = model.generate(
-            idx=text_to_token_ids(input_text).to(device),
-            max_new_tokens=max_new_tokens,
-            context_size=model.config.context_length,
-            eos_id=pad_token_id
-        )
-        generated_text = token_ids_to_text(token_ids)
-        response_text = generated_text[len(input_text):].replace("### Response:", "").strip()
-        test_data[i]["model_response"] = response_text
+    test_assistant(model, test_data, device, max_new_tokens)  # Output is added to test_data in-place
 
     with open(test_output_path, "w") as file:
         json.dump(test_data, file, indent=4)
@@ -204,6 +175,12 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
 
     torch.save(model.state_dict(), model_save_path)
     _logger.info(f"Model saved as {model_save_path}")
+
+    if evaluate:
+        _logger.info("Evaluating responses with Ollama...")
+        evaluator = OllamaEvaluator(seed=seed)
+        avg_score, scores = evaluator.evaluate(test_output_path)
+        _logger.info(f"Evaluation complete: Average score {avg_score:.2f}% across {len(scores)} samples")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -222,8 +199,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot (None to skip).")
     parser.add_argument("--model-save-path", type=str, default="assistant.pth", help="Path to save the fine-tuned model.")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum number of tokens to generate for test responses.")
-    parser.add_argument("--pad-token-id", type=int, default=PAD_TOKEN_ID, help="Token ID to use for padding.")
     parser.add_argument("--test-output-path", type=str, default="instruction-test-responses.json", help="Path to save test responses JSON.")
+    parser.add_argument("--evaluate", action="store_true", help="Whether to evaluate the model responses using Ollama API.")
 
 
 def main() -> None:
@@ -250,8 +227,8 @@ def main() -> None:
         loss_plot_save_path=args.loss_plot_save_path,
         model_save_path=args.model_save_path,
         max_new_tokens=args.max_new_tokens,
-        pad_token_id=args.pad_token_id,
-        test_output_path=args.test_output_path
+        test_output_path=args.test_output_path,
+        evaluate=args.evaluate
     )
 
 
