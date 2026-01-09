@@ -17,6 +17,7 @@ dependencies = [
     "requests",
     "tqdm>=4.66.1",
     "transformers>=4.33.2",
+    "ollama",
 ]
 
 [project.scripts]

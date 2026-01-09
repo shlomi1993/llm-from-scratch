@@ -51,7 +51,8 @@ def calc_loss_loader(data_loader: DataLoader, criterion: LossFunc, model: GptMod
     return total_loss / n_batches
 
 
-def evaluate_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: Device, n_batches: int, criterion: LossFunc) -> tuple[float, float]:
+def evaluate_losses(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, device: Device, n_batches: int,
+                    criterion: LossFunc) -> tuple[float, float]:
     model.eval()
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, criterion, model, device, n_batches)

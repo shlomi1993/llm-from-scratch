@@ -6,7 +6,7 @@ generating text using a pre-trained foundation GPT-2 model, and fine-tuning a pr
 spam detection and instruction following.
 """
 
-from .common import calc_loss_batch, calc_loss_last_token, calc_loss_loader, evaluate_model, save_model, load_model
+from .common import calc_loss_batch, calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model
 from .download import download_gpt2, convert_tf_weights_into_pytorch_model
 from .pretrain import (
     TrainingResults,
@@ -44,7 +44,7 @@ __all__ = [
     "calc_loss_batch",
     "calc_loss_last_token",
     "calc_loss_loader",
-    "evaluate_model",
+    "evaluate_losses",
     "save_model",
     "load_model",
     "download_gpt2",

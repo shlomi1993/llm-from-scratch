@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from src.data.datasets import SpamDataset
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_model, save_model, load_model
+from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model
 from src.utils.device import Device, get_device
 from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics
@@ -198,7 +198,7 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
 
             # Optional evaluation step
             if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
+                train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
