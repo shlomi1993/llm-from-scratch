@@ -6,10 +6,20 @@ import re
 from logging import getLogger as get_logger
 from tqdm import tqdm
 
-from src.data.formatting import format_input
-
 
 _logger = get_logger(__name__)
+
+
+INSTRUCTION_TEMPLATE = (
+    "Below is an instruction that describes a task. Write a response that appropriately completes the request."
+    "\n\n### Instruction:\n{instruction}"
+)
+
+
+def format_input(entry: dict[str, str]) -> str:
+    instruction_text = INSTRUCTION_TEMPLATE.format(instruction=entry['instruction'])
+    input_text = f"\n\n### Input:\n{entry['input']}" if entry["input"] else ""
+    return instruction_text + input_text
 
 
 class OllamaEvaluator:
