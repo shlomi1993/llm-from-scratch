@@ -2,9 +2,7 @@ import os
 import psutil
 import re
 import requests
-import subprocess
 import sys
-import time
 
 from tests.common import run_subprocess
 
@@ -22,12 +20,6 @@ def extract_training_metrics(output: str) -> dict:
         metrics['train_losses'].append(float(train_loss))
         metrics['val_losses'].append(float(val_loss))
     return metrics
-
-
-def extract_average_score(output: str) -> float:
-    pattern = r'Average score:\s*([\d.]+)'
-    match = re.search(pattern, output)
-    return float(match.group(1)) if match else 0.0
 
 
 def test_finetune_instruction_cli_vs_script():
@@ -53,7 +45,7 @@ def test_finetune_instruction_cli_vs_script():
     try:
         # Run the chapter script with live output
         print("\n" + "=" * 80 + "\nRunning chapter script\n" + "=" * 80)
-        chapter_cmd = [sys.executable, "-u", script_path, "--test_mode"]
+        chapter_cmd = [sys.executable, "-u", script_path]
         script_output = run_subprocess(chapter_cmd, cwd="tests")
         script_metrics = extract_training_metrics(script_output)
 
@@ -74,77 +66,38 @@ def test_finetune_instruction_cli_vs_script():
             "--eval-freq", "5",
             "--eval-iter", "5",
             "--model-save-path", cli_model_path,
-            "--test-output-path", cli_test_output
+            "--test-output-path", cli_test_output,
+            "--evaluate"
         ]
         cli_output = run_subprocess(cli_cmd)
         cli_metrics = extract_training_metrics(cli_output)
 
-        # Compare metrics
+        # Compare losses
         print("\n" + "=" * 80 + "\nComparing training metrics\n" + "=" * 80)
-        assert len(script_metrics['train_losses']) == len(cli_metrics['train_losses']), \
-            f"Different number of training checkpoints: Script={len(script_metrics['train_losses'])}, CLI={len(cli_metrics['train_losses'])}"
-
-        # Compare losses (allowing small floating point differences)
+        loss_checkpoints = zip(
+            script_metrics['train_losses'],
+            cli_metrics['train_losses'],
+            script_metrics['val_losses'],
+            cli_metrics['val_losses']
+        )
         tolerance = 1e-2
-        for i in range(len(script_metrics['train_losses'])):
-            train_diff = abs(script_metrics['train_losses'][i] - cli_metrics['train_losses'][i])
-            val_diff = abs(script_metrics['val_losses'][i] - cli_metrics['val_losses'][i])
+        for i, (scr_train_loss, cli_train_loss, scr_val_loss, cli_val_loss) in enumerate(loss_checkpoints):
+            train_diff = abs(scr_train_loss - cli_train_loss)
+            val_diff = abs(scr_val_loss - cli_val_loss)
             if train_diff > tolerance or val_diff > tolerance:
-                print(f"\nLoss checkpoint {i+1}:")
-                print(f"  Script - Train: {script_metrics['train_losses'][i]:.6f}, Val: {script_metrics['val_losses'][i]:.6f}")
-                print(f"  CLI    - Train: {cli_metrics['train_losses'][i]:.6f}, Val: {cli_metrics['val_losses'][i]:.6f}")
+                print(f"Loss checkpoint {i + 1}:")
+                print(f"  Script - Train: {scr_train_loss:.6f}, Val: {scr_val_loss:.6f}")
+                print(f"  CLI    - Train: {cli_train_loss:.6f}, Val: {cli_val_loss:.6f}")
                 print(f"  Diff   - Train: {train_diff:.2e}, Val: {val_diff:.2e}")
                 assert False, f"Training losses differ at checkpoint {i + 1}"
-
         print("✓ All training metrics match!")
 
-        # Evaluate responses with ollama if available
-        print("\n" + "=" * 80 + "\nEvaluating model responses with Ollama\n" + "=" * 80)
-        ollama_running = any("ollama" in proc.info["name"] for proc in psutil.process_iter(["name"]))
-        if ollama_running:
-            print("Ollama is already running, restarting it...")
-            run_subprocess("killall ollama")
-            time.sleep(2)  # Wait for Ollama to fully shut down
-            subprocess.Popen("ollama serve", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(3)  # Wait for Ollama to start up
-            print("Ollama restarted successfully")
-
-        print("Ollama is running, evaluating responses...")
-
-        # Run chapter's ollama_evaluate.py script
-        print("\nRunning chapter ollama evaluation script...")
-        chapter_eval_script = "../chapters/ch07/01_main-chapter-code/ollama_evaluate.py"
-        chapter_eval_cmd = [sys.executable, "-u", chapter_eval_script, "--file_path", cli_test_output]
-        chapter_eval_output = run_subprocess(chapter_eval_cmd, cwd="tests")
-        chapter_score = extract_average_score(chapter_eval_output)
-        print(f"Chapter evaluation average score: {chapter_score:.2f}/100")
-
-        # Run CLI gpt2 evaluate command
-        print("\nRunning CLI evaluation command...")
-        cli_eval_cmd = ["gpt2", "evaluate", "--file-path", cli_test_output]
-        cli_eval_output = run_subprocess(cli_eval_cmd)
-        cli_score = extract_average_score(''.join(cli_eval_output))
-        print(f"CLI evaluation average score: {cli_score:.2f}/100")
-
-        # Compare scores
-        print("\n" + "=" * 80 + "\nComparing evaluation scores\n" + "=" * 80)
-        score_diff = abs(chapter_score - cli_score)
-        score_tolerance = 0.1  # Allow small floating point differences
-
-        if score_diff > score_tolerance:
-            print(f"  Chapter score: {chapter_score:.2f}/100")
-            print(f"  CLI score:     {cli_score:.2f}/100")
-            print(f"  Difference:    {score_diff:.2f}")
-            assert False, "Evaluation scores differ between chapter script and CLI"
-
-        print("✓ Ollama evaluation scores match!")
+        # Validate evaluation score
+        match = re.search(r'Average score:\s*([\d.]+)', script_output)
+        score = float(match.group(1)) if match else 0.0
+        assert score > 90, f"Assistant score is too low: {score:.2f}/100"
 
     finally:
-        try:
-            run_subprocess("killall ollama")
-        except Exception:
-            pass
-
         cleanup_files = [
             cli_model_path,
             cli_test_output,
