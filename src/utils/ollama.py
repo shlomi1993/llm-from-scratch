@@ -10,14 +10,12 @@ from tqdm import tqdm
 _logger = get_logger(__name__)
 
 
-INSTRUCTION_TEMPLATE = (
-    "Below is an instruction that describes a task. Write a response that appropriately completes the request."
-    "\n\n### Instruction:\n{instruction}"
-)
-
-
 def format_input(entry: dict[str, str]) -> str:
-    instruction_text = INSTRUCTION_TEMPLATE.format(instruction=entry['instruction'])
+    instruction_text = (
+        f"Below is an instruction that describes a task. "
+        f"Write a response that appropriately completes the request."
+        f"\n\n### Instruction:\n{entry['instruction']}"
+    )
     input_text = f"\n\n### Input:\n{entry['input']}" if entry["input"] else ""
     return instruction_text + input_text
 

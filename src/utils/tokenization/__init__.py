@@ -6,6 +6,7 @@ This module provides functions to convert text to token IDs and vice versa, util
 
 from .tokenizer import TOKENIZER, EOT, encode, decode, text_to_token_ids, token_ids_to_text
 
+
 __all__ = [
     "TOKENIZER",
     "EOT",

@@ -11,6 +11,7 @@ from .gpt import GptModel
 from .normalization import LayerNorm
 from .transformer import TransformerBlock
 
+
 __all__ = [
     "GELU",
     "GptConfig",

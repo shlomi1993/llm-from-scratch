@@ -8,6 +8,7 @@ The module also contains experimental attention variants that are not exported b
 from .base import SelfAttention, CausalAttention
 from .multihead import MultiheadAttention, MultiheadAttentionWrapper, MultiheadAttentionCached
 
+
 __all__ = [
     "SelfAttention",
     "CausalAttention",
