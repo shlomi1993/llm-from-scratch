@@ -114,7 +114,8 @@ def run_finetune_instruction(args: Namespace) -> None:
         loss_plot_save_path=args.loss_plot_save_path,
         model_save_path=args.model_save_path,
         max_new_tokens=args.max_new_tokens,
-        test_output_path=args.test_output_path
+        test_output_path=args.test_output_path,
+        evaluate=args.evaluate
     )
 
 

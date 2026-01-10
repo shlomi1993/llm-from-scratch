@@ -296,14 +296,14 @@ def main(test_mode=False):
     print(f"Training completed in {execution_time_minutes:.2f} minutes.")
 
     epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
-    plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
+    # plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)  # NOTE: Original code is commented out
     print(50*"-")
 
     #######################################
     # Saving results
     #######################################
     print("Generating responses")
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data)):
+    for i, entry in tqdm(enumerate(test_data), total=len(test_data), leave=True):
 
         input_text = format_input(entry)
 

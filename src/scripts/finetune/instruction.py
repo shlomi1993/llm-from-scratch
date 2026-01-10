@@ -102,8 +102,7 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
 
 
 def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int) -> None:
-    _logger.info("Generating model responses...")
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses"):
+    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=True):
         prompt = format_input(entry)
         token_ids = model.generate(
             idx=text_to_token_ids(prompt).to(device),
@@ -164,7 +163,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
                  savefig_path=loss_plot_save_path, legend_loc="upper right")
 
-    _logger.info("Generating responses...")
+    _logger.info("Generating model responses...")
     test_assistant(model, test_data, device, max_new_tokens)  # Output is added to test_data in-place
 
     with open(test_output_path, "w") as file:
