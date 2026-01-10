@@ -14,7 +14,7 @@ _logger = get_logger(__name__)
 
 INPUT_PROMPT_TEMPLATE = (
     "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
-    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
+    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n\n"
 )
 
 
@@ -31,7 +31,7 @@ def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str =
     _logger.info("Model loaded successfully!")
 
     sep = "=" * get_terminal_size().columns
-    print(f"{sep}\nInteractive Chat with GPT2 Assistant\nType /bye to end the session.{sep}")
+    print(f"{sep}\nInteractive Chat with GPT2 Assistant\nType /bye to end the session\n{sep}")
 
     while True:
         try:
@@ -40,7 +40,7 @@ def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str =
                 continue
 
             if user_input.lower() == "/bye":
-                print("\nGoodbye!")
+                print("Goodbye!")
                 break
 
             prompt = INPUT_PROMPT_TEMPLATE.format(
@@ -50,9 +50,10 @@ def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str =
             idx = text_to_token_ids(prompt).to(device)
 
             assistant.generate(idx, max_new_tokens, assistant.config.context_length, eos_id=PAD_TOKEN_ID, live=True)
+            print()
 
         except KeyboardInterrupt:
-            print("\n\nGoodbye!")
+            print("Goodbye!")
             break
 
         except Exception as e:
