@@ -25,7 +25,7 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/llm-from-scratch.git
+git clone https://github.com/shlomi1993/llm-from-scratch.git
 cd llm-from-scratch
 ```
 
