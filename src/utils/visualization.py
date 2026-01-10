@@ -29,7 +29,9 @@ def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values:
 
     fig.tight_layout()  # Adjust layout to make room
     if savefig_path:
-        os.makedirs(os.path.dirname(savefig_path), exist_ok=True)
+        parent_dir = os.path.dirname(savefig_path)
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
         plt.savefig(savefig_path)
         _logger.info(f"Saved {label} plot to {savefig_path}")
     else:
