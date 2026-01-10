@@ -186,7 +186,7 @@ def cli() -> None:
     subparsers.add_parser("generate", help="Generate text using a pre-trained GPT2 model", add_help=False)
     subparsers.add_parser("finetune", help="Fine-tune a pre-trained GPT2 foundation model", add_help=False)
     subparsers.add_parser("spam-ham", help="Classify text as spam or ham using a classification fine-tuned model", add_help=False)
-    subparsers.add_parser("chat-bot", help="Chat with an instruction fine-tuned assistant model", add_help=False)
+    subparsers.add_parser("chat", help="Chat with an instruction fine-tuned assistant model", add_help=False)
 
     # Quick parse to see if we're just showing help
     args, remaining = parser.parse_known_args()
@@ -280,10 +280,10 @@ def cli() -> None:
         add_spam_ham_arguments(spam_ham_parser)
         spam_ham_parser.set_defaults(func=run_spam_ham)
 
-    elif args.command == "chat-bot":
+    elif args.command == "chat":
         from src.scripts.chat import add_arguments as add_chat_arguments
         chat_parser = subparsers.add_parser(
-            "chat-bot",
+            "chat",
             help="Chat with an instruction fine-tuned assistant model",
             formatter_class=ArgumentDefaultsHelpFormatter
         )
