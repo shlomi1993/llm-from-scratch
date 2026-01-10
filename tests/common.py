@@ -1,23 +1,33 @@
+from shutil import get_terminal_size
 from subprocess import Popen, PIPE, STDOUT
 from sys import stdout
 
 
+COLOR_BLUE = '\033[94m'
+COLOR_GREEN = '\033[92m'
+COLOR_RESET = '\033[0m'
+
+
 def run_subprocess(cmd: list[str] | str, cwd: str = None) -> list[str]:
-    output_lines = []
     shell = isinstance(cmd, str)
+    msg_cmd = cmd if shell else ' '.join(str(c) for c in cmd)
+    print(f"Running:\n{msg_cmd}\n")
     process = Popen(cmd, stdout=PIPE, stderr=STDOUT, text=True, cwd=cwd, bufsize=1, shell=shell)
+    output_lines = []
     for line in process.stdout:
         print(line, end='')
         stdout.flush()  # Force immediate display
         output_lines.append(line)
     process.wait()
-    assert process.returncode == 0, f"Subprocess failed: {' '.join(cmd) if not shell else cmd}"
+    if process.returncode != 0:
+        raise RuntimeError(f"Subprocess failed: {msg_cmd}")
     return "\n".join(output_lines)
 
 
-def print_title(title: str, char: str = "=", sep_len: int = 80) -> None:
-    sep = char * sep_len
-    print(f"\n{sep}\n{title}\n{sep}\n")
+def print_title(title: str, char: str = "=") -> None:
+    width = get_terminal_size().columns
+    sep = char * width
+    print(f"\n{COLOR_BLUE}{sep}\n{title}\n{sep}\n{COLOR_RESET}")
 
 
 def compare_losses(actual_losses: dict, expected_losses: dict, tolerance: float = 1e-5) -> None:
@@ -37,7 +47,7 @@ def compare_losses(actual_losses: dict, expected_losses: dict, tolerance: float 
             print(f"  CLI    - Train: {c_train:.6f}, Val: {c_val:.6f}")
             print(f"  Diff   - Train: {train_diff:.2e}, Val: {val_diff:.2e}")
             assert False, f"Training losses differ at checkpoint {i + 1}"
-    print("✓ All loss metrics match!")
+    print(f"{COLOR_GREEN}✓ All loss metrics match!{COLOR_RESET}")
 
 
 def compare_accuracies(actual_metrics: dict, expected_metrics: dict, tolerance: float = 1.0) -> None:
@@ -57,10 +67,10 @@ def compare_accuracies(actual_metrics: dict, expected_metrics: dict, tolerance: 
             print(f"  CLI    - Train: {c_train:.2f}%, Val: {c_val:.2f}%")
             print(f"  Diff   - Train: {train_acc_diff:.2f}%, Val: {val_acc_diff:.2f}%")
             assert False, f"Training accuracies differ at checkpoint {i + 1}"
-    print("✓ All accuracy metrics match!")
+    print(f"{COLOR_GREEN}✓ All accuracy metrics match!{COLOR_RESET}")
 
 
 def compare_all_metrics(actual_metrics: dict, expected_metrics: dict) -> None:
     compare_losses(expected_metrics, actual_metrics, tolerance=1e-2)
     compare_accuracies(expected_metrics, actual_metrics, tolerance=1.0)
-    print("✓✓ All metrics match!")
+    print(f"{COLOR_GREEN}✓✓ All metrics match!{COLOR_RESET}")

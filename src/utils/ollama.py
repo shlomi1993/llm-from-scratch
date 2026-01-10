@@ -58,7 +58,7 @@ class OllamaEvaluator:
 
     def _get_scores(self, test_responses: list, answer_key: str) -> list[int]:
         scores = []
-        for entry in tqdm(test_responses, desc="Scoring entries"):
+        for entry in tqdm(test_responses, desc="Scoring entries", leave=True):
             entry: dict
             if not entry.get(answer_key):
                 scores.append(0)

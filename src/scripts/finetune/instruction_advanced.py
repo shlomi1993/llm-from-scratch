@@ -274,7 +274,7 @@ def run_instruction_finetuning_advanced_flow(
 
     # Generate responses on test set
     _logger.info("Generating responses on test set...")
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data)):
+    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=True):
         input_text = InstructionDatasetPhi.format_input_phi(entry) if use_phi3_prompt else format_input(entry)
 
         token_ids = model.generate(
