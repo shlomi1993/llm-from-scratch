@@ -280,7 +280,7 @@ def cli() -> None:
         add_spam_ham_arguments(spam_ham_parser)
         spam_ham_parser.set_defaults(func=run_spam_ham)
 
-    elif args.command == "chat":
+    elif args.command == "chat-bot":
         from src.scripts.chat import add_arguments as add_chat_arguments
         chat_parser = subparsers.add_parser(
             "chat-bot",
