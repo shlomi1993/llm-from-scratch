@@ -145,16 +145,16 @@ def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
     print("✓ All inference predictions match!")
 
 
-def test_finetune_classifier_cli_vs_script(tmp_path: Path):
+def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
 
     # Paths
     cli_model_path = tmp_path / "test_classifier_model.pth"
-    chapter_path = "../chapters/ch06/01_main-chapter-code/gpt_class_finetune.py"
+    chapter_path = chapters_path / "ch06/01_main-chapter-code/gpt_class_finetune.py"
     pretrained_model_path = "models/124M/model.pth"
 
     # Run the chapter script with live output
-    print_title("Running chapter script")
-    chapter_cmd = [sys.executable, "-u", chapter_path]
+    print_title("Running chapter script for reference")
+    chapter_cmd = [sys.executable, "-u", str(chapter_path)]
     chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
     chapter_metrics = extract_losses_and_accuracies(chapter_output)
 
@@ -164,7 +164,7 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path):
             os.remove(f)
 
     # Run the CLI finetune classification command with live output
-    print_title("Running CLI command")
+    print_title("Running CLI command to test")
     cli_cmd = [
         "gpt2", "finetune", "classification",
         "--pretrained-model-path", pretrained_model_path,

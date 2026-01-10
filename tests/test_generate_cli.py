@@ -1,15 +1,9 @@
 import subprocess
 
+from tests.common import print_title
+
 
 def test_generate_cli_vs_chapter_script():
-
-    # Test parameters
-    prompt = "Every effort moves you"
-    max_new_tokens = 25
-    temperature = 1.0
-    top_k = 50
-    seed = 123
-    device = "cpu"
 
     # Expected output (validated from chapter script)
     expected_text = "Every effort moves you toward finding an ideal life. You don't have to accept your problems by trying to remedy them, because that would be foolish"
@@ -18,15 +12,16 @@ def test_generate_cli_vs_chapter_script():
     cmd = [
         "gpt2", "generate",
         "--model-path", "./models/124M/model.pth",
-        "--prompt", prompt,
-        "--max-new-tokens", str(max_new_tokens),
-        "--temperature", str(temperature),
-        "--top-k", str(top_k),
-        "--device", device,
-        "--seed", str(seed)
+        "--prompt", "Every effort moves you",
+        "--max-new-tokens", "25",
+        "--temperature", "1.0",
+        "--top-k", "50",
+        "--device", "cpu",
+        "--seed", "123"
     ]
 
     # Run the CLI command and capture output
+    print_title("Running CLI generate command")
     result_cli_capture = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True)
 
     # Extract the generated text from CLI output
