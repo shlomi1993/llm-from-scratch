@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from src.data.datasets import InstructionDataset
 from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_loader, calc_loss_batch, load_model
+from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
 from src.utils.ollama import OllamaEvaluator, format_input
@@ -158,7 +158,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     execution_time_minutes = (end_time - start_time) / 60
     _logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
 
-    torch.save(model.state_dict(), model_save_path)
+    save_model(model, model_save_path, optimizer)
     _logger.info(f"Model saved as {model_save_path}")
 
     _logger.info("Plotting training and validation loss curves...")
