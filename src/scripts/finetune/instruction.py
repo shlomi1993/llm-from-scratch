@@ -158,20 +158,19 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     execution_time_minutes = (end_time - start_time) / 60
     _logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
 
-    _logger.info("Final evaluation on validation set")
+    torch.save(model.state_dict(), model_save_path)
+    _logger.info(f"Model saved as {model_save_path}")
+
+    _logger.info("Plotting training and validation loss curves...")
     epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
     plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
                  savefig_path=loss_plot_save_path, legend_loc="upper right")
 
     _logger.info("Generating model responses...")
     test_assistant(model, test_data, device, max_new_tokens)  # Output is added to test_data in-place
-
     with open(test_output_path, "w") as file:
         json.dump(test_data, file, indent=4)
     _logger.info(f"Responses saved as {test_output_path}")
-
-    torch.save(model.state_dict(), model_save_path)
-    _logger.info(f"Model saved as {model_save_path}")
 
     if evaluate:
         _logger.info("Evaluating responses with Ollama...")
