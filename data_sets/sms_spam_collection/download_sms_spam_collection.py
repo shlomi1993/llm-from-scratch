@@ -1,6 +1,8 @@
 import requests
 import zipfile
+
 from pathlib import Path
+
 
 urls = [
     "https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip",
@@ -8,7 +10,7 @@ urls = [
 ]
 
 zip_path = Path("sms_spam_collection.zip")
-extract_dir = Path("sms_spam_collection")
+extract_dir = Path(".")
 data_file = extract_dir / "SMSSpamCollection.tsv"
 
 if not data_file.exists():
@@ -19,10 +21,14 @@ if not data_file.exists():
                 r.raise_for_status()
                 zip_path.write_bytes(r.content)
 
+
             with zipfile.ZipFile(zip_path) as z:
                 z.extractall(extract_dir)
 
-            (extract_dir / "SMSSpamCollection").rename(data_file)
+            # If the extracted file is named 'SMSSpamCollection', rename to 'SMSSpamCollection.tsv'
+            extracted_file = extract_dir / "SMSSpamCollection"
+            if extracted_file.exists():
+                extracted_file.rename(data_file)
             zip_path.unlink(missing_ok=True)
 
             print(f"Saved dataset to {data_file}")
