@@ -120,7 +120,7 @@ def run_finetune_instruction(args: Namespace) -> None:
 
 
 def run_finetune_instruction_advanced(args: Namespace) -> None:
-    from src.scripts.finetune.instruction_advanced import run_instruction_finetuning_advanced_flow
+    from src.scripts.finetune.instruction_adv import run_instruction_finetuning_advanced_flow
     _logger.warning("Running advanced instruction fine-tuning ")
     run_instruction_finetuning_advanced_flow(
         pretrained_model_path=args.pretrained_model_path,
@@ -236,7 +236,7 @@ def cli() -> None:
     elif args.command == "finetune":
         from src.scripts.finetune.classification import add_arguments as add_classification_arguments
         from src.scripts.finetune.instruction import add_arguments as add_instruction_arguments
-        from src.scripts.finetune.instruction_advanced import add_arguments as add_instruction_advanced_arguments
+        from src.scripts.finetune.instruction_adv import add_arguments as add_instruction_advanced_arguments
 
         finetune_parser = subparsers.add_parser(
             "finetune",
