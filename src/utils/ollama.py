@@ -11,6 +11,19 @@ _logger = get_logger(__name__)
 
 
 def format_input(entry: dict[str, str]) -> str:
+    """
+    NOTE: This format is not ideal because it omits the trailing `\n\n### Response:\n`, but it is kept to remain
+    consistent with the source repository notebook `ch07/01_main-chapter-code/ch07.ipynb`, so that training with the
+    same seed produces identical losses.
+
+    A more correct format would be:
+    PROMPT_TEMPLATE = (
+        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
+        "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n\n"
+    )
+
+    The prompt can then be constructed using PROMPT_TEMPLATE.format(...).
+    """
     instruction_text = (
         f"Below is an instruction that describes a task. "
         f"Write a response that appropriately completes the request."
