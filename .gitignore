@@ -31,9 +31,6 @@ MANIFEST
 # Virtual environment
 llm-from-scratch-venv/
 
-# Datasets
-datasets/large_sets/
-
 # Models
 models/
 
