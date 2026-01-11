@@ -1,5 +1,6 @@
 import pandas as pd
 
+from datasets import load_from_disk
 from torch import Tensor, tensor, long
 from torch.utils.data import Dataset
 from typing import Tuple
@@ -122,3 +123,33 @@ class InstructionDatasetPhi(Dataset):
         instruction_text = f"<|user|>\n{entry['instruction']}"
         input_text = f"\n{entry['input']}" if entry["input"] else ""
         return instruction_text + input_text
+
+
+class AlpacaCodeDataset(Dataset):
+    RESPONSE_SEPARATOR = "\n### Response:\n"
+
+    def __init__(self, data_path: str, max_length: int = 1024, max_samples: int = None) -> None:
+        self.max_length = max_length
+        self.dataset = load_from_disk(data_path)
+        if hasattr(self.dataset, 'keys') and 'train' in self.dataset.keys():
+            self.dataset = self.dataset['train']
+        if max_samples is not None:
+            self.dataset = self.dataset.select(range(max_samples))  # Partial loading for CPU/Debug
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def format_prompt(self, entry: dict[str, str]) -> str:
+        prompt_builder = []
+        prompt_builder.append(f"### Instruction:\n{entry['instruction']}")
+        if entry['input']:
+            prompt_builder.append(f"### Input:\n{entry['input']}")
+        prompt_builder.append(f"{self.RESPONSE_SEPARATOR}{entry['output']}{EOT}")
+        return '\n\n'.join(prompt_builder)
+
+    def __getitem__(self, idx: int) -> Tensor:
+        text = self.format_prompt(self.dataset[idx])
+        token_ids = tokenizer.encode(text, allowed_special={EOT})
+        if len(token_ids) > self.max_length:
+            token_ids = token_ids[:self.max_length]  # Hard truncation to avoid OOM
+        return tensor(token_ids, dtype=long)  # Return raw tensor, let the collate function handle padding/masking
