@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.data.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
-from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model
+from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model, save_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
 from src.utils.ollama import format_input
@@ -297,7 +297,7 @@ def run_instruction_finetuning_advanced_flow(
     _logger.info(f"Responses saved as {test_output_path}")
 
     # Save model
-    torch.save(model.state_dict(), model_save_path)
+    save_model(model, model_save_path, optimizer)
     _logger.info(f"Model saved as {model_save_path}")
 
 
