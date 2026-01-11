@@ -18,6 +18,7 @@ dependencies = [
     "tqdm>=4.66.1",
     "transformers>=4.33.2",
     "ollama",
+    "datasets>=2.19.0",
 ]
 
 [project.scripts]
