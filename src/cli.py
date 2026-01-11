@@ -148,6 +148,30 @@ def run_finetune_instruction_advanced(args: Namespace) -> None:
     )
 
 
+def run_finetune_coding(args: Namespace) -> None:
+    from src.scripts.finetune.coding import run_coding_finetuning_flow
+    run_coding_finetuning_flow(
+        pretrained_model_path=args.pretrained_model_path,
+        dataset_path=args.dataset_path,
+        train_frac=args.train_frac,
+        test_frac=args.test_frac,
+        batch_size=args.batch_size,
+        seed=args.seed,
+        device_type=args.device,
+        lr=args.lr,
+        n_epochs=args.n_epochs,
+        weight_decay=args.weight_decay,
+        eval_freq=args.eval_freq,
+        eval_iter=args.eval_iter,
+        loss_plot_save_path=args.loss_plot_save_path,
+        model_save_path=args.model_save_path,
+        max_new_tokens=args.max_new_tokens,
+        test_output_path=args.test_output_path,
+        evaluate=args.evaluate,
+        max_samples=args.max_samples
+    )
+
+
 def run_spam_ham(args: Namespace) -> None:
     from src.scripts.classify import run_spam_ham_flow, run_spam_ham_interactive_flow
     if args.text is not None:
@@ -175,6 +199,16 @@ def run_chat(args: Namespace) -> None:
     )
 
 
+def run_coder(args: Namespace) -> None:
+    from src.scripts.coder import run_coder_flow
+    run_coder_flow(
+        model_path=args.model_path,
+        max_new_tokens=args.max_new_tokens,
+        device_type=args.device,
+        seed=args.seed
+    )
+
+
 def cli() -> None:
     parser = ArgumentParser(description="LLM from Scratch - Main CLI", formatter_class=ArgumentDefaultsHelpFormatter)
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -187,6 +221,7 @@ def cli() -> None:
     subparsers.add_parser("finetune", help="Fine-tune a pre-trained GPT2 foundation model", add_help=False)
     subparsers.add_parser("spam-ham", help="Classify text as spam or ham using a classification fine-tuned model", add_help=False)
     subparsers.add_parser("chat", help="Chat with an instruction fine-tuned assistant model", add_help=False)
+    subparsers.add_parser("coder", help="Interactive coding session with a code fine-tuned model", add_help=False)
 
     # Quick parse to see if we're just showing help
     args, remaining = parser.parse_known_args()
@@ -237,6 +272,7 @@ def cli() -> None:
         from src.scripts.finetune.classification import add_arguments as add_classification_arguments
         from src.scripts.finetune.instruction import add_arguments as add_instruction_arguments
         from src.scripts.finetune.instruction_adv import add_arguments as add_instruction_advanced_arguments
+        from src.scripts.finetune.coding import add_arguments as add_coding_arguments
 
         finetune_parser = subparsers.add_parser(
             "finetune",
@@ -246,6 +282,7 @@ def cli() -> None:
         finetune_subparsers = finetune_parser.add_subparsers(dest="finetune_type", help="Fine-tuning type")
         finetune_subparsers.required = True
 
+        # Classification
         classification_parser = finetune_subparsers.add_parser(
             "classification",
             help="Fine-tune for classification tasks",
@@ -254,6 +291,7 @@ def cli() -> None:
         add_classification_arguments(classification_parser)
         classification_parser.set_defaults(func=run_finetune_classification)
 
+        # Instruction (Basic)
         instruction_parser = finetune_subparsers.add_parser(
             "instruction",
             help="Fine-tune for instruction following",
@@ -262,6 +300,7 @@ def cli() -> None:
         add_instruction_arguments(instruction_parser)
         instruction_parser.set_defaults(func=run_finetune_instruction)
 
+        # Instruction (Advanced)
         instruction_advanced_parser = finetune_subparsers.add_parser(
             "instruction-adv",
             help="Fine-tune for instruction following with advanced features (LoRA, masking, Phi-3, Alpaca52k)",
@@ -269,6 +308,15 @@ def cli() -> None:
         )
         add_instruction_advanced_arguments(instruction_advanced_parser)
         instruction_advanced_parser.set_defaults(func=run_finetune_instruction_advanced)
+
+        # Coding (Personal Project)
+        coding_parser = finetune_subparsers.add_parser(
+            "coding",
+            help="Fine-tune specifically for Python code generation with loss masking",
+            formatter_class=ArgumentDefaultsHelpFormatter
+        )
+        add_coding_arguments(coding_parser)
+        coding_parser.set_defaults(func=run_finetune_coding)
 
     elif args.command == "spam-ham":
         from src.scripts.classify import add_arguments as add_spam_ham_arguments
@@ -289,6 +337,16 @@ def cli() -> None:
         )
         add_chat_arguments(chat_parser)
         chat_parser.set_defaults(func=run_chat)
+
+    elif args.command == "coder":
+        from src.scripts.coder import add_arguments as add_coder_arguments
+        coder_parser = subparsers.add_parser(
+            "coder",
+            help="Interactive coding session with a code fine-tuned model",
+            formatter_class=ArgumentDefaultsHelpFormatter
+        )
+        add_coder_arguments(coder_parser)
+        coder_parser.set_defaults(func=run_coder)
 
     # Parse and execute
     args = parser.parse_args()
