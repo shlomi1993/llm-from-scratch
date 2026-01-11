@@ -7,7 +7,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.loaders import GptDataloaderV1
+from src.datasets import GptDatasetV1
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_batch, evaluate_losses, save_model
@@ -35,8 +35,10 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
     train_text = text[:split_idx]
     val_text = text[split_idx:]
     stride = stride or max_length
-    train_loader = GptDataloaderV1(train_text, batch_size, max_length, stride, shuffle=True, drop_last=True, num_workers=0)
-    val_loader = GptDataloaderV1(val_text, batch_size, max_length, stride, shuffle=False, drop_last=False, num_workers=0)
+    train_dataset = GptDatasetV1(train_text, max_length, stride)
+    val_dataset = GptDatasetV1(val_text, max_length, stride)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=0)
     return train_loader, val_loader
 
 

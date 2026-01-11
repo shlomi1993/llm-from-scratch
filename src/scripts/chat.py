@@ -53,7 +53,7 @@ def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str =
             print()
 
         except KeyboardInterrupt:
-            print("Goodbye!")
+            print("\nGoodbye!")
             break
 
         except Exception as e:
