@@ -38,7 +38,7 @@ def test_pretrain_cli_vs_script(tmp_path: Path, chapters_path: Path):
     # Paths
     chapter_path = chapters_path / "ch05/01_main-chapter-code/gpt_train.py"
     cli_model_path = tmp_path / "test_model_cli.pth"
-    training_file = "datasets/the-verdict.txt"
+    training_file = "data_sets/the-verdict.txt"
     assert os.path.exists(training_file), f"Training file {training_file} not found"
 
     # Run the chapter script with live output
