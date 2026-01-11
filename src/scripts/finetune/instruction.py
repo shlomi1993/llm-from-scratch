@@ -8,7 +8,7 @@ from logging import getLogger as get_logger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.data.datasets import InstructionDataset
+from src.datasets import InstructionDataset
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant

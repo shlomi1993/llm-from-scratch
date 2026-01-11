@@ -10,7 +10,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data.datasets import SpamDataset
+from src.datasets import SpamDataset
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model

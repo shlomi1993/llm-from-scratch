@@ -12,7 +12,7 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.data.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
+from src.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
 from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model, save_model
 from src.scripts.pretrain import train_foundation_model as finetune_assistant
 from src.utils.device import Device, get_device
