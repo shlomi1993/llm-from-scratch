@@ -152,6 +152,7 @@ def run_instruction_finetuning_advanced_flow(
 ) -> None:
 
     _logger.info("Starting advanced instruction fine-tuning flow")
+    _logger.warning("\033[93mThis flow is experimental and may not be fully tested.\033[0m")
 
     # Validate conflicting options
     if mask_instructions and use_phi3_prompt:
@@ -221,8 +222,6 @@ def run_instruction_finetuning_advanced_flow(
         drop_last=False,
         num_workers=0
     )
-
-
 
     # Apply LoRA if requested
     if use_lora:

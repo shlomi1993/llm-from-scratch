@@ -62,6 +62,18 @@ The `gpt2` command is now available in your environment!
 gpt2 download --sizes 124M --dir models --convert
 ```
 
+This script downloads the selected formal pre-trained models in TensorFlow format, and converts them to PyTorch format.  
+To download custom pre-trained or fine-tuned models check the following section.
+
+### Download a Fine-tuned Model
+
+- [Download pretrained.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQA3Q6YBrp1iTLqcQxz4YHvnAWvHXAUW93F8M3sSTncgwP4?e=DHqSSa)
+  - This is here for completeness. It is better to download a formal pre-trained model and convert it, as the non-formal (custom) one is trained on a much shorter dataset for educational purposes.
+- [Download classifier.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQAXMhgJjpdCR60kqsl7Z_b4ARWFaDEpR_d70JbE9OZl4iQ?e=BCLBaB)
+  - Fine-tuned for classification based on a formal 124M model
+- [Download assistant.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQChWbVTl1AFRJHtwUf6W4asAdB56AKeSLI2IWxvOiOK4kE?e=GDXcuB)
+  - Fine-tuned for instruction following based on a formal 355M model
+
 ### Generate Text
 
 ```bash
