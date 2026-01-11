@@ -168,7 +168,7 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
     cli_cmd = [
         "gpt2", "finetune", "classification",
         "--pretrained-model-path", pretrained_model_path,
-        "--tuning-set-path", "datasets/sms_spam_collection/SMSSpamCollection.tsv",
+        "--tuning-set-path", "data_sets/sms_spam_collection/SMSSpamCollection.tsv",
         "--column-names", "Label", "Text",
         "--train-frac", "0.7",
         "--validation-frac", "0.1",

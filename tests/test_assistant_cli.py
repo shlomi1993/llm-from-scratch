@@ -36,7 +36,7 @@ def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path)
     cli_test_output = tmp_path / "instruction-test-responses.json"
     chapter_path = chapters_path / "ch07/01_main-chapter-code/gpt_instruction_finetuning.py"
     pretrained_model_path = "models/355M/model.pth"
-    instruction_data_path = "datasets/instruction_data/instruction-data.json"
+    instruction_data_path = "data_sets/instruction_data/instruction-data.json"
 
     # Run the CLI finetune instruction command with live output
     print_title("Running CLI command to test")
