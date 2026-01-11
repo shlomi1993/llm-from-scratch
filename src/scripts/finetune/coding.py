@@ -201,21 +201,30 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
         _logger.info("Evaluating with Ollama...")
         evaluator = OllamaEvaluator(seed=seed)
         avg_score, _ = evaluator.evaluate(test_output_path)
-        _logger.info(f"Avg Score: {avg_score:.2f}")
+        _logger.info(f"Average Score: {avg_score:.2f}")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to base GPT2 model")
     parser.add_argument("--dataset-path", type=str, required=True, help="Path to Alpaca Arrow dataset folder")
-    parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--n-epochs", type=int, default=2)
-    parser.add_argument("--lr", type=float, default=5e-5)
-    parser.add_argument("--device", type=str, default="auto")
+    parser.add_argument("--train-frac", type=float, default=0.85, help="Fraction of data to use for training")
+    parser.add_argument("--test-frac", type=float, default=0.1, help="Fraction of data to use for testing")
+    parser.add_argument("--batch-size", type=int, default=8, help="Batch size for training")
+    parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility")
+    parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for optimizer")
+    parser.add_argument("--n-epochs", type=int, default=2, help="Number of training epochs")
+    parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for optimizer")
+    parser.add_argument("--device", type=str, default="auto", help="Device to use (cpu, cuda, mps, auto)")
+    parser.add_argument("--eval-freq", type=int, default=5, help="Evaluate every N epochs")
+    parser.add_argument("--eval-iter", type=int, default=5, help="Number of batches to use for evaluation")
+    parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot image")
+    parser.add_argument("--model-save-path", type=str, default="coder.pth", help="Path to save the finetuned coder model")
+    parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum code tokens to generate")
+    parser.add_argument("--test-output-path", type=str, default="coder_results.json", help="Path to save test set responses")
+    parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot image")
+    parser.add_argument("--evaluate", action="store_true", help="Evaluate model after training")
     parser.add_argument("--max-samples", type=int, default=None, help="Limit samples for debugging")
-    parser.add_argument("--model-save-path", type=str, default="coder.pth")
-    parser.add_argument("--test-output-path", type=str, default="coder_results.json")
-    parser.add_argument("--loss-plot-save-path", type=str, default=None)
-    parser.add_argument("--evaluate", action="store_true")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -225,15 +234,22 @@ def main() -> None:
     run_coding_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
         dataset_path=args.dataset_path,
+        train_frac=args.train_frac,
+        test_frac=args.test_frac,
         batch_size=args.batch_size,
-        n_epochs=args.n_epochs,
-        lr=args.lr,
+        seed=args.seed,
         device_type=args.device,
+        lr=args.lr,
+        n_epochs=args.n_epochs,
+        weight_decay=args.weight_decay,
+        eval_freq=args.eval_freq,
+        eval_iter=args.eval_iter,
+        loss_plot_save_path=args.loss_plot_save_path,
         model_save_path=args.model_save_path,
+        max_new_tokens=args.max_new_tokens,
         test_output_path=args.test_output_path,
         evaluate=args.evaluate,
-        max_samples=args.max_samples,
-        loss_plot_save_path=args.loss_plot_save_path
+        max_samples=args.max_samples
     )
 
 if __name__ == "__main__":
