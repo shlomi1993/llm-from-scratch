@@ -12,7 +12,7 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
+from src.data_sets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
 from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model, save_model
 from src.scripts.train import train_model
 from src.utils.device import Device, get_device
@@ -251,7 +251,7 @@ def run_instruction_finetuning_advanced_flow(
     _logger.info(f"   Validation loss: {val_loss:.3f}")
 
     # Setup optimizer
-    _logger.info(f"Setting up optimizer with learning rate {lr} and weight decay {weight_decay}")
+    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     torch.manual_seed(seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -273,7 +273,7 @@ def run_instruction_finetuning_advanced_flow(
 
     # Generate responses on test set
     _logger.info("Generating responses on test set...")
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=True):
+    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=False):
         input_text = InstructionDatasetPhi.format_input_phi(entry) if use_phi3_prompt else format_input(entry)
 
         token_ids = model.generate(
