@@ -27,11 +27,11 @@ def run_subprocess(cmd: list[str] | str, cwd: str = None) -> list[str]:
 def print_title(title: str, char: str = "=") -> None:
     width = get_terminal_size().columns
     sep = char * width
-    print(f"\n{COLOR_BLUE}{sep}\n{title}\n{sep}\n{COLOR_RESET}")
+    print(f"\n\n{COLOR_BLUE}{sep}\n{title}\n{sep}\n{COLOR_RESET}")
 
 
 def compare_losses(actual_losses: dict, expected_losses: dict, tolerance: float = 1e-5) -> None:
-    print_title("Comparing loss metrics")
+    print("Comparing loss metrics...", end=" ")
     loss_checkpoints = zip(
         expected_losses['train_losses'],
         actual_losses['train_losses'],
@@ -51,7 +51,7 @@ def compare_losses(actual_losses: dict, expected_losses: dict, tolerance: float 
 
 
 def compare_accuracies(actual_metrics: dict, expected_metrics: dict, tolerance: float = 1.0) -> None:
-    print_title("Comparing accuracy metrics")
+    print("Comparing accuracy metrics...", end=" ")
     accuracy_checkpoints = zip(
         expected_metrics['train_accs'],
         actual_metrics['train_accs'],
@@ -69,8 +69,3 @@ def compare_accuracies(actual_metrics: dict, expected_metrics: dict, tolerance: 
             assert False, f"Training accuracies differ at checkpoint {i + 1}"
     print(f"{COLOR_GREEN}✓ All accuracy metrics match!{COLOR_RESET}")
 
-
-def compare_all_metrics(actual_metrics: dict, expected_metrics: dict) -> None:
-    compare_losses(expected_metrics, actual_metrics, tolerance=1e-2)
-    compare_accuracies(expected_metrics, actual_metrics, tolerance=1.0)
-    print(f"{COLOR_GREEN}✓✓ All metrics match!{COLOR_RESET}")

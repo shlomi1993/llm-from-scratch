@@ -149,7 +149,7 @@ def run_finetune_instruction_advanced(args: Namespace) -> None:
 
 
 def run_finetune_coding(args: Namespace) -> None:
-    from src.scripts.finetune.coding import run_coding_finetuning_flow
+    from src.scripts.finetune.code_instructions import run_coding_finetuning_flow
     run_coding_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
         dataset_path=args.dataset_path,
@@ -272,7 +272,7 @@ def cli() -> None:
         from src.scripts.finetune.classification import add_arguments as add_classification_arguments
         from src.scripts.finetune.instruction import add_arguments as add_instruction_arguments
         from src.scripts.finetune.instruction_adv import add_arguments as add_instruction_advanced_arguments
-        from src.scripts.finetune.coding import add_arguments as add_coding_arguments
+        from src.scripts.finetune.code_instructions import add_arguments as add_coding_arguments
 
         finetune_parser = subparsers.add_parser(
             "finetune",

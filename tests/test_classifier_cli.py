@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.scripts.finetune.classification import load_classifier, classify_review
 from tests.chapters_code import GPTModel
-from tests.common import run_subprocess, print_title, compare_all_metrics
+from tests.common import run_subprocess, print_title, compare_losses, compare_accuracies
 
 
 PREDICTION_TEST_SAMPLES = [
@@ -107,7 +107,7 @@ def load_chapter_model(model_path: str, device: torch.device) -> GPTModel:
 
 
 def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
-    print_title("Comparing inference predictions")
+    print("Comparing inference predictions")
     device = torch.device("cpu")
     tokenizer = tiktoken.get_encoding("gpt2")
 
@@ -135,24 +135,21 @@ def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
         print(f"  Chapter: {chapter_label:10s} (confidence: {chapter_conf:.4f})")
 
         if labels_match and conf_close:
-            print(f"  ✓ Match")
+            print("\033[92m  ✓ Match\033[0m")
         else:
-            print(f"  ✗ Mismatch!")
+            print("\033[91m  ✗ Mismatch!\033[0m")
             all_match = False
         print()
 
     assert all_match, "Model predictions don't match between CLI and chapter loading implementations"
-    print("✓ All inference predictions match!")
+    print("\033[92m✓ All inference predictions match!\033[0m")
 
 
 def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
-
-    # Paths
     cli_model_path = tmp_path / "test_classifier_model.pth"
     chapter_path = chapters_path / "ch06/01_main-chapter-code/gpt_class_finetune.py"
     pretrained_model_path = "models/124M/model.pth"
 
-    # Run the chapter script with live output
     print_title("Running chapter script for reference")
     chapter_cmd = [sys.executable, "-u", str(chapter_path)]
     chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
@@ -163,8 +160,7 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
         if os.path.exists(f):
             os.remove(f)
 
-    # Run the CLI finetune classification command with live output
-    print_title("Running CLI command to test")
+    print_title("Running CLI command for test")
     cli_cmd = [
         "gpt2", "finetune", "classification",
         "--pretrained-model-path", pretrained_model_path,
@@ -183,11 +179,10 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
         "--eval-iter", "5",
         "--model-save-path", str(cli_model_path)
     ]
-
-    # Capture output while streaming it live
     cli_output = run_subprocess(cli_cmd)
     cli_metrics = extract_losses_and_accuracies(cli_output)
 
-    # Validation
-    compare_all_metrics(actual_metrics=cli_metrics, expected_metrics=chapter_metrics)
+    print_title("Validation")
+    compare_losses(expected_metrics=chapter_metrics, actual_metrics=cli_metrics, tolerance=1e-2)
+    compare_accuracies(expected_metrics=chapter_metrics, actual_metrics=cli_metrics, tolerance=1.0)
     compare_model_predictions(PREDICTION_TEST_SAMPLES, cli_model_path)
