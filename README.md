@@ -17,7 +17,8 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 ### Prerequisites
 
 - Python 3.10 or higher
-- PyTorch 2.9.0+
+  - See `pyproject.toml` for complete dependency list.
+  - Packages and libraries can be easily installed using the `install.sh` script
 - 8GB+ RAM (16GB+ recommended for larger models)
 - CUDA GPU (optional, for faster training)
 
@@ -54,64 +55,6 @@ pip install -e .
 
 The `gpt2` command is now available in your environment!
 
-## Quick Start
-
-### Download a Pre-trained Model
-
-```bash
-gpt2 download --sizes 124M --dir models --convert
-```
-
-This script downloads the selected formal pre-trained models in TensorFlow format, and converts them to PyTorch format.  
-To download custom pre-trained or fine-tuned models check the following section.
-
-### Download a Fine-tuned Model
-
-- [Download pretrained.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQA3Q6YBrp1iTLqcQxz4YHvnAWvHXAUW93F8M3sSTncgwP4?e=DHqSSa)
-  - This is here for completeness. It is better to download a formal pre-trained model and convert it, as the non-formal (custom) one is trained on a much shorter dataset for educational purposes.
-- [Download classifier.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQAXMhgJjpdCR60kqsl7Z_b4ARWFaDEpR_d70JbE9OZl4iQ?e=BCLBaB)
-  - Fine-tuned for classification based on a formal 124M model
-- [Download assistant.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQChWbVTl1AFRJHtwUf6W4asAdB56AKeSLI2IWxvOiOK4kE?e=GDXcuB)
-  - Fine-tuned for instruction following based on a formal 355M model
-
-### Generate Text
-
-```bash
-# Interactive mode
-gpt2 generate --model-path models/124M/model.pth
-
-# Single generation
-gpt2 generate --model-path models/124M/model.pth --prompt "Once upon a time"
-```
-
-### Fine-tune for Classification
-
-```bash
-gpt2 finetune classification \
-  --pretrained-model-path models/124M/model.pth \
-  --tuning-set-path datasets/sms_spam_collection/SMSSpamCollection.tsv \
-  --column-names Label Text \
-  --n-epochs 5 \
-  --model-save-path classifier.pth
-```
-
-### Fine-tune for Instruction Following
-
-```bash
-gpt2 finetune instruction \
-  --pretrained-model-path models/355M/model.pth \
-  --tuning-set-path datasets/instruction_data/instruction-data.json \
-  --n-epochs 2 \
-  --model-save-path assistant.pth \
-  --evaluate
-```
-
-### Chat with an Assistant
-
-```bash
-gpt2 chat-bot --model-path assistant.pth
-```
-
 ## CLI Reference
 
 The `gpt2` command provides access to all functionality:
@@ -141,11 +84,84 @@ gpt2
 │   └── interactive      (don't pass --prompt)
 ├── finetune
 │   ├── classifier       (classification finetuning)
-│   └── assistant        (instruction finetuning)
+│   └── instruction      (instruction finetuning)
 ├── spam-ham
 └── chat-bot
 ```
 
+## Quick Start
+
+### Download a Pre-trained Model
+
+```bash
+gpt2 download --sizes 124M --dir models --convert
+```
+
+This script downloads the selected official pre-trained models in TensorFlow format and converts them to PyTorch format.  
+To download custom pre-trained or fine-tuned models, check the following section.
+
+### Download a Fine-tuned Model
+
+- **Pretrained Model:** A GPT-2 based foundation model trained from scratch on a small, custom dataset. Useful for educational purposes and experimentation, but less capable than official models above due to limited data.
+  - [Download pretrained.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQA3Q6YBrp1iTLqcQxz4YHvnAWvHXAUW93F8M3sSTncgwP4?e=DHqSSa)
+- **Classifier Model:** Fine-tuned on SMS spam-or-ham dataset using the official 124M GPT-2 model. Use this for spam detection task.
+  - [Download classifier.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQAXMhgJjpdCR60kqsl7Z_b4ARWFaDEpR_d70JbE9OZl4iQ?e=BCLBaB)
+- **Assistant Model:** Fine-tuned for instruction-following and chat, based on the official 355M GPT-2 model. Use this for interactive assistant or chatbot applications.
+  - [Download assistant.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQChWbVTl1AFRJHtwUf6W4asAdB56AKeSLI2IWxvOiOK4kE?e=GDXcuB)
+
+### Pre-train a Foundation Model
+
+```bash
+gpt2 pretrain \
+  --training-set-path data_sets/the-verdict.txt
+  --saved-model-path models/pretrained/foundation.pth
+```
+
+### Generate Text
+
+```bash
+# Interactive mode
+gpt2 generate --model-path models/124M/model.pth
+
+# Single generation
+gpt2 generate --model-path models/124M/model.pth --prompt "Once upon a time"
+```
+
+### Fine-tune for Classification
+
+```bash
+gpt2 finetune classification \
+  --pretrained-model-path models/124M/model.pth \
+  --tuning-set-path data_sets/sms_spam_collection/SMSSpamCollection.tsv \
+  --column-names Label Text \
+  --n-epochs 5 \
+  --model-save-path classifier.pth
+```
+
+### Classify Text to Spam or Ham
+
+```bash
+gpt2 spam-ham \
+  --model-path classifier.pth
+  --text "You are a winner you have been specially selected to receive $1000 cash or a $2000 award."
+```
+
+### Fine-tune for Instruction Following
+
+```bash
+gpt2 finetune instruction \
+  --pretrained-model-path models/355M/model.pth \
+  --tuning-set-path data_sets/instruction_data/instruction-data.json \
+  --n-epochs 2 \
+  --model-save-path assistant.pth \
+  --evaluate
+```
+
+### Chat with an Assistant
+
+```bash
+gpt2 chat-bot --model-path assistant.pth
+```
 
 ## Project Structure
 
@@ -154,14 +170,12 @@ llm-from-scratch/
 
 ├── appendices/                             # Supplementary documentation adapted from the source repository
 ├── chapters/                               # Chapter notebooks and reference implementations from the source repository
-├── datasets/                               # Training, fine-tuning, and evaluation datasets
+├── data_sets/                              # Training, fine-tuning, and evaluation datasets
 ├── models/                                 # Saved and checkpointed model artifacts
 ├── presentation/                           # Seminar presentation slides and figures
 ├── src/
 │   ├── cli.py                              # Primary command-line interface entry point
-│   ├── data/
-│   │   ├── datasets.py                     # Dataset definitions and abstractions
-│   │   └── loaders.py                      # Data loading and preprocessing utilities
+│   ├── datasets.py                         # Dataset definitions and abstractions
 │   ├── model/
 │   │   ├── activation.py                   # Activation functions
 │   │   ├── attention/                      # Attention mechanisms and modules
@@ -260,29 +274,6 @@ pytest tests/test_pretrain_cli.py -v
 pytest tests/ -s
 ```
 
-## Requirements
-
-- Python 3.10+
-- PyTorch 2.9.0+
-- tiktoken (GPT-2 tokenizer)
-- tqdm (progress bars)
-- matplotlib (visualizations)
-- ollama (optional, for evaluation)
-- requests (model downloads)
-
-See `pyproject.toml` for complete dependency list.
-
-## Performance Benchmarks
-
-| Model Size | Parameters | Memory (Training) | Speed (tokens/sec) |
-|------------|-----------|-------------------|-------------------|
-| 124M       | 124M      | ~2GB              | ~1000            |
-| 355M       | 355M      | ~6GB              | ~400             |
-| 774M       | 774M      | ~12GB             | ~200             |
-| 1558M      | 1.5B      | ~24GB             | ~100             |
-
-*Benchmarks on Apple M1 Max with MPS acceleration*
-
 ## Troubleshooting
 
 ### Out of Memory (OOM)
@@ -305,15 +296,6 @@ See `pyproject.toml` for complete dependency list.
 - Increase batch size (if memory allows)
 - Reduce `--eval-freq` for less frequent validation
 - Use smaller model for experimentation
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes with tests
-4. Submit a pull request
 
 ## License
 
