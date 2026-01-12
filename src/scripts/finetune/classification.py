@@ -183,32 +183,36 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
     train_losses, val_losses, train_accs, val_accs = [], [], [], []
     examples_seen, global_step = 0, -1
 
-    # Main training loop
-    for epoch in range(1, n_epochs + 1):
-        model.train()  # Set model to training mode
+    try:
+        # Main training loop
+        for epoch in range(1, n_epochs + 1):
+            model.train()  # Set model to training mode
 
-        _logger.info(f"Epoch {epoch}/{n_epochs}:")
-        for input_batch, target_batch in train_loader:
-            optimizer.zero_grad() # Reset loss gradients from previous batch iteration
-            loss = calc_loss_last_token(input_batch, target_batch, model, device)
-            loss.backward() # Calculate loss gradients
-            optimizer.step() # Update model weights using loss gradients
-            examples_seen += input_batch.shape[0] # New: track examples instead of tokens
-            global_step += 1
+            _logger.info(f"Epoch {epoch}/{n_epochs}:")
+            for input_batch, target_batch in train_loader:
+                optimizer.zero_grad() # Reset loss gradients from previous batch iteration
+                loss = calc_loss_last_token(input_batch, target_batch, model, device)
+                loss.backward() # Calculate loss gradients
+                optimizer.step() # Update model weights using loss gradients
+                examples_seen += input_batch.shape[0] # New: track examples instead of tokens
+                global_step += 1
 
-            # Optional evaluation step
-            if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
-                train_losses.append(train_loss)
-                val_losses.append(val_loss)
-                _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                # Optional evaluation step
+                if global_step % eval_freq == 0:
+                    train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
+                    train_losses.append(train_loss)
+                    val_losses.append(val_loss)
+                    _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
-        # Calculate accuracy after each epoch
-        train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
-        val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
-        _logger.info(f"  Training accuracy: {train_accuracy * 100:.2f}% | Validation accuracy: {val_accuracy * 100:.2f}%")
-        train_accs.append(train_accuracy)
-        val_accs.append(val_accuracy)
+            # Calculate accuracy after each epoch
+            train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
+            val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
+            _logger.info(f"  Training accuracy: {train_accuracy * 100:.2f}% | Validation accuracy: {val_accuracy * 100:.2f}%")
+            train_accs.append(train_accuracy)
+            val_accs.append(val_accuracy)
+
+    except KeyboardInterrupt:
+        _logger.info("Training interrupted by user. Returning current model state...")
 
     return FineTuningResults(model, train_losses, val_losses, train_accs, val_accs, examples_seen)
 
