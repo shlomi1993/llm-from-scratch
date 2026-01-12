@@ -6,6 +6,7 @@ from logging import getLogger as get_logger
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.datasets import GptDatasetV1
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
@@ -52,40 +53,47 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
     model.train()
 
 
-def train_foundation_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer,
-                           device: Device, n_epochs: int, eval_freq: int = 50, eval_iter: int = 5,
-                           start_context: str = None) -> TrainingResults:
+def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer, device: Device,
+                n_epochs: int, eval_freq: int = 50, eval_iter: int = 5, start_context: str = None) -> TrainingResults:
 
-    # Initialize lists to track losses and tokens/examples seen
-    train_losses, val_losses, tokens_seen = [], [], []
-    n_tokens_seen = 0
-    global_step = -1
+    train_losses, val_losses, tokens_seen = [], [], []  # Initialize lists to track losses and tokens/examples seen
+    token_count = 0
+    global_step = 0
 
-    # Main training loop
-    for epoch in range(1, n_epochs + 1):
-        model.train()  # Set model to training mode
+    try:
+        epoch_iterator = tqdm(range(1, n_epochs + 1), desc="Total Progress", position=0, leave=True)
+        for epoch in epoch_iterator:
+            model.train()  # Verify model is in training mode
 
-        _logger.info(f"Epoch {epoch}/{n_epochs}:")
-        for input_batch, target_batch in train_loader:
-            input_batch: Tensor
-            optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
-            loss: Tensor = calc_loss_batch(input_batch, target_batch, model, device)
-            loss.backward()  # Calculate loss gradients
-            optimizer.step()  # Update model weights using loss gradients
-            n_tokens_seen += input_batch.numel()
-            global_step += 1
+            batch_iterator = tqdm(train_loader, desc=f"Epoch {epoch}/{n_epochs}", position=1, leave=False, unit="batch")
+            for input_batch, target_batch in batch_iterator:
+                input_batch: Tensor
 
-            # Optional evaluation step
-            if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_batch)
-                train_losses.append(train_loss)
-                val_losses.append(val_loss)
-                tokens_seen.append(n_tokens_seen)
-                _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                # Learning step
+                optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
+                loss = calc_loss_batch(input_batch, target_batch, model, device)
+                loss.backward()  # Calculate loss gradients
+                optimizer.step()  # Update model weights using loss gradients
 
-        # Print a sample text after each epoch
-        if start_context is not None:
-            generate_and_print_sample(model, device, start_context)
+                token_count += input_batch.numel()
+                global_step += 1
+
+                # Optional evaluation step
+                if global_step % eval_freq == 0:
+                    train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_batch)
+                    train_losses.append(train_loss)
+                    val_losses.append(val_loss)
+                    tokens_seen.append(token_count)
+                    batch_iterator.set_postfix(train_loss=f"{train_loss:.3f}", val_loss=f"{val_loss:.3f}")
+                    tqdm.write(f"  Step {global_step} loss: Train {train_loss:.3f}, Val {val_loss:.3f}")
+
+            # Print a sample text after each epoch
+            if start_context is not None:
+                generate_and_print_sample(model, device, start_context)
+
+    except KeyboardInterrupt:
+        _logger.info("Training interrupted by user. Returning current model state...")
+
 
     return TrainingResults(model=model, train_losses=train_losses, val_losses=val_losses, tokens_seen=tokens_seen)
 
@@ -121,7 +129,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
     train_loader, val_loader = train_test_split(text_data, max_length, batch_size, stride, train_ratio)
 
     _logger.info(f"Training for {n_epochs} epochs...")
-    training_results = train_foundation_model(
+    training_results = train_model(
         model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context
     )
 

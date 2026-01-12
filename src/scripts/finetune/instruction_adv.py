@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 from src.datasets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
 from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model, save_model
-from src.scripts.pretrain import train_foundation_model as finetune_assistant
+from src.scripts.train import train_model
 from src.utils.device import Device, get_device
 from src.utils.ollama import format_input
 from src.utils.tokenization import tokenizer as tok
@@ -259,7 +259,7 @@ def run_instruction_finetuning_advanced_flow(
     _logger.info("Starting instruction fine-tuning...")
     start_time = time.time()
     start_context = InstructionDatasetPhi.format_input_phi(val_data[0]) if use_phi3_prompt else format_input(val_data[0])
-    results = finetune_assistant(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context)
+    results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
     _logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")

@@ -25,7 +25,7 @@ def run_download(args: Namespace) -> None:
 
 
 def run_pretrain(args: Namespace) -> None:
-    from src.scripts.pretrain import run_model_training_flow
+    from src.scripts.train import run_model_training_flow
     config = create_gpt_config_from_args(args)
     run_model_training_flow(
         config=config,
@@ -247,7 +247,7 @@ def cli() -> None:
         download_parser.set_defaults(func=run_download)
 
     elif args.command == "pretrain":
-        from src.scripts.pretrain import add_arguments as add_pretrain_arguments
+        from src.scripts.train import add_arguments as add_pretrain_arguments
         from src.model.config import add_arguments as add_gpt_config_arguments
         pretrain_parser = subparsers.add_parser(
             "pretrain",

@@ -11,7 +11,7 @@ from tqdm import tqdm
 from src.datasets import InstructionDataset
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
-from src.scripts.pretrain import train_foundation_model as finetune_assistant
+from src.scripts.train import train_model
 from src.utils.device import Device, get_device
 from src.utils.ollama import OllamaEvaluator, format_input
 from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
@@ -102,6 +102,7 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
 
 
 def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int) -> None:
+    model.eval()
     for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=True):
         prompt = format_input(entry)
         token_ids = model.generate(
@@ -113,6 +114,7 @@ def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_n
         generated_text = token_ids_to_text(token_ids)
         response = generated_text[len(prompt):].replace("### Response:", "").strip()
         test_data[i]["model_response"] = response  # Add response to the entry in-place
+    model.train()
 
 def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
                                     test_frac: float = 0.1, batch_size: int = 8, seed: int = 123,
@@ -153,7 +155,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     _logger.info("Starting instruction fine-tuning...")
     start_time = time.time()
     formatted_input = format_input(val_loader.dataset.data[0])
-    results = finetune_assistant(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, formatted_input)
+    results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, formatted_input)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
     _logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")

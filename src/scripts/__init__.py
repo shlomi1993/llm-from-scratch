@@ -8,11 +8,11 @@ spam detection and instruction following.
 
 from .common import calc_loss_batch, calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model
 from .download import download_gpt2, convert_tf_weights_into_pytorch_model
-from .pretrain import (
+from .train import (
     TrainingResults,
     train_test_split,
     generate_and_print_sample,
-    train_foundation_model,
+    train_model,
     run_model_training_flow
 )
 from .generate import (
@@ -50,7 +50,7 @@ __all__ = [
     "TrainingResults",
     "train_test_split",
     "generate_and_print_sample",
-    "train_foundation_model",
+    "train_model",
     "run_model_training_flow",
     "run_model_generation_flow",
     "run_model_interactive_flow",
