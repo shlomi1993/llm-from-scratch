@@ -7,15 +7,15 @@ from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title
 
 def extract_training_metrics(output: str) -> dict:
     """
-    Parses the stdout to find 'Step X: Train loss Y, Val loss Z' patterns.
+    Parses the stdout to find 'Step X loss: Train Y, Val Z' patterns.
     """
     metrics = {
         'train_losses': [],
         'val_losses': [],
         'steps': []
     }
-    # Matches: "Step 10: Train loss 2.4532, Val loss 2.1123"
-    loss_pattern = r'Step (\d+)\)?: Train loss ([\d.]+), Val loss ([\d.]+)'
+    # Matches: "Step 10 loss: Train 2.4532, Val 2.1123"
+    loss_pattern = r'Step (\d+) loss: Train ([\d.]+), Val ([\d.]+)'
     loss_matches = re.findall(loss_pattern, output)
 
     for step, train_loss, val_loss in loss_matches:
