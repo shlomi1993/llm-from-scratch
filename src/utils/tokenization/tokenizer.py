@@ -6,8 +6,8 @@ TOKENIZER = tiktoken.get_encoding("gpt2")
 
 # Special tokens
 EOT = "<|endoftext|>"
-PAD_TOKEN_ID = 50256  # <|endoftext|>
-IGNORE_INDEX = -100  # Used to ignore padding tokens in cross-entropy loss computation
+PAD_IDX = 50256  # <|endoftext|>
+IGNORE_IDX = -100  # Used to ignore padding tokens in cross-entropy loss computation
 
 
 def encode(text: str, **kwargs) -> list[int]:

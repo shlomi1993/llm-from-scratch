@@ -14,14 +14,14 @@ from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, lo
 from src.scripts.train import train_model
 from src.utils.device import Device, get_device
 from src.utils.ollama import OllamaEvaluator, format_input
-from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
+from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
 
 _logger = get_logger(__name__)
 
 
-def custom_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_TOKEN_ID,
-                      ignore_index: int = IGNORE_INDEX, max_allowed_length: int = None) -> tuple[torch.Tensor, torch.Tensor]:
+def instruction_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_IDX,
+                      ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[torch.Tensor, torch.Tensor]:
     # Find the longest sequence in the batch
     batch_max_length = max(len(item) + 1 for item in batch)
 
@@ -60,7 +60,7 @@ def custom_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_
     return inputs_tensor, targets_tensor
 
 
-def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float, device: Device,
+def create_instruction_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float, device: Device,
                         batch_size: int = None, max_allowed_length: int = 1024, n_workers: int = 0, seed: int = 123) -> tuple[DataLoader, DataLoader, list[dict]]:
 
     # Load the tuning dataset
@@ -78,7 +78,7 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
     _logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data)} testing samples")
 
     # Partially initialize the collate function with device and max length
-    customized_collate_fn = partial(custom_collate_fn, device=device, max_allowed_length=max_allowed_length)
+    customized_collate_fn = partial(instruction_collate_fn, device=device, max_allowed_length=max_allowed_length)
 
     # Create DataLoaders
     torch.manual_seed(seed)
@@ -109,7 +109,7 @@ def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_n
             idx=text_to_token_ids(prompt).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
-            eos_id=PAD_TOKEN_ID
+            eos_id=PAD_IDX
         )
         generated_text = token_ids_to_text(token_ids)
         response = generated_text[len(prompt):].replace("### Response:", "").strip()
@@ -121,7 +121,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
                                     device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 2,
                                     weight_decay: float = 0.1, eval_freq: int = 5, eval_iter: int = 5,
                                     loss_plot_save_path: str = None, model_save_path: str = "assistant.pth",
-                                    max_new_tokens: int = 256, pad_token_id: int = PAD_TOKEN_ID,
+                                    max_new_tokens: int = 256, pad_token_id: int = PAD_IDX,
                                     test_output_path: str = "instruction-test-responses.json", evaluate: bool = False) -> None:
 
     _logger.info("Starting instruction finetuning flow")
@@ -136,7 +136,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     model.to(device)
 
     _logger.info("Preparing instruction fine-tuning dataset")
-    train_loader, val_loader, test_data = create_dataloaders(
+    train_loader, val_loader, test_data = create_instruction_dataloaders(
         tuning_set_path, train_frac, test_frac, device, batch_size, max_allowed_length=model.config.context_length,
         n_workers=0, seed=seed
     )

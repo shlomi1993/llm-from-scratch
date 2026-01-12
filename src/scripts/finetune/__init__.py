@@ -9,7 +9,7 @@ from .classification import (
     FineTuningResults,
     create_balanced_dataset,
     random_split,
-    create_dataloaders,
+    create_classification_dataloaders,
     calc_accuracy_loader,
     load_classifier,
     classify_review,
@@ -17,10 +17,16 @@ from .classification import (
     run_classification_finetuning_flow
 )
 from .instruction import (
-    custom_collate_fn,
-    create_dataloaders,
+    instruction_collate_fn,
+    create_instruction_dataloaders,
     test_assistant,
     run_instruction_finetuning_flow,
+)
+from .code_instruction import (
+    coding_collate_fn,
+    create_coding_dataloaders,
+    test_coder,
+    run_coding_finetuning_flow,
 )
 
 
@@ -28,14 +34,18 @@ __all__ = [
     "FineTuningResults",
     "create_balanced_dataset",
     "random_split",
-    "create_dataloaders",
+    "create_classification_dataloaders",
     "calc_accuracy_loader",
     "load_classifier",
     "classify_review",
     "finetune_classifier",
     "run_classification_finetuning_flow",
-    "custom_collate_fn",
-    "create_dataloaders",
+    "instruction_collate_fn",
+    "create_instruction_dataloaders",
     "test_assistant",
     "run_instruction_finetuning_flow",
+    "coding_collate_fn",
+    "create_coding_dataloaders",
+    "test_coder",
+    "run_coding_finetuning_flow",
 ]

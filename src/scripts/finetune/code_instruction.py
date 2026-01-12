@@ -16,15 +16,15 @@ from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, lo
 from src.scripts.train import train_model
 from src.utils.device import Device, get_device
 from src.utils.ollama import OllamaEvaluator
-from src.utils.tokenization import tokenizer, EOT, PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
+from src.utils.tokenization import tokenizer, EOT, PAD_IDX, IGNORE_IDX, text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
 
 
 _logger = get_logger(__name__)
 
 
-def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = PAD_TOKEN_ID,
-                      ignore_index: int = IGNORE_INDEX, max_allowed_length: int = None) -> tuple[Tensor, Tensor]:
+def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = PAD_IDX,
+                      ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[Tensor, Tensor]:
     """
     Pads sequences and masks the Instruction part so the model only trains on the Code.
     """
@@ -126,7 +126,7 @@ def test_coder(model: GptModel, test_data: list[dict], device: Device, max_new_t
             idx=text_to_token_ids(prompt).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
-            eos_id=PAD_TOKEN_ID
+            eos_id=PAD_IDX
         )
         gen_text = token_ids_to_text(token_ids)
         response = gen_text[len(prompt):].strip()
