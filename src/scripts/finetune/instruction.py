@@ -8,7 +8,7 @@ from logging import getLogger as get_logger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.datasets import InstructionDataset
+from src.data_sets import InstructionDataset
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
 from src.scripts.train import train_model
@@ -103,7 +103,7 @@ def create_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float
 
 def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int) -> None:
     model.eval()
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=True):
+    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=False):
         prompt = format_input(entry)
         token_ids = model.generate(
             idx=text_to_token_ids(prompt).to(device),
@@ -148,7 +148,7 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
     _logger.info(f"   Training loss: {train_loss}")
     _logger.info(f"   Validation loss: {val_loss}")
 
-    _logger.info(f"Setting up optimizer with learning rate {lr} and weight decay {weight_decay}")
+    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     torch.manual_seed(seed)

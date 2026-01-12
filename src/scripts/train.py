@@ -6,9 +6,8 @@ from logging import getLogger as get_logger
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
-from src.datasets import GptDatasetV1
+from src.data_sets import GptDatasetV1
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_batch, evaluate_losses, save_model
@@ -61,20 +60,20 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
     global_step = 0
 
     try:
-        epoch_iterator = tqdm(range(1, n_epochs + 1), desc="Total Progress", position=0, leave=True)
-        for epoch in epoch_iterator:
-            model.train()  # Verify model is in training mode
+        for epoch in range(1, n_epochs + 1):
+            _logger.info(f"Epoch {epoch}/{n_epochs}:")
 
-            batch_iterator = tqdm(train_loader, desc=f"Epoch {epoch}/{n_epochs}", position=1, leave=False, unit="batch")
-            for input_batch, target_batch in batch_iterator:
+            for input_batch, target_batch in train_loader:
                 input_batch: Tensor
 
                 # Learning step
+                model.train()
                 optimizer.zero_grad()  # Reset loss gradients from previous batch iteration
                 loss = calc_loss_batch(input_batch, target_batch, model, device)
                 loss.backward()  # Calculate loss gradients
                 optimizer.step()  # Update model weights using loss gradients
 
+                # Tracking progress
                 token_count += input_batch.numel()
                 global_step += 1
 
@@ -84,8 +83,7 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
                     train_losses.append(train_loss)
                     val_losses.append(val_loss)
                     tokens_seen.append(token_count)
-                    batch_iterator.set_postfix(train_loss=f"{train_loss:.3f}", val_loss=f"{val_loss:.3f}")
-                    tqdm.write(f"  Step {global_step} loss: Train {train_loss:.3f}, Val {val_loss:.3f}")
+                    _logger.info(f"  Step {global_step} loss: Train {train_loss:.3f}, Val {val_loss:.3f}")
 
             # Print a sample text after each epoch
             if start_context is not None:

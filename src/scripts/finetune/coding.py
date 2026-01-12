@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from typing import Callable
 
-from src.datasets import AlpacaCodeDataset
+from src.data_sets import AlpacaCodeDataset
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
 from src.scripts.train import train_model
@@ -120,7 +120,7 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
 def test_coder(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int,
                coding_format_input: Callable, test_output_path: str) -> None:
     model.eval()
-    for example in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=True):
+    for example in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=False):
         prompt = coding_format_input(example)
         token_ids = model.generate(
             idx=text_to_token_ids(prompt).to(device),
@@ -168,7 +168,7 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
     _logger.info(f"   Training loss: {train_loss:.4f}")
     _logger.info(f"   Validation loss: {val_loss:.4f}")
 
-    _logger.info(f"Setting up optimizer with learning rate {lr} and weight decay {weight_decay}")
+    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Prompt format used in dataset

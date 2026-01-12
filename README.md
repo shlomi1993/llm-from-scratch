@@ -175,7 +175,7 @@ llm-from-scratch/
 ├── presentation/                           # Seminar presentation slides and figures
 ├── src/
 │   ├── cli.py                              # Primary command-line interface entry point
-│   ├── datasets.py                         # Dataset definitions and abstractions
+│   ├── data_sets.py                         # Dataset definitions and abstractions
 │   ├── model/
 │   │   ├── activation.py                   # Activation functions
 │   │   ├── attention/                      # Attention mechanisms and modules

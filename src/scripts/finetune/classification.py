@@ -9,9 +9,8 @@ from logging import getLogger as get_logger
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
-from src.datasets import SpamDataset
+from src.data_sets import SpamDataset
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model
@@ -123,6 +122,7 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
         n_examples += predicted_labels.shape[0]
         correct_predictions += (predicted_labels == target_batch).sum().item()
 
+    model.train()
     return correct_predictions / n_examples
 
 
@@ -185,20 +185,20 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
     global_step = 0
 
     try:
-        epoch_iterator = tqdm(range(1, n_epochs + 1), desc="Total Progress", position=0, leave=True)
-        for epoch in epoch_iterator:
-            model.train()  # Verify model is in training mode
+        for epoch in range(1, n_epochs + 1):
+            _logger.info(f"Epoch {epoch}/{n_epochs}:")
 
-            batch_iterator = tqdm(train_loader, desc=f"Epoch {epoch}/{n_epochs}", position=1, leave=False, unit="batch")
-            for input_batch, target_batch in batch_iterator:
+            for input_batch, target_batch in train_loader:
                 input_batch: Tensor
 
                 # Learning step
+                model.train()
                 optimizer.zero_grad() # Reset loss gradients from previous batch iteration
                 loss = calc_loss_last_token(input_batch, target_batch, model, device)
                 loss.backward() # Calculate loss gradients
                 optimizer.step() # Update model weights using loss gradients
 
+                # Tracking progress
                 example_count += input_batch.shape[0]  # New: track examples instead of tokens
                 global_step += 1
 
@@ -207,18 +207,17 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
                     train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
                     train_losses.append(train_loss)
                     val_losses.append(val_loss)
-                    batch_iterator.set_postfix(train_loss=f"{train_loss:.3f}", val_loss=f"{val_loss:.3f}")
-                    tqdm.write(f"  Step {global_step} loss: Train {train_loss:.3f}, Val {val_loss:.3f}")
+                    _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
 
             # Calculate accuracy after each epoch
             train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
             val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
             train_accs.append(train_accuracy)
             val_accs.append(val_accuracy)
-            tqdm.write(f"  Epoch {epoch} accuracy: Train {train_accuracy * 100:.2f}%, Val {val_accuracy * 100:.2f}%")
+            _logger.info(f"  Epoch {epoch} accuracy: Train {train_accuracy * 100:.2f}%, Val {val_accuracy * 100:.2f}%")
 
     except KeyboardInterrupt:
-        _logger.info("Training interrupted by user. Returning current model state...")
+        _logger.info("Fine-tuning interrupted by user. Returning current model state...")
 
     return FineTuningResults(model, train_losses, val_losses, train_accs, val_accs, example_count)
 
@@ -259,7 +258,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
     _logger.info("Moving model to device")
     model.to(device)
 
-    _logger.info(f"Setting up optimizer with learning rate {lr} and weight decay {weight_decay}")
+    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     torch.manual_seed(seed)
