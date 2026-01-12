@@ -335,8 +335,7 @@ def download_vocab() -> None:
             file_size = int(response.headers.get("content-length", 0))
             chunk_size = 1000  # 1KB chunks (good for Ethernet packet size ~1500 bytes)
 
-            with tqdm(ncols=100, desc=f"Fetching {filename}",
-                     total=file_size, unit_scale=True) as progress_bar:
+            with tqdm(ncols=100, desc=f"Fetching {filename}", total=file_size, unit_scale=True) as progress_bar:
                 for chunk in response.iter_content(chunk_size=chunk_size):
                     if chunk:  # Filter out keep-alive chunks
                         f.write(chunk)

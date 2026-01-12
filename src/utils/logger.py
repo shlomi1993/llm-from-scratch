@@ -13,7 +13,6 @@ class ColoredFormatter(logging.Formatter):
     RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
-        record.short_name = record.filename.replace('.py', '') if record.name == "__main__" else record.name.split('.')[-1]
         color = self.COLORS.get(record.levelno, self.RESET)
         record.colored_levelname = f"{color}{record.levelname}{self.RESET}"
         return super().format(record)
@@ -25,7 +24,9 @@ class ColoredFormatter(logging.Formatter):
 
 # Configure logging on import
 handler = logging.StreamHandler()
-handler.setFormatter(ColoredFormatter("[%(asctime)s] :: %(short_name)s :: %(colored_levelname)s :: %(message)s"))
+handler.setFormatter(
+    ColoredFormatter("[%(asctime)s] :: %(colored_levelname)s :: %(message)s")
+)
 
 root = logging.getLogger()
 root.handlers.clear()
