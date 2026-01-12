@@ -28,15 +28,18 @@ def run_coder_flow(model_path: str, max_new_tokens: int = 256, device_type: str 
     _logger.info("Model loaded successfully!")
 
     sep = "=" * get_terminal_size().columns
-    print(sep)
-    print("GPT2 Coder Assistant")
-    print("  * Describe your coding task (e.g., 'Write a Python function that calculate the n'th Fibonacci number').")
-    print("  * Type /bye to exit.")
-    print(f"{sep}")
+    welcome_msg = "\n".join([
+        sep,
+        "Interactive Session with CoderGPT2",
+        "Describe your coding task or type /bye to end the session",
+        "You can also hit Ctrl+C / Command+C to abort generation",
+        sep
+    ])
+    print(welcome_msg)
 
     while True:
         try:
-            user_input = input("\n>>> ").strip()
+            user_input = input(">>> ").strip()
             if not user_input:
                 continue
 
@@ -44,15 +47,15 @@ def run_coder_flow(model_path: str, max_new_tokens: int = 256, device_type: str 
                 print("Goodbye!")
                 break
 
-            # Format the prompt strictly as an Instruction
+            # Formant prompt into tokens
             prompt = CODER_PROMPT_TEMPLATE.format(instruction=user_input)
-
-            # Encode
             idx = text_to_token_ids(prompt).to(device)
 
-            # Generate
-            model.generate(idx, max_new_tokens, model.config.context_length, eos_id=PAD_TOKEN_ID, live=True)
-            print() # Newline after generation ends
+            try:
+                model.generate(idx, max_new_tokens, model.config.context_length, eos_id=PAD_TOKEN_ID, live=True)
+                print() # Newline after generation ends
+            except KeyboardInterrupt:
+                print("\nGeneration interrupted by user.")
 
         except KeyboardInterrupt:
             print("\nGoodbye!")

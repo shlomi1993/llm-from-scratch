@@ -13,7 +13,7 @@ from typing import Callable
 from src.datasets import AlpacaCodeDataset
 from src.model.gpt import GptModel
 from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
-from src.scripts.pretrain import train_foundation_model as finetune_assistant
+from src.scripts.train import train_model
 from src.utils.device import Device, get_device
 from src.utils.ollama import OllamaEvaluator
 from src.utils.tokenization import tokenizer, EOT, PAD_TOKEN_ID, IGNORE_INDEX, text_to_token_ids, token_ids_to_text
@@ -79,8 +79,8 @@ def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = P
 
 
 def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: float, device: Device,
-                              batch_size: int = None, max_allowed_length: int = 1024, n_workers: int = 0,
-                              seed: int = 123, max_samples: int = None) -> tuple[DataLoader, DataLoader, list[dict]]:
+                              batch_size: int = None, max_allowed_length: int = 1024, seed: int = 123,
+                              max_samples: int = None, n_workers: int = 0) -> tuple[DataLoader, DataLoader, list[dict]]:
     """
     Loads the AlpacaCodeDataset, splits it into Train/Val/Test, and returns DataLoaders configured with the coding_collate_fn.
     """
@@ -119,9 +119,9 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
 
 def test_coder(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int,
                coding_format_input: Callable, test_output_path: str) -> None:
-    _logger.info("Generating responses for test set...")
-    for entry in tqdm(test_data, desc="Testing"):
-        prompt = coding_format_input(entry)
+    model.eval()
+    for example in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=True):
+        prompt = coding_format_input(example)
         token_ids = model.generate(
             idx=text_to_token_ids(prompt).to(device),
             max_new_tokens=max_new_tokens,
@@ -130,10 +130,11 @@ def test_coder(model: GptModel, test_data: list[dict], device: Device, max_new_t
         )
         gen_text = token_ids_to_text(token_ids)
         response = gen_text[len(prompt):].strip()
-        entry["model_response"] = response
+        example["model_response"] = response  # Add response to the entry in-place
     with open(test_output_path, "w") as f:
         json.dump(test_data, f, indent=4)
     _logger.info(f"Responses saved as {test_output_path}")
+    model.train()
 
 
 def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, train_frac: float = 0.85,
@@ -157,8 +158,7 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
 
     _logger.info("Preparing coding dataset...")
     train_loader, val_loader, test_data = create_coding_dataloaders(
-        dataset_path, train_frac, test_frac, device, batch_size, max_allowed_length=model.config.context_length,
-        n_workers=0, seed=seed, max_samples=max_samples
+        dataset_path, train_frac, test_frac, device, batch_size, model.config.context_length, seed, max_samples, n_workers=0
     )
 
     _logger.info("Calculating initial losses...")
@@ -168,7 +168,7 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
     _logger.info(f"   Training loss: {train_loss:.4f}")
     _logger.info(f"   Validation loss: {val_loss:.4f}")
 
-    _logger.info(f"Setting up optimizer (LR={lr})...")
+    _logger.info(f"Setting up optimizer with learning rate {lr} and weight decay {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Prompt format used in dataset
@@ -178,7 +178,7 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
     start_time = time.time()
 
     # Reuse the assistant finetuning loop
-    results = finetune_assistant(
+    results = train_model(
         model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, coding_format_input(test_data[0])
     )
 
@@ -194,7 +194,7 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
         plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
                      savefig_path=loss_plot_save_path)
 
-    # Generating responses for test set
+    _logger.info("Generating model responses...")
     test_coder(model, test_data, device, max_new_tokens, coding_format_input, test_output_path)
 
     if evaluate:
@@ -217,11 +217,10 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--device", type=str, default="auto", help="Device to use (cpu, cuda, mps, auto)")
     parser.add_argument("--eval-freq", type=int, default=5, help="Evaluate every N epochs")
     parser.add_argument("--eval-iter", type=int, default=5, help="Number of batches to use for evaluation")
-    parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot image")
     parser.add_argument("--model-save-path", type=str, default="coder.pth", help="Path to save the finetuned coder model")
+    parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot image")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum code tokens to generate")
     parser.add_argument("--test-output-path", type=str, default="coder_results.json", help="Path to save test set responses")
-    parser.add_argument("--loss-plot-save-path", type=str, default=None, help="Path to save loss plot image")
     parser.add_argument("--evaluate", action="store_true", help="Evaluate model after training")
     parser.add_argument("--max-samples", type=int, default=None, help="Limit samples for debugging")
 
