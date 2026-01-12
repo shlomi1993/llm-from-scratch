@@ -80,15 +80,15 @@ def test_finetune_coding_cli(tmp_path: Path):
         "--dataset-path", dataset_path,
         "--batch-size", "2",
         "--seed", "123",
-        "--device", "cpu",          # Force CPU for CI/Test consistency
+        "--device", "cpu",
         "--lr", "5e-5",
-        "--n-epochs", "1",          # 1 Epoch is enough for a flow test
-        "--max-samples", "20",      # TODO CRITICAL: Limit dataset size for speed
-        "--eval-freq", "2",         # Frequent eval to generate logs
+        "--n-epochs", "1",
+        "--max-samples", "100",  # Limit dataset size for test speed
+        "--eval-freq", "2",
         "--eval-iter", "1",
         "--model-save-path", str(cli_model_path),
         "--test-output-path", str(cli_test_output),
-        "--evaluate"                # Triggers Ollama
+        "--evaluate"
     ]
     output = run_subprocess(cli_cmd)
     metrics = extract_training_metrics(output)
