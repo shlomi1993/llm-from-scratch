@@ -70,8 +70,8 @@ def random_split(df: pd.DataFrame, train_frac: float, validation_frac: float) ->
     return train_df, validation_df, test_df
 
 
-def create_dataloaders(training_set_path: str, sep: str, column_names: list[str], train_frac: float, val_frac: float,
-                       save_split_dir: str, batch_size: int, seed: int) -> tuple[DataLoader, DataLoader, DataLoader]:
+def create_classification_dataloaders(training_set_path: str, sep: str, column_names: list[str], train_frac: float,
+                                      val_frac: float, save_split_dir: str, batch_size: int, seed: int) -> tuple[DataLoader, DataLoader, DataLoader]:
 
     # Load and preprocess dataset
     df = pd.read_csv(training_set_path, sep=sep, header=None, names=column_names)
@@ -148,7 +148,7 @@ def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel
     return model
 
 
-def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> tuple[str, float]:
+def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_IDX) -> tuple[str, float]:
     model.eval()
 
     # Verify that the input length does not exceed model context length
@@ -241,7 +241,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
     model.eval()
 
     _logger.info("Preparing classification fine-tuning dataset")
-    train_loader, val_loader, test_loader = create_dataloaders(
+    train_loader, val_loader, test_loader = create_classification_dataloaders(
         tuning_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
     assert train_loader.dataset.max_length <= model.config.context_length, "Dataset sequences are longer than the model's context length."

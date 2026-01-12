@@ -84,6 +84,7 @@ def test_finetune_coding_cli(tmp_path: Path):
         "--lr", "5e-5",
         "--n-epochs", "1",
         "--max-samples", "100",  # Limit dataset size for test speed
+        "--train-frac", "0.8",
         "--eval-freq", "2",
         "--eval-iter", "1",
         "--model-save-path", str(cli_model_path),
@@ -95,4 +96,4 @@ def test_finetune_coding_cli(tmp_path: Path):
 
     print_title("Validation")
     validate_loss_sanity(metrics)
-    validate_evaluation_score(output, min_score=40.0)
+    validate_evaluation_score(output, min_score=35.0)

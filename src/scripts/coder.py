@@ -6,7 +6,7 @@ from shutil import get_terminal_size
 
 from src.scripts.common import load_model
 from src.utils.device import get_device
-from src.utils.tokenization.tokenizer import PAD_TOKEN_ID, text_to_token_ids
+from src.utils.tokenization.tokenizer import PAD_IDX, text_to_token_ids
 
 
 _logger = get_logger(__name__)
@@ -52,7 +52,7 @@ def run_coder_flow(model_path: str, max_new_tokens: int = 256, device_type: str 
             idx = text_to_token_ids(prompt).to(device)
 
             try:
-                model.generate(idx, max_new_tokens, model.config.context_length, eos_id=PAD_TOKEN_ID, live=True)
+                model.generate(idx, max_new_tokens, model.config.context_length, eos_id=PAD_IDX, live=True)
                 print() # Newline after generation ends
             except KeyboardInterrupt:
                 print("\nGeneration interrupted by user.")

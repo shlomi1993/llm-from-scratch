@@ -77,22 +77,22 @@ def custom_collate_fn(batch: list, device: Device, max_allowed_length: int = Non
 
         item: list[int]
         new_item = item.copy()
-        new_item += [tok.PAD_TOKEN_ID]  # Add an <|endoftext|> token
+        new_item += [tok.PAD_IDX]  # Add an <|endoftext|> token
 
         # Pad sequences to max_length
-        padded = new_item + [tok.PAD_TOKEN_ID] * (batch_max_length - len(new_item))
+        padded = new_item + [tok.PAD_IDX] * (batch_max_length - len(new_item))
         inputs = torch.tensor(padded[:-1])  # Truncate the last token for inputs
         targets = torch.tensor(padded[1:])  # Shift +1 to the right for targets
 
         # Replace all but the first padding tokens in targets by ignore_index
-        mask = targets == tok.PAD_TOKEN_ID
+        mask = targets == tok.PAD_IDX
         indices = torch.nonzero(mask).squeeze()
         if indices.numel() > 1:
-            targets[indices[1:]] = tok.IGNORE_INDEX
+            targets[indices[1:]] = tok.IGNORE_IDX
 
         # Mask instruction tokens if instruction length is provided
         if instruction_length is not None:
-            targets[:instruction_length - 1] = tok.IGNORE_INDEX
+            targets[:instruction_length - 1] = tok.IGNORE_IDX
 
         # Optionally truncate to maximum sequence length
         if max_allowed_length is not None:
@@ -280,7 +280,7 @@ def run_instruction_finetuning_advanced_flow(
             idx=tok.text_to_token_ids(input_text).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
-            eos_id=tok.PAD_TOKEN_ID
+            eos_id=tok.PAD_IDX
         )
         generated_text = tok.token_ids_to_text(token_ids)
 

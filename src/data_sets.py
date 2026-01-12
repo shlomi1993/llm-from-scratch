@@ -34,7 +34,7 @@ class GptDatasetV1(Dataset):
 
 class SpamDataset(Dataset):
 
-    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = tokenizer.PAD_TOKEN_ID) -> None:
+    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = tokenizer.PAD_IDX) -> None:
         self.data = pd.read_csv(csv_file)
 
         # Pre-tokenize texts
