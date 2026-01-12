@@ -81,7 +81,7 @@ def save_model(model: GptModel, save_path: str, optimizer: Optimizer = None) -> 
         os.makedirs(dir_path, exist_ok=True)
     checkpoint = {
         "model_state_dict": model.state_dict(),
-        "config": model.config.__dict__
+        "config": vars(model.config)
     }
     if optimizer is not None:
         checkpoint["optimizer_state_dict"] = optimizer.state_dict()

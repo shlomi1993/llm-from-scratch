@@ -182,7 +182,7 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
 
     train_losses, val_losses, train_accs, val_accs = [], [], [], []  # Initialize lists to track losses and accuracies
     example_count = 0
-    global_step = 0
+    global_step = -1
 
     try:
         for epoch in range(1, n_epochs + 1):

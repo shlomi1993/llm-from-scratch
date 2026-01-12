@@ -35,4 +35,3 @@ def chapters_path(tmp_path: Path) -> Path:
         symlink_path.unlink()
     symlink_path.symlink_to(models_dir, target_is_directory=True)
     return chapters_dir
-

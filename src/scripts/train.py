@@ -57,7 +57,7 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
 
     train_losses, val_losses, tokens_seen = [], [], []  # Initialize lists to track losses and tokens/examples seen
     token_count = 0
-    global_step = 0
+    global_step = -1
 
     try:
         for epoch in range(1, n_epochs + 1):
@@ -116,7 +116,7 @@ def run_model_training_flow(config: GptConfig, training_set_path: str, lr: float
     with open(training_set_path, "r", encoding=dataset_encoding) as file:
         text_data = file.read()
 
-    _logger.info(f"Initializing GPT model with config: {config.__dict__}")
+    _logger.info(f"Initializing GPT model with config: " + ", ".join(f"{k}={v}" for k, v in vars(config).items()))
     model = GptModel(config)
     model.to(device)
 

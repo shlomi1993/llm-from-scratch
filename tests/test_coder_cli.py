@@ -31,7 +31,7 @@ def validate_loss_sanity(metrics: dict) -> None:
     Verifies that the loss behavior is logical without a reference script.
     Checks for: Data existence, No NaNs, and non-exploding values.
     """
-    print_title("Validating loss logic")
+    print("Validating loss logic...", end=" ")
 
     train_losses = metrics['train_losses']
     val_losses = metrics['val_losses']
@@ -55,7 +55,7 @@ def validate_evaluation_score(output: str, min_score: float = 40.0) -> None:
     """
     Parses the Ollama evaluation score. Matches log: "Average Score: 85.50"
     """
-    print_title("Validating evaluation score")
+    print("Validating evaluation score...", end=" ")
 
     match = re.search(r'Average Score:\s*([\d.]+)', output)
     if not match:
@@ -68,18 +68,12 @@ def validate_evaluation_score(output: str, min_score: float = 40.0) -> None:
 
 
 def test_finetune_coding_cli(tmp_path: Path):
-    """
-    Tests the 'gpt2 finetune coding' command flow.
-    """
-    # Paths
     cli_model_path = tmp_path / "test_coder_model.pth"
     cli_test_output = tmp_path / "coder_results.json"
     pretrained_model_path = "models/355M/model.pth"
     dataset_path = "data_sets/python_code_instructions"
 
-    # CLI Command
-    print_title("Running 'gpt2 finetune coding' CLI test")
-
+    print_title("Running GPT2 code instruction finetuning CLI command")
     cli_cmd = [
         "gpt2", "finetune", "coding",
         "--pretrained-model-path", pretrained_model_path,
@@ -96,11 +90,9 @@ def test_finetune_coding_cli(tmp_path: Path):
         "--test-output-path", str(cli_test_output),
         "--evaluate"                # Triggers Ollama
     ]
-
-    # Execute
     output = run_subprocess(cli_cmd)
     metrics = extract_training_metrics(output)
 
-    # Validation
+    print_title("Validation")
     validate_loss_sanity(metrics)
     validate_evaluation_score(output, min_score=40.0)

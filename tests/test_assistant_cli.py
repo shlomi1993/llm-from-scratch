@@ -22,7 +22,7 @@ def extract_training_metrics(output: str) -> dict:
 
 
 def validate_evaluation_score(output: str, min_score: float = 90.0) -> None:
-    print_title("Validating evaluation score")
+    print("Validating evaluation score...", end=" ")
     match = re.search(r'Average score:\s*([\d.]+)', output)
     score = float(match.group(1)) if match else 0.0
     assert score > min_score, f"Assistant score is too low: {score:.2f}/100"
@@ -30,16 +30,13 @@ def validate_evaluation_score(output: str, min_score: float = 90.0) -> None:
 
 
 def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path):
-
-    # Paths
     cli_model_path = tmp_path / "test_instruction_model.pth"
     cli_test_output = tmp_path / "instruction-test-responses.json"
     chapter_path = chapters_path / "ch07/01_main-chapter-code/gpt_instruction_finetuning.py"
     pretrained_model_path = "models/355M/model.pth"
     instruction_data_path = "data_sets/instruction_data/instruction-data.json"
 
-    # Run the CLI finetune instruction command with live output
-    print_title("Running CLI command to test")
+    print_title("Running CLI command for test")
     cli_cmd = [
         "gpt2", "finetune", "instruction",
         "--pretrained-model-path", pretrained_model_path,
@@ -62,12 +59,11 @@ def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path)
     cli_output = run_subprocess(cli_cmd)
     cli_metrics = extract_training_metrics(cli_output)
 
-    # Run the chapter script with live output
     print_title("Running chapter script for reference")
     chapter_cmd = [sys.executable, "-u", str(chapter_path)]
     chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
     chapter_metrics = extract_training_metrics(chapter_output)
 
-    # Validation
+    print_title("Validation")
     compare_losses(actual_losses=cli_metrics, expected_losses=chapter_metrics, tolerance=1e-2)
     validate_evaluation_score(cli_output, min_score=40.0)
