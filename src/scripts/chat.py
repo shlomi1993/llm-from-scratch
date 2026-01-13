@@ -1,58 +1,35 @@
 import argparse
-import torch
 
-from shutil import get_terminal_size
 
-from src.utils.checkpoint import load_model
-from src.utils.device import get_device
+from src.scripts.interactive_session import InteractiveSession
 from src.utils.logger import g_logger
-from src.utils.tokenization.tokenizer import PAD_IDX, text_to_token_ids
 
 
-INPUT_PROMPT_TEMPLATE = (
-    "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
-    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n\n"
-)
+class InteractiveChatSession(InteractiveSession):
+    INPUT_PROMPT_TEMPLATE = (
+        "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
+        "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n\n"
+    )
+
+    @property
+    def welcome_msg(self) -> str:
+        return (
+            "Interactive Chat with GPT2 Assistant\n"
+            "Type /bye to end the session\n"
+            "You can also hit Ctrl+C / Command+C to abort generation"
+        )
+
+    def format_prompt(self, user_input: str) -> str:
+        return self.INPUT_PROMPT_TEMPLATE.format(
+            instruction="You are a helpful assistant. Provide clear and concise responses.",
+            input=user_input
+        )
 
 
 def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str = "auto", seed: int = 123) -> None:
     g_logger.info("Starting interactive chat session...")
-
-    torch.manual_seed(seed)
-    device = get_device(device_type)
-    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
-
-    assistant = load_model(model_path, device)[0]
-    assistant.eval()
-
-    sep = "=" * get_terminal_size().columns
-    print(f"{sep}\nInteractive Chat with GPT2 Assistant\nType /bye to end the session\n{sep}")
-
-    while True:
-        try:
-            user_input = input(">>> ").strip()
-            if not user_input:
-                continue
-
-            if user_input.lower() == "/bye":
-                print("Goodbye!")
-                break
-
-            prompt = INPUT_PROMPT_TEMPLATE.format(
-                instruction="You are a helpful assistant. Provide clear and concise responses.",
-                input=user_input
-            )
-            idx = text_to_token_ids(prompt).to(device)
-
-            assistant.generate(idx, max_new_tokens, assistant.config.context_length, eos_id=PAD_IDX, live=True)
-            print()  # Newline after generation ends
-
-        except KeyboardInterrupt:
-            print("\nGoodbye!")
-            break
-
-        except Exception as e:
-            g_logger.error(f"An error occurred: {e}")
+    session = InteractiveChatSession(model_path, max_new_tokens, device_type=device_type, seed=seed)
+    session.start()
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

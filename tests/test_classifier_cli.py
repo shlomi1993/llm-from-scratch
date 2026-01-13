@@ -8,7 +8,10 @@ from pathlib import Path
 
 from src.scripts.finetune.classification import load_classifier, classify_review
 from tests.chapters_code import GPTModel
-from tests.common import run_subprocess, print_title, compare_losses, compare_accuracies
+from tests.common import (
+    CHAPTER_LOSS_PATTERN, CLI_LOSS_PATTERN, CHAPTER_ACC_PATTERN, CLI_ACC_PATTERN, run_subprocess, print_title,
+    compare_losses, compare_accuracies
+)
 
 
 PREDICTION_TEST_SAMPLES = [
@@ -28,22 +31,24 @@ def extract_losses_and_accuracies(output: str) -> dict:
         'steps': []
     }
 
-    # Pattern for loss - handles both formats:
-    #   Script: "Ep 1 (Step 000050): Train loss 0.693, Val loss 0.693"
-    #   CLI:    "[timestamp] :: classification :: INFO ::   Step 000050: Train loss 0.693, Val loss 0.693"
-    loss_pattern = r'Step (\d+)\)?: Train loss ([\d.]+), Val loss ([\d.]+)'
-    loss_matches = re.findall(loss_pattern, output)
-    for step, train_loss, val_loss in loss_matches:
-        metrics['steps'].append(int(step))
-        metrics['train_losses'].append(float(train_loss))
-        metrics['val_losses'].append(float(val_loss))
+    # Try both patterns
+    for pattern in [CHAPTER_LOSS_PATTERN, CLI_LOSS_PATTERN]:
+        matches = re.findall(pattern, output)
+        if matches:
+            for step, train_loss, val_loss in matches:
+                metrics['steps'].append(int(step))
+                metrics['train_losses'].append(float(train_loss))
+                metrics['val_losses'].append(float(val_loss))
+            break  # Stop after finding matches with one pattern
 
-    # Pattern for accuracy: "Training accuracy: 96.43% | Validation accuracy: 95.71%"
-    acc_pattern = r'Training accuracy: ([\d.]+)%.*?Validation accuracy: ([\d.]+)%'
-    acc_matches = re.findall(acc_pattern, output)
-    for train_acc, val_acc in acc_matches:
-        metrics['train_accs'].append(float(train_acc))
-        metrics['val_accs'].append(float(val_acc))
+    # Try both patterns
+    for pattern in [CHAPTER_ACC_PATTERN, CLI_ACC_PATTERN]:
+        matches = re.findall(pattern, output)
+        if matches:
+            for train_acc, val_acc in matches:
+                metrics['train_accs'].append(float(train_acc))
+                metrics['val_accs'].append(float(val_acc))
+            break  # Stop after finding matches with one pattern
 
     return metrics
 
@@ -150,16 +155,6 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
     chapter_path = chapters_path / "ch06/01_main-chapter-code/gpt_class_finetune.py"
     pretrained_model_path = "models/124M/model.pth"
 
-    print_title("Running chapter script for reference")
-    chapter_cmd = [sys.executable, "-u", str(chapter_path)]
-    chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
-    chapter_metrics = extract_losses_and_accuracies(chapter_output)
-
-    # Clean up split files
-    for f in tmp_path / "train.csv", tmp_path / "validation.csv", tmp_path / "test.csv":
-        if os.path.exists(f):
-            os.remove(f)
-
     print_title("Running CLI command for test")
     cli_cmd = [
         "gpt2", "finetune", "classification",
@@ -182,7 +177,17 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
     cli_output = run_subprocess(cli_cmd)
     cli_metrics = extract_losses_and_accuracies(cli_output)
 
+    # Clean up split files
+    for f in tmp_path / "train.csv", tmp_path / "validation.csv", tmp_path / "test.csv":
+        if os.path.exists(f):
+            os.remove(f)
+
+    print_title("Running chapter script for reference")
+    chapter_cmd = [sys.executable, "-u", str(chapter_path)]
+    chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
+    chapter_metrics = extract_losses_and_accuracies(chapter_output)
+
     print_title("Validation")
-    compare_losses(expected_metrics=chapter_metrics, actual_metrics=cli_metrics, tolerance=1e-2)
-    compare_accuracies(expected_metrics=chapter_metrics, actual_metrics=cli_metrics, tolerance=1.0)
+    compare_losses(actual_losses=cli_metrics, expected_losses=chapter_metrics, tolerance=1e-2)
+    compare_accuracies(actual_metrics=cli_metrics, expected_metrics=chapter_metrics, tolerance=1.0)
     compare_model_predictions(PREDICTION_TEST_SAMPLES, cli_model_path)

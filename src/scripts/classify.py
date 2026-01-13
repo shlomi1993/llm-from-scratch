@@ -39,15 +39,15 @@ def run_spam_ham_interactive_flow(model_path: str, device_type: str = "auto", se
     try:
         while True:
             try:
-                text = input(">>> ")
+                text = input(">>> ").strip()
+                if not text:
+                    continue
                 if text == "/bye":
                     g_logger.info("Exiting interactive mode.")
                     break
             except EOFError:
                 g_logger.info("Exiting interactive mode.")
                 break
-            if not text.strip():
-                continue
 
             label, confidence = classify_review(text, model, device, model.config.context_length)
             print(f"{label} (confidence: {confidence * 100:.2f}%)")

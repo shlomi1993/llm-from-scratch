@@ -2,28 +2,7 @@ import re
 
 from pathlib import Path
 
-from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title
-
-
-def extract_training_metrics(output: str) -> dict:
-    """
-    Parses the stdout to find 'Step X loss: Train Y, Val Z' patterns.
-    """
-    metrics = {
-        'train_losses': [],
-        'val_losses': [],
-        'steps': []
-    }
-    # Matches: "Step 10 loss: Train 2.4532, Val 2.1123"
-    loss_pattern = r'Step (\d+) loss: Train ([\d.]+), Val ([\d.]+)'
-    loss_matches = re.findall(loss_pattern, output)
-
-    for step, train_loss, val_loss in loss_matches:
-        metrics['steps'].append(int(step))
-        metrics['train_losses'].append(float(train_loss))
-        metrics['val_losses'].append(float(val_loss))
-
-    return metrics
+from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title, extract_losses
 
 
 def validate_loss_sanity(metrics: dict) -> None:
@@ -53,13 +32,13 @@ def validate_loss_sanity(metrics: dict) -> None:
 
 def validate_evaluation_score(output: str, min_score: float = 40.0) -> None:
     """
-    Parses the Ollama evaluation score. Matches log: "Average Score: 85.50"
+    Parses the Ollama evaluation score. Matches log: "Average score 49.90% across 10 samples" or "Average score: 85.50"
     """
     print("Validating evaluation score...", end=" ")
 
-    match = re.search(r'Average Score:\s*([\d.]+)', output)
+    match = re.search(r'Average score:?\s*([\d.]+)', output, re.IGNORECASE)
     if not match:
-        raise ValueError("Could not find 'Average Score:' in output. Did evaluation run?")
+        raise ValueError("Could not find 'Average score' in output. Did evaluation run?")
 
     score = float(match.group(1))
     assert score > min_score, f"Coder score is too low: {score:.2f}/100 (Threshold: {min_score})"
@@ -92,8 +71,8 @@ def test_finetune_coding_cli(tmp_path: Path):
         "--evaluate"
     ]
     output = run_subprocess(cli_cmd)
-    metrics = extract_training_metrics(output)
+    metrics = extract_losses(output, ref=False)
 
     print_title("Validation")
     validate_loss_sanity(metrics)
-    validate_evaluation_score(output, min_score=35.0)
+    validate_evaluation_score(output, min_score=40.0)

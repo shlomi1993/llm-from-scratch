@@ -106,7 +106,7 @@ def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_n
     # Generate responses
     g_logger.info("Generating model responses...")
     model.eval()
-    for entry in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=False):
+    for entry in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=True):
         prompt = format_func(entry)
         token_ids = model.generate(
             idx=text_to_token_ids(prompt).to(device),

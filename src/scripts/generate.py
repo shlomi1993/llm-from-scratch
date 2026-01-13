@@ -2,6 +2,7 @@ import argparse
 import time
 import torch
 
+from src.scripts.interactive_session import InteractiveSession
 from src.utils.checkpoint import load_model
 from src.utils.device import get_device
 from src.utils.logger import g_logger
@@ -91,42 +92,25 @@ def run_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, 
     return generated_text
 
 
+class InteractiveGenerationSession(InteractiveSession):
+
+    @property
+    def welcome_msg(self) -> str:
+        return (
+            "Interactive Session with GPT2 Model\n"
+            "Type your prompt and press Enter, or type /bye to exit\n"
+            "You can also hit Ctrl+C / Command+C to abort generation"
+        )
+
+    def format_prompt(self, user_input: str) -> str:
+        return user_input
+
+
 def run_interactive_generation_flow(model_path: str, max_new_tokens: int = 25, temperature: float = 1.0,
                                     top_k: int = 50, device_type: str = "auto", seed: int = 123) -> None:
     g_logger.info("Running model interactive generation flow...")
-
-    torch.manual_seed(seed)
-    device = get_device(device_type)
-    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
-
-    gpt = load_model(model_path, device)[0]
-    gpt.eval()
-
-    g_logger.info("Entering interactive mode. Type your prompt and press Enter. Type /bye to exit.")
-    while True:
-        try:
-            user_input = input(">>> ").strip()
-            if not user_input:
-                continue
-
-            if user_input.lower() == "/bye":
-                print("Goodbye!")
-                break
-
-            idx = text_to_token_ids(user_input).to(device)
-
-            try:
-                gpt.generate(idx, max_new_tokens, gpt.config.context_length, temperature, top_k, live=True)
-                print()  # Newline after generation ends
-            except KeyboardInterrupt:
-                print("\nGeneration interrupted by user")
-
-        except KeyboardInterrupt:
-            print("\nGoodbye!")
-            break
-
-        except Exception as e:
-            g_logger.error(f"An error occurred: {e}")
+    session = InteractiveGenerationSession(model_path, max_new_tokens, temperature, top_k, device_type, seed)
+    session.start()
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
