@@ -24,9 +24,7 @@ class ColoredFormatter(logging.Formatter):
 
 # Configure logging on import
 handler = logging.StreamHandler()
-handler.setFormatter(
-    ColoredFormatter("[%(asctime)s] :: %(colored_levelname)s :: %(message)s")
-)
+handler.setFormatter(ColoredFormatter("[%(asctime)s] :: %(colored_levelname)s :: %(message)s"))
 
 root = logging.getLogger()
 root.handlers.clear()
@@ -36,3 +34,6 @@ root.setLevel(logging.WARNING)
 # Enable DEBUG only for project loggers
 logging.getLogger("src").setLevel(logging.DEBUG)
 logging.getLogger("__main__").setLevel(logging.DEBUG)
+
+# Global logger
+g_logger = logging.getLogger("llm-from-scratch")

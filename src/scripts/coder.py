@@ -1,31 +1,27 @@
 import argparse
 import torch
 
-from logging import getLogger as get_logger
 from shutil import get_terminal_size
 
-from src.scripts.common import load_model
+from src.utils.checkpoint import load_model
 from src.utils.device import get_device
+from src.utils.logger import g_logger
 from src.utils.tokenization.tokenizer import PAD_IDX, text_to_token_ids
 
-
-_logger = get_logger(__name__)
 
 # Matches the format_prompt logic in AlpacaCodeDataset (no system preamble)
 CODER_PROMPT_TEMPLATE = "### Instruction:\n{instruction}\n\n### Response:\n"
 
 
 def run_coder_flow(model_path: str, max_new_tokens: int = 256, device_type: str = "auto", seed: int = 123) -> None:
-    _logger.info("Starting interactive coding session...")
+    g_logger.info("Starting interactive coding session...")
 
     torch.manual_seed(seed)
     device = get_device(device_type)
-    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
 
-    _logger.info(f"Loading coder model from {model_path}")
-    model = load_model(model_path, device)[0]
-    model.eval()
-    _logger.info("Model loaded successfully!")
+    coder = load_model(model_path, device)[0]
+    coder.eval()
 
     sep = "=" * get_terminal_size().columns
     welcome_msg = "\n".join([
@@ -47,23 +43,22 @@ def run_coder_flow(model_path: str, max_new_tokens: int = 256, device_type: str 
                 print("Goodbye!")
                 break
 
-            # Formant prompt into tokens
+            # Format prompt into tokens
             prompt = CODER_PROMPT_TEMPLATE.format(instruction=user_input)
             idx = text_to_token_ids(prompt).to(device)
 
             try:
-                model.generate(idx, max_new_tokens, model.config.context_length, eos_id=PAD_IDX, live=True)
+                coder.generate(idx, max_new_tokens, coder.config.context_length, eos_id=PAD_IDX, live=True)
                 print() # Newline after generation ends
             except KeyboardInterrupt:
-                print("\nGeneration interrupted by user.")
+                print("\nGeneration interrupted by user")
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
             break
 
         except Exception as e:
-            _logger.error(f"Error generating code: {e}")
-            print(f"\nError: {e}\n")
+            g_logger.error(f"An error occurred: {e}")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

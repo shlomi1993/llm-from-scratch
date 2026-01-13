@@ -1,15 +1,12 @@
 import argparse
 import torch
 
-from logging import getLogger as get_logger
 from shutil import get_terminal_size
 
-from src.scripts.common import load_model
+from src.utils.checkpoint import load_model
 from src.utils.device import get_device
+from src.utils.logger import g_logger
 from src.utils.tokenization.tokenizer import PAD_IDX, text_to_token_ids
-
-
-_logger = get_logger(__name__)
 
 
 INPUT_PROMPT_TEMPLATE = (
@@ -19,16 +16,14 @@ INPUT_PROMPT_TEMPLATE = (
 
 
 def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str = "auto", seed: int = 123) -> None:
-    _logger.info("Starting interactive chat session...")
+    g_logger.info("Starting interactive chat session...")
 
     torch.manual_seed(seed)
     device = get_device(device_type)
-    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
 
-    _logger.info(f"Loading assistant model from {model_path}")
     assistant = load_model(model_path, device)[0]
     assistant.eval()
-    _logger.info("Model loaded successfully!")
 
     sep = "=" * get_terminal_size().columns
     print(f"{sep}\nInteractive Chat with GPT2 Assistant\nType /bye to end the session\n{sep}")
@@ -50,15 +45,14 @@ def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str =
             idx = text_to_token_ids(prompt).to(device)
 
             assistant.generate(idx, max_new_tokens, assistant.config.context_length, eos_id=PAD_IDX, live=True)
-            print()
+            print()  # Newline after generation ends
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
             break
 
         except Exception as e:
-            _logger.error(f"Error generating response: {e}")
-            print(f"\nError: {e}\n")
+            g_logger.error(f"An error occurred: {e}")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

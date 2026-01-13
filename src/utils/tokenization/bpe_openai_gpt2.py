@@ -40,12 +40,10 @@ import regex as re
 import requests
 
 from functools import lru_cache
-from logging import getLogger as get_logger
 from tqdm import tqdm
 from typing import Dict, List, Set, Tuple
 
-
-_logger = get_logger(__name__)
+from src.utils.logger import g_logger
 
 
 @lru_cache()
@@ -326,7 +324,7 @@ def download_vocab() -> None:
     files_to_download = ["encoder.json", "vocab.bpe"]
 
     for filename in files_to_download:
-        _logger.info(f"Downloading {filename}...")
+        g_logger.info(f"Downloading {filename}...")
         response = requests.get(base_url + filename, stream=True)
         response.raise_for_status()  # Raise an exception for bad responses
 
@@ -340,4 +338,4 @@ def download_vocab() -> None:
                     if chunk:  # Filter out keep-alive chunks
                         f.write(chunk)
                         progress_bar.update(len(chunk))
-    _logger.info("Download complete.")
+    g_logger.info("Download complete.")

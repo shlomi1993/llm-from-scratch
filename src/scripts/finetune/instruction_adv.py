@@ -7,21 +7,19 @@ import time
 import torch
 
 from functools import partial
-from logging import getLogger as get_logger
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.data_sets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
-from src.scripts.common import calc_loss_batch, calc_loss_loader, load_model, save_model
 from src.scripts.train import train_model
+from src.utils.checkpoint import load_model, save_model
 from src.utils.device import Device, get_device
+from src.utils.logger import g_logger
+from src.utils.losses import calc_loss_batch, calc_loss_loader
 from src.utils.ollama import format_input
 from src.utils.tokenization import tokenizer as tok
 from src.utils.visualization import plot_metrics
-
-
-_logger = get_logger(__name__)
 
 
 class LoraLayer(nn.Module):
@@ -111,14 +109,14 @@ def custom_collate_fn(batch: list, device: Device, max_allowed_length: int = Non
 
 def fetch_json(file_path: str, url: str) -> list[dict]:
     if not os.path.exists(file_path):
-        _logger.info(f"Downloading {url}")
+        g_logger.info(f"Downloading {url}")
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(response.text)
-        _logger.info(f"Saved to {file_path}")
+        g_logger.info(f"Saved to {file_path}")
     else:
-        _logger.info(f"Loading existing file {file_path}")
+        g_logger.info(f"Loading existing file {file_path}")
 
     with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
@@ -151,8 +149,8 @@ def run_instruction_finetuning_advanced_flow(
     test_output_path: str = "instruction-test-responses-advanced.json"
 ) -> None:
 
-    _logger.info("Starting advanced instruction fine-tuning flow")
-    _logger.warning("\033[93mThis flow is experimental and may not be fully tested.\033[0m")
+    g_logger.info("Starting advanced instruction fine-tuning flow")
+    g_logger.warning("\033[93mThis flow is experimental and may not be fully tested.\033[0m")
 
     # Validate conflicting options
     if mask_instructions and use_phi3_prompt:
@@ -160,10 +158,10 @@ def run_instruction_finetuning_advanced_flow(
 
     torch.manual_seed(seed)
     device = get_device(device_type)
-    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
 
     # Load pretrained model
-    _logger.info(f"Loading pretrained model from '{pretrained_model_path}'")
+    g_logger.info(f"Loading pretrained model from '{pretrained_model_path}'")
     model = load_model(pretrained_model_path, device)[0]
     model.eval()
 
@@ -176,7 +174,7 @@ def run_instruction_finetuning_advanced_flow(
             url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch07/01_main-chapter-code/instruction-data.json"
         data = fetch_json(tuning_set_path, url)
     else:
-        _logger.info(f"Loading tuning dataset from {tuning_set_path}")
+        g_logger.info(f"Loading tuning dataset from {tuning_set_path}")
         with open(tuning_set_path, "r") as f:
             data = json.load(f)
 
@@ -186,7 +184,7 @@ def run_instruction_finetuning_advanced_flow(
     train_data = data[:train_portion]
     test_data = data[train_portion:train_portion + test_portion]
     val_data = data[train_portion + test_portion:]
-    _logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data)} testing samples")
+    g_logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data)} testing samples")
 
     # Configure dataset and collate function based on options
     allowed_max_length = 512 if use_alpaca52k else model.config.context_length
@@ -202,7 +200,7 @@ def run_instruction_finetuning_advanced_flow(
     # Adjust batch size for large dataset
     if use_alpaca52k:
         batch_size = 4
-        _logger.info(f"Using adjusted batch size of {batch_size} for Alpaca 52k dataset")
+        g_logger.info(f"Using adjusted batch size of {batch_size} for Alpaca 52k dataset")
 
     # Create dataloaders
     torch.manual_seed(seed)
@@ -226,53 +224,53 @@ def run_instruction_finetuning_advanced_flow(
     # Apply LoRA if requested
     if use_lora:
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        _logger.info(f"Total trainable parameters before LoRA: {total_params:,}")
+        g_logger.info(f"Total trainable parameters before LoRA: {total_params:,}")
 
         for param in model.parameters():
             param.requires_grad = False
 
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        _logger.info(f"Total trainable parameters after freezing: {total_params:,}")
+        g_logger.info(f"Total trainable parameters after freezing: {total_params:,}")
 
         replace_linear_with_lora(model, rank=lora_rank, alpha=lora_alpha)
 
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        _logger.info(f"Total trainable LoRA parameters: {total_params:,}")
+        g_logger.info(f"Total trainable LoRA parameters: {total_params:,}")
 
-    _logger.info("Moving model to device")
+    g_logger.info("Moving model to device")
     model.to(device)
 
     # Calculate initial losses
-    _logger.info("Calculating initial losses before fine-tuning")
+    g_logger.info("Calculating initial losses before fine-tuning")
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, calc_loss_batch, model, device, n_batches=5)
         val_loss = calc_loss_loader(val_loader, calc_loss_batch, model, device, n_batches=5)
-    _logger.info(f"   Training loss: {train_loss:.3f}")
-    _logger.info(f"   Validation loss: {val_loss:.3f}")
+    g_logger.info(f"   Training loss: {train_loss:.3f}")
+    g_logger.info(f"   Validation loss: {val_loss:.3f}")
 
     # Setup optimizer
-    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
+    g_logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     torch.manual_seed(seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Start fine-tuning
-    _logger.info("Starting instruction fine-tuning...")
+    g_logger.info("Starting instruction fine-tuning...")
     start_time = time.time()
     start_context = InstructionDatasetPhi.format_input_phi(val_data[0]) if use_phi3_prompt else format_input(val_data[0])
     results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
-    _logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
+    g_logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
 
     # Plot losses
     if loss_plot_save_path:
-        _logger.info(f"Saving loss plot to {loss_plot_save_path}")
+        g_logger.info(f"Saving loss plot to {loss_plot_save_path}")
         epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
         plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses,
                     label="loss", savefig_path=loss_plot_save_path, legend_loc="upper right", simplify_x_axis=True)
 
     # Generate responses on test set
-    _logger.info("Generating responses on test set...")
+    g_logger.info("Generating responses on test set...")
     for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=False):
         input_text = InstructionDatasetPhi.format_input_phi(entry) if use_phi3_prompt else format_input(entry)
 
@@ -294,11 +292,10 @@ def run_instruction_finetuning_advanced_flow(
     # Save test responses
     with open(test_output_path, "w") as file:
         json.dump(test_data, file, indent=4)
-    _logger.info(f"Responses saved as {test_output_path}")
+    g_logger.info(f"Responses saved as {test_output_path}")
 
     # Save model
     save_model(model, model_save_path, optimizer)
-    _logger.info(f"Model saved as {model_save_path}")
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

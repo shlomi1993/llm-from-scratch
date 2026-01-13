@@ -5,7 +5,6 @@ import time
 import torch
 
 from dataclasses import dataclass
-from logging import getLogger as get_logger
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
@@ -13,17 +12,17 @@ from torch.utils.data import DataLoader
 from src.data_sets import SpamDataset
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model
+from src.scripts.train import format_training_progress
+from src.utils.checkpoint import load_model, save_model
 from src.utils.device import Device, get_device
+from src.utils.logger import g_logger
+from src.utils.losses import calc_loss_loader, calc_losses, calc_loss_last_token
 from src.utils.tokenization import tokenizer
 from src.utils.visualization import plot_metrics
 
 
-_logger = get_logger(__name__)
-
-
 @dataclass
-class FineTuningResults:
+class ClassificationFineTuningResults:
     model: GptModel
     train_losses: list[float]
     val_losses: list[float]
@@ -178,18 +177,21 @@ def classify_review(text: str, model: GptModel, device: Device, max_length: int,
 
 
 def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer,
-                        device: Device, n_epochs: int, eval_freq, eval_iter) -> FineTuningResults:
+                        device: Device, n_epochs: int, eval_freq, eval_iter) -> ClassificationFineTuningResults:
 
     train_losses, val_losses, train_accs, val_accs = [], [], [], []  # Initialize lists to track losses and accuracies
     example_count = 0
     global_step = -1
+    epoch_batches = len(train_loader)
+    total_batches = n_epochs * epoch_batches
 
     try:
         for epoch in range(1, n_epochs + 1):
-            _logger.info(f"Epoch {epoch}/{n_epochs}:")
-
+            batch_count = 1
             for input_batch, target_batch in train_loader:
                 input_batch: Tensor
+                print(f"Processing epoch {epoch}/{n_epochs}, batch {batch_count}/{epoch_batches}...", end="\r")
+                batch_count += 1
 
                 # Learning step
                 model.train()
@@ -199,27 +201,30 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
                 optimizer.step() # Update model weights using loss gradients
 
                 # Tracking progress
-                example_count += input_batch.shape[0]  # New: track examples instead of tokens
+                example_count += input_batch.shape[0]  # track examples instead of tokens
                 global_step += 1
 
                 # Optional evaluation step
                 if global_step % eval_freq == 0:
-                    train_loss, val_loss = evaluate_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
+                    train_loss, val_loss = calc_losses(model, train_loader, val_loader, device, eval_iter, calc_loss_last_token)
                     train_losses.append(train_loss)
                     val_losses.append(val_loss)
-                    _logger.info(f"  Step {global_step:06d}: Train loss {train_loss:.3f}, Val loss {val_loss:.3f}")
+                    progress_msg = format_training_progress(epoch, n_epochs, global_step, total_batches, train_loss, val_loss)
+                    g_logger.info(progress_msg)
 
             # Calculate accuracy after each epoch
             train_accuracy = calc_accuracy_loader(train_loader, model, device, n_batches=eval_iter)
             val_accuracy = calc_accuracy_loader(val_loader, model, device, n_batches=eval_iter)
             train_accs.append(train_accuracy)
             val_accs.append(val_accuracy)
-            _logger.info(f"  Epoch {epoch} accuracy: Train {train_accuracy * 100:.2f}%, Val {val_accuracy * 100:.2f}%")
+            progress_msg = format_training_progress(epoch, n_epochs, global_step, total_batches,
+                                                    train_acc=train_accuracy * 100, val_acc=val_accuracy * 100)
+            g_logger.info(progress_msg)
 
     except KeyboardInterrupt:
-        _logger.info("Fine-tuning interrupted by user. Returning current model state...")
+        g_logger.info("Fine-tuning interrupted by user. Returning current model state...")
 
-    return FineTuningResults(model, train_losses, val_losses, train_accs, val_accs, example_count)
+    return ClassificationFineTuningResults(model, train_losses, val_losses, train_accs, val_accs, example_count)
 
 
 def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, sep="\t",
@@ -228,25 +233,25 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
                                        seed: int = 123, device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 5,
                                        weight_decay: float = 0.1, eval_freq: int = 50, eval_iter: int = 5,
                                        loss_plot_save_path: str = None, accuracy_plot_save_path: str = None,
-                                       model_save_path: str = "spam-classifier.pth") -> FineTuningResults:
+                                       model_save_path: str = "spam-classifier.pth") -> ClassificationFineTuningResults:
 
-    _logger.info("Running classification fine-tuning flow...")
+    g_logger.info("Running classification fine-tuning flow...")
 
     torch.manual_seed(seed)
     device = get_device(device_type)
-    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
 
-    _logger.info("Loading pre-trained model")
+    g_logger.info("Loading pre-trained model")
     model = load_model(pretrained_model_path, device)[0]
     model.eval()
 
-    _logger.info("Preparing classification fine-tuning dataset")
+    g_logger.info("Preparing classification fine-tuning dataset")
     train_loader, val_loader, test_loader = create_classification_dataloaders(
         tuning_set_path, sep, column_names, train_frac, validation_frac, save_split_dir, batch_size, seed
     )
     assert train_loader.dataset.max_length <= model.config.context_length, "Dataset sequences are longer than the model's context length."
 
-    _logger.info("Modifying model for classification fine-tuning")
+    g_logger.info("Modifying model for classification fine-tuning")
     for param in model.parameters():
         param.requires_grad = False
     model.out_head = torch.nn.Linear(in_features=model.config.emb_dim, out_features=2)
@@ -255,21 +260,21 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
     for param in model.final_norm.parameters():
         param.requires_grad = True
 
-    _logger.info("Moving model to device")
+    g_logger.info("Moving model to device")
     model.to(device)
 
-    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
+    g_logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     torch.manual_seed(seed)
-    _logger.info("Starting classification fine-tuning...")
+    g_logger.info("Starting classification fine-tuning...")
     start_time = time.time()
     results = finetune_classifier(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
-    _logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
+    g_logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
 
-    _logger.info("Evaluation on fine-tuned model:")
+    g_logger.info("Evaluation on fine-tuned model:")
     with torch.no_grad(): # Disable gradient tracking for efficiency because we are not training, yet
         train_loss = calc_loss_loader(train_loader, calc_loss_last_token, model, device, n_batches=eval_iter)
         val_loss = calc_loss_loader(val_loader, calc_loss_last_token, model, device, n_batches=eval_iter)
@@ -278,9 +283,9 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
     val_accuracy = calc_accuracy_loader(val_loader, model, device)
     test_accuracy = calc_accuracy_loader(test_loader, model, device)
     print()
-    _logger.info(f"  Training:   loss = {train_loss:.3f}, accuracy = {train_accuracy * 100:.2f}%")
-    _logger.info(f"  Validation: loss = {val_loss:.3f}, accuracy = {val_accuracy * 100:.2f}%")
-    _logger.info(f"  Test:       loss = {test_loss:.3f}, accuracy = {test_accuracy * 100:.2f}%")
+    g_logger.info(f"  Training:   loss = {train_loss:.3f}, accuracy = {train_accuracy * 100:.2f}%")
+    g_logger.info(f"  Validation: loss = {val_loss:.3f}, accuracy = {val_accuracy * 100:.2f}%")
+    g_logger.info(f"  Test:       loss = {test_loss:.3f}, accuracy = {test_accuracy * 100:.2f}%")
 
     if loss_plot_save_path:
         loss_epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
@@ -295,7 +300,6 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
                      savefig_path=accuracy_plot_save_path, label="accuracy")
 
     save_model(model, model_save_path, optimizer)
-    _logger.info(f"Model saved to {model_save_path}")
 
     return results
 
