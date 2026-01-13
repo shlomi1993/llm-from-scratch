@@ -6,21 +6,20 @@ generating text using a pre-trained foundation GPT-2 model, and fine-tuning a pr
 spam detection and instruction following.
 """
 
-from .common import calc_loss_batch, calc_loss_last_token, calc_loss_loader, evaluate_losses, save_model, load_model
 from .download import download_gpt2, convert_tf_weights_into_pytorch_model
 from .train import (
     TrainingResults,
     train_test_split,
     generate_and_print_sample,
     train_model,
-    run_model_training_flow
+    run_training_flow
 )
 from .generate import (
-    run_model_generation_flow,
-    run_model_interactive_flow
+    run_generation_flow,
+    run_interactive_generation_flow
 )
 from .finetune.classification import (
-    FineTuningResults,
+    ClassificationFineTuningResults,
     create_balanced_dataset,
     random_split,
     create_classification_dataloaders,
@@ -39,28 +38,21 @@ from .finetune.instruction import (
 from .finetune.code_instruction import (
     coding_collate_fn,
     create_coding_dataloaders,
-    test_coder,
     run_coding_finetuning_flow,
 )
 
 
 __all__ = [
-    "calc_loss_batch",
-    "calc_loss_last_token",
-    "calc_loss_loader",
-    "evaluate_losses",
-    "save_model",
-    "load_model",
     "download_gpt2",
     "convert_tf_weights_into_pytorch_model",
     "TrainingResults",
     "train_test_split",
     "generate_and_print_sample",
     "train_model",
-    "run_model_training_flow",
-    "run_model_generation_flow",
-    "run_model_interactive_flow",
-    "FineTuningResults",
+    "run_training_flow",
+    "run_generation_flow",
+    "run_interactive_generation_flow",
+    "ClassificationFineTuningResults",
     "create_balanced_dataset",
     "random_split",
     "create_classification_dataloaders",
@@ -75,6 +67,5 @@ __all__ = [
     "run_instruction_finetuning_flow",
     "coding_collate_fn",
     "create_coding_dataloaders",
-    "test_coder",
     "run_coding_finetuning_flow",
 ]

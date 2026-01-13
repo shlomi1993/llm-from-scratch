@@ -4,23 +4,19 @@ import time
 import torch
 
 from functools import partial
-from logging import getLogger as get_logger
 from torch import Tensor
 from torch.utils.data import DataLoader, Subset
-from tqdm import tqdm
-from typing import Callable
 
 from src.data_sets import AlpacaCodeDataset
-from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
 from src.scripts.train import train_model
+from src.scripts.finetune.instruction import test_assistant
+from src.utils.checkpoint import save_model, load_model
 from src.utils.device import Device, get_device
-from src.utils.ollama import OllamaEvaluator
-from src.utils.tokenization import tokenizer, EOT, PAD_IDX, IGNORE_IDX, text_to_token_ids, token_ids_to_text
+from src.utils.logger import g_logger
+from src.utils.losses import calc_loss_loader, calc_loss_batch
+from src.utils.tokenization import tokenizer, EOT, PAD_IDX, IGNORE_IDX
 from src.utils.visualization import plot_metrics
 
-
-_logger = get_logger(__name__)
 
 
 def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = PAD_IDX,
@@ -104,7 +100,7 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
     # Prepare test data (raw dicts) for evaluation
     test_data_raw = [full_dataset.dataset[i] for i in test_indices]
 
-    _logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data_raw)} testing samples")
+    g_logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data_raw)} testing samples")
 
     # Bind device to collate function
     collate = partial(coding_collate_fn, device=device, max_allowed_length=max_allowed_length)
@@ -117,27 +113,11 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
     return train_loader, val_loader, test_data_raw
 
 
-def test_coder(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int,
-               coding_format_input: Callable, test_output_path: str) -> None:
-    model.eval()
-    for example in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=False):
-        prompt = coding_format_input(example)
-        token_ids = model.generate(
-            idx=text_to_token_ids(prompt).to(device),
-            max_new_tokens=max_new_tokens,
-            context_size=model.config.context_length,
-            eos_id=PAD_IDX
-        )
-        gen_text = token_ids_to_text(token_ids)
-        response = gen_text[len(prompt):].strip()
-        example["model_response"] = response  # Add response to the entry in-place
-    with open(test_output_path, "w") as f:
-        json.dump(test_data, f, indent=4)
-    _logger.info(f"Responses saved as {test_output_path}")
-    model.train()
+def coding_format_input(entry: dict) -> str:
+    return f"### Instruction:\n{entry['instruction']}\n\n### Response:\n"
 
 
-def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, train_frac: float = 0.85,
+def run_coding_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
                                test_frac: float = 0.1, batch_size: int = 8, seed: int = 123,
                                device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 2,
                                weight_decay: float = 0.1, eval_freq: int = 5, eval_iter: int = 5,
@@ -145,63 +125,47 @@ def run_coding_finetuning_flow(pretrained_model_path: str, dataset_path: str, tr
                                max_new_tokens: int = 256, test_output_path: str = "coder-test-responses.json",
                                evaluate: bool = False, max_samples: int = None) -> None:
 
-    _logger.info("Starting codein finetuning flow")
+    g_logger.info("Running code instruction finetuning flow...")
 
     torch.manual_seed(seed)
     device = get_device(device_type)
-    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
 
-    _logger.info("Loading pre-trained model...")
-    model, _ = load_model(pretrained_model_path, device)  # Ignore optimizer as we create a new one
+    model = load_model(pretrained_model_path, device)[0]
     model.eval()
-    model.to(device)
 
-    _logger.info("Preparing coding dataset...")
     train_loader, val_loader, test_data = create_coding_dataloaders(
-        dataset_path, train_frac, test_frac, device, batch_size, model.config.context_length, seed, max_samples, n_workers=0
+        tuning_set_path, train_frac, test_frac, device, batch_size, model.config.context_length, seed, max_samples, n_workers=0
     )
+    g_logger.info(f"Created DataLoaders with batch size {batch_size}")
 
-    _logger.info("Calculating initial losses...")
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, calc_loss_batch, model, device, n_batches=5)
         val_loss = calc_loss_loader(val_loader, calc_loss_batch, model, device, n_batches=5)
-    _logger.info(f"   Training loss: {train_loss:.4f}")
-    _logger.info(f"   Validation loss: {val_loss:.4f}")
+    g_logger.info(f"Loss before fine-tuning: train_loss={train_loss:.3f}, val_loss={val_loss:.3f}")
 
-    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    g_logger.info(f"Using AdamW optimizer with learning rate {lr} and weight decay {weight_decay}")
 
-    # Prompt format used in dataset
-    coding_format_input = lambda x: f"### Instruction:\n{x['instruction']}\n\n### Response:\n"
+    # Prompt format used in dataset and reset seed
+    formatted_input = coding_format_input(test_data[0])
+    torch.manual_seed(seed)
 
-    _logger.info("Starting training loop...")
+    g_logger.info("Starting code instruction fine-tuning...")
     start_time = time.time()
-
-    # Reuse the assistant finetuning loop
-    results = train_model(
-        model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, coding_format_input(test_data[0])
-    )
-
+    results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, formatted_input)
     end_time = time.time()
-    _logger.info(f"Training completed in {(end_time - start_time) / 60:.2f} minutes.")
+    execution_time_minutes = (end_time - start_time) / 60
+    g_logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
 
     save_model(model, model_save_path, optimizer)
-    _logger.info(f"Model saved to {model_save_path}")
 
     if loss_plot_save_path:
-        _logger.info("Plotting metrics...")
         epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
         plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
-                     savefig_path=loss_plot_save_path)
+                     savefig_path=loss_plot_save_path, legend_loc="upper right")
 
-    _logger.info("Generating model responses...")
-    test_coder(model, test_data, device, max_new_tokens, coding_format_input, test_output_path)
-
-    if evaluate:
-        _logger.info("Evaluating with Ollama...")
-        evaluator = OllamaEvaluator(seed=seed)
-        avg_score, _ = evaluator.evaluate(test_output_path)
-        _logger.info(f"Average Score: {avg_score:.2f}")
+    test_assistant(model, test_data, device, max_new_tokens, test_output_path, coding_format_input, evaluate, seed)
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -232,7 +196,7 @@ def main() -> None:
 
     run_coding_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
-        dataset_path=args.dataset_path,
+        tuning_set_path=args.dataset_path,
         train_frac=args.train_frac,
         test_frac=args.test_frac,
         batch_size=args.batch_size,

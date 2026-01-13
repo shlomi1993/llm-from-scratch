@@ -1,12 +1,9 @@
 import os
 import matplotlib.pyplot as plt
 
-from logging import getLogger as get_logger
-
 from matplotlib.ticker import MaxNLocator
 
-
-_logger = get_logger(__name__)
+from src.utils.logger import g_logger
 
 
 def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values: list[float], val_values: list[float],
@@ -22,10 +19,10 @@ def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values:
     if simplify_x_axis:
         ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # only show integer labels on x-axis
 
-    # Create a second x-axis for examples seen
+    # Create a second x-axis for tokens/examples seen
     ax2 = ax1.twiny()  # Create a second x-axis that shares the same y-axis
     ax2.plot(examples_seen, train_values, alpha=0)  # Invisible plot for aligning ticks
-    ax2.set_xlabel("Examples seen")
+    ax2.set_xlabel("Tokens/Examples Seen")
 
     fig.tight_layout()  # Adjust layout to make room
     if savefig_path:
@@ -33,6 +30,6 @@ def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values:
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
         plt.savefig(savefig_path)
-        _logger.info(f"Saved {label} plot to {savefig_path}")
+        g_logger.info(f"Saved {label} plot to {savefig_path}")
     else:
         plt.show()

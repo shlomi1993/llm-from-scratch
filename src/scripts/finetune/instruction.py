@@ -4,20 +4,20 @@ import time
 import torch
 
 from functools import partial
-from logging import getLogger as get_logger
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from typing import Callable
 
 from src.data_sets import InstructionDataset
 from src.model.gpt import GptModel
-from src.scripts.common import calc_loss_loader, calc_loss_batch, save_model, load_model
 from src.scripts.train import train_model
+from src.utils.checkpoint import save_model, load_model
 from src.utils.device import Device, get_device
+from src.utils.logger import g_logger
+from src.utils.losses import calc_loss_loader, calc_loss_batch
 from src.utils.ollama import OllamaEvaluator, format_input
 from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, text_to_token_ids, token_ids_to_text
 from src.utils.visualization import plot_metrics
-
-_logger = get_logger(__name__)
 
 
 def instruction_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_IDX,
@@ -75,7 +75,7 @@ def create_instruction_dataloaders(tuning_set_path: str, train_frac: float, test
     train_data = tuning_data[:train_portion]
     test_data = tuning_data[train_portion:train_portion + test_portion]
     val_data = tuning_data[train_portion + test_portion:]
-    _logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data)} testing samples")
+    g_logger.info(f"Dataset split: {len(train_data)} training, {len(val_data)} validation, {len(test_data)} testing samples")
 
     # Partially initialize the collate function with device and max length
     customized_collate_fn = partial(instruction_collate_fn, device=device, max_allowed_length=max_allowed_length)
@@ -101,10 +101,13 @@ def create_instruction_dataloaders(tuning_set_path: str, train_frac: float, test
     return train_loader, val_loader, test_data  # NOTE: Test data is returned as a list of dicts
 
 
-def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int) -> None:
+def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int,
+                   test_output_path: str, format_func: Callable, evaluate: bool = False, seed: int = 123) -> None:
+    # Generate responses
+    g_logger.info("Generating model responses...")
     model.eval()
-    for i, entry in tqdm(enumerate(test_data), total=len(test_data), desc="Generating responses", leave=False):
-        prompt = format_input(entry)
+    for entry in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=False):
+        prompt = format_func(entry)
         token_ids = model.generate(
             idx=text_to_token_ids(prompt).to(device),
             max_new_tokens=max_new_tokens,
@@ -113,72 +116,75 @@ def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_n
         )
         generated_text = token_ids_to_text(token_ids)
         response = generated_text[len(prompt):].replace("### Response:", "").strip()
-        test_data[i]["model_response"] = response  # Add response to the entry in-place
+        entry["model_response"] = response  # Add response to the entry in-place
     model.train()
+
+    # Save responses
+    with open(test_output_path, "w") as file:
+        json.dump(test_data, file, indent=4)
+    g_logger.info(f"Responses saved as {test_output_path}")
+
+    # Evaluation
+    if evaluate:
+        g_logger.info("Evaluating responses with Ollama...")
+        evaluator = OllamaEvaluator(seed=seed, formatter=format_func)
+        avg_score, scores = evaluator.evaluate(test_output_path)
+        g_logger.info(f"Average score {avg_score:.2f}% across {len(scores)} samples")
+
+
 
 def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
                                     test_frac: float = 0.1, batch_size: int = 8, seed: int = 123,
                                     device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 2,
                                     weight_decay: float = 0.1, eval_freq: int = 5, eval_iter: int = 5,
                                     loss_plot_save_path: str = None, model_save_path: str = "assistant.pth",
-                                    max_new_tokens: int = 256, pad_token_id: int = PAD_IDX,
-                                    test_output_path: str = "instruction-test-responses.json", evaluate: bool = False) -> None:
+                                    max_new_tokens: int = 256, test_output_path: str = "instruction-test-responses.json",
+                                    evaluate: bool = False) -> None:
 
-    _logger.info("Starting instruction finetuning flow")
+    g_logger.info("Running instruction finetuning flow...")
 
     torch.manual_seed(seed)
     device = get_device(device_type)
-    _logger.info(f"Using device '{device.type}' and random seed {seed}")
+    g_logger.info(f"Using device '{device.type}' and random seed {seed}")
 
-    _logger.info("Loading pre-trained model on device")
     model = load_model(pretrained_model_path, device)[0]
     model.eval()
-    model.to(device)
+    model.to(device)  # Maybe redundant, but safe for comparison with notebook runs
 
-    _logger.info("Preparing instruction fine-tuning dataset")
     train_loader, val_loader, test_data = create_instruction_dataloaders(
-        tuning_set_path, train_frac, test_frac, device, batch_size, max_allowed_length=model.config.context_length,
+        tuning_set_path, train_frac, test_frac, device, batch_size, model.config.context_length,
         n_workers=0, seed=seed
     )
+    g_logger.info(f"Created DataLoaders with batch size {batch_size}")
 
-    _logger.info("Calculating initial losses before fine-tuning")
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, calc_loss_batch, model, device, n_batches=5)
         val_loss = calc_loss_loader(val_loader, calc_loss_batch, model, device, n_batches=5)
-    _logger.info(f"   Training loss: {train_loss}")
-    _logger.info(f"   Validation loss: {val_loss}")
+    g_logger.info(f"Loss before fine-tuning: train_loss={train_loss:.3f}, val_loss={val_loss:.3f}")
 
-    _logger.info(f"Setting up optimizer with learning rate of {lr} and weight decay of {weight_decay}")
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    g_logger.info(f"Using AdamW optimizer with learning rate {lr} and weight decay {weight_decay}")
 
-    torch.manual_seed(seed)
-    _logger.info("Starting instruction fine-tuning...")
-    start_time = time.time()
+    # Prompt format used in dataset and reset seed
     formatted_input = format_input(val_loader.dataset.data[0])
+    torch.manual_seed(seed)
+
+    g_logger.info("Starting instruction fine-tuning...")
+    start_time = time.time()
     results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, formatted_input)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
-    _logger.info(f"Training completed in {execution_time_minutes:.2f} minutes.")
+    g_logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
 
     save_model(model, model_save_path, optimizer)
-    _logger.info(f"Model saved as {model_save_path}")
 
-    _logger.info("Plotting training and validation loss curves...")
-    epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
-    plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
-                 savefig_path=loss_plot_save_path, legend_loc="upper right")
+    if loss_plot_save_path:
+        epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
+        plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
+                     savefig_path=loss_plot_save_path, legend_loc="upper right")
 
-    _logger.info("Generating model responses...")
-    test_assistant(model, test_data, device, max_new_tokens)  # Output is added to test_data in-place
-    with open(test_output_path, "w") as file:
-        json.dump(test_data, file, indent=4)
-    _logger.info(f"Responses saved as {test_output_path}")
 
-    if evaluate:
-        _logger.info("Evaluating responses with Ollama...")
-        evaluator = OllamaEvaluator(seed=seed)
-        avg_score, scores = evaluator.evaluate(test_output_path)
-        _logger.info(f"Evaluation complete: Average score {avg_score:.2f}% across {len(scores)} samples")
+    test_assistant(model, test_data, device, max_new_tokens, test_output_path, format_input, evaluate, seed)
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

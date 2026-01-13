@@ -6,7 +6,7 @@ instruction following.
 """
 
 from .classification import (
-    FineTuningResults,
+    ClassificationFineTuningResults,
     create_balanced_dataset,
     random_split,
     create_classification_dataloaders,
@@ -31,7 +31,7 @@ from .code_instruction import (
 
 
 __all__ = [
-    "FineTuningResults",
+    "ClassificationFineTuningResults",
     "create_balanced_dataset",
     "random_split",
     "create_classification_dataloaders",

@@ -6,13 +6,13 @@ import requests
 import tensorflow as tf
 import torch
 
-from logging import getLogger as get_logger
 from tqdm import tqdm
 
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
 from src.model.transformer import TransformerBlock
-from src.scripts.common import save_model
+from src.utils.checkpoint import save_model
+from src.utils.logger import g_logger
 
 
 DOWNLOAD_URL = "https://openaipublic.blob.core.windows.net/gpt-2/models"
@@ -27,9 +27,6 @@ FILES_TO_DOWNLOAD = [
     "model.ckpt.meta",
     "vocab.bpe"
 ]
-
-
-_logger = get_logger(__name__)
 
 
 ########################################################################################################################
@@ -50,7 +47,7 @@ def _download_file(url: str, destination: str) -> None:
     if os.path.exists(destination):
         file_size_local = os.path.getsize(destination)
         if file_size and file_size == file_size_local:
-            _logger.info(f"File already exists and is up-to-date: {destination}")
+            g_logger.info(f"File already exists and is up-to-date: {destination}")
             return
 
     # Define the block size for reading the file
@@ -65,7 +62,7 @@ def _download_file(url: str, destination: str) -> None:
                     file.write(chunk)
                     progress_bar.update(len(chunk))
 
-    _logger.info(f"Successfully downloaded {destination}")
+    g_logger.info(f"Successfully downloaded {destination}")
 
 
 def download_gpt2(model_size: str, models_dir: str) -> str:
@@ -84,15 +81,15 @@ def download_gpt2(model_size: str, models_dir: str) -> str:
         try:
             _download_file(file_url, file_path)
         except requests.exceptions.RequestException:
-            _logger.warning(f"Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
+            g_logger.warning(f"Primary URL ({file_url}) failed. Attempting backup URL: {backup_url}")
             try:
                 _download_file(backup_url, file_path)
             except requests.exceptions.RequestException as e:
-                _logger.error(f"Failed to download {filename} from both primary and backup URLs.")
+                g_logger.error(f"Failed to download {filename} from both primary and backup URLs.")
                 raise e
 
     # Return model size directory
-    _logger.info(f"GPT-2 model files downloaded to: {model_dir}")
+    g_logger.info(f"GPT-2 model files downloaded to: {model_dir}")
     return model_dir
 
 
@@ -151,7 +148,7 @@ def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
 
 def convert_tf_weights_into_pytorch_model(model_size: str, models_dir: str, file_name: str = "model.pth") -> GptModel:
     target_path = os.path.join(models_dir, model_size, file_name)
-    _logger.info(f"Converting TensorFlow model to PyTorch format in {target_path}")
+    g_logger.info(f"Converting TensorFlow model to PyTorch format in {target_path}")
 
     params, settings = _load_gpt2_params(model_size, models_dir)
 

@@ -1,8 +1,6 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
-from logging import getLogger as get_logger
 
-
-_logger = get_logger(__name__)
+from src.utils.logger import g_logger
 
 
 def create_gpt_config_from_args(args: Namespace):
@@ -25,9 +23,9 @@ def run_download(args: Namespace) -> None:
 
 
 def run_pretrain(args: Namespace) -> None:
-    from src.scripts.train import run_model_training_flow
+    from src.scripts.train import run_training_flow
     config = create_gpt_config_from_args(args)
-    run_model_training_flow(
+    run_training_flow(
         config=config,
         training_set_path=args.training_set_path,
         lr=args.lr,
@@ -49,9 +47,9 @@ def run_pretrain(args: Namespace) -> None:
 
 
 def run_generate(args: Namespace) -> None:
-    from src.scripts.generate import run_model_generation_flow, run_model_interactive_flow
+    from src.scripts.generate import run_generation_flow, run_interactive_generation_flow
     if args.prompt is not None:
-        run_model_generation_flow(
+        run_generation_flow(
             model_path=args.model_path,
             prompt=args.prompt,
             max_new_tokens=args.max_new_tokens,
@@ -63,7 +61,7 @@ def run_generate(args: Namespace) -> None:
             measure_memory=args.measure_memory
         )
     else:
-        run_model_interactive_flow(
+        run_interactive_generation_flow(
             model_path=args.model_path,
             max_new_tokens=args.max_new_tokens,
             temperature=args.temperature,
@@ -121,7 +119,7 @@ def run_finetune_instruction(args: Namespace) -> None:
 
 def run_finetune_instruction_advanced(args: Namespace) -> None:
     from src.scripts.finetune.instruction_adv import run_instruction_finetuning_advanced_flow
-    _logger.warning("Running advanced instruction fine-tuning ")
+    g_logger.warning("Running advanced instruction fine-tuning ")
     run_instruction_finetuning_advanced_flow(
         pretrained_model_path=args.pretrained_model_path,
         tuning_set_path=args.tuning_set_path,
@@ -152,7 +150,7 @@ def run_finetune_coding(args: Namespace) -> None:
     from src.scripts.finetune.code_instruction import run_coding_finetuning_flow
     run_coding_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
-        dataset_path=args.dataset_path,
+        tuning_set_path=args.dataset_path,
         train_frac=args.train_frac,
         test_frac=args.test_frac,
         batch_size=args.batch_size,
