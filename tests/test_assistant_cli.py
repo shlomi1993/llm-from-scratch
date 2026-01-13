@@ -3,27 +3,12 @@ import sys
 
 from pathlib import Path
 
-from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title, compare_losses
-
-
-def extract_training_metrics(output: str) -> dict:
-    metrics = {
-        'train_losses': [],
-        'val_losses': [],
-        'steps': []
-    }
-    loss_pattern = r'Step (\d+)\)?: Train loss ([\d.]+), Val loss ([\d.]+)'
-    loss_matches = re.findall(loss_pattern, output)
-    for step, train_loss, val_loss in loss_matches:
-        metrics['steps'].append(int(step))
-        metrics['train_losses'].append(float(train_loss))
-        metrics['val_losses'].append(float(val_loss))
-    return metrics
+from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title, extract_losses, compare_losses
 
 
 def validate_evaluation_score(output: str, min_score: float = 90.0) -> None:
     print("Validating evaluation score...", end=" ")
-    match = re.search(r'Average score:\s*([\d.]+)', output)
+    match = re.search(r'Average score:?\s*([\d.]+)', output, re.IGNORECASE)
     score = float(match.group(1)) if match else 0.0
     assert score > min_score, f"Assistant score is too low: {score:.2f}/100"
     print(f"{COLOR_GREEN}✓ Assistant score: {score:.2f}/100{COLOR_RESET}")
@@ -57,12 +42,12 @@ def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path)
         "--evaluate"
     ]
     cli_output = run_subprocess(cli_cmd)
-    cli_metrics = extract_training_metrics(cli_output)
+    cli_metrics = extract_losses(cli_output, ref=False)
 
     print_title("Running chapter script for reference")
     chapter_cmd = [sys.executable, "-u", str(chapter_path)]
     chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
-    chapter_metrics = extract_training_metrics(chapter_output)
+    chapter_metrics = extract_losses(chapter_output, ref=True)
 
     print_title("Validation")
     compare_losses(actual_losses=cli_metrics, expected_losses=chapter_metrics, tolerance=1e-2)

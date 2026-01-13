@@ -40,6 +40,7 @@ from .finetune.code_instruction import (
     create_coding_dataloaders,
     run_coding_finetuning_flow,
 )
+from .interactive_session import InteractiveSession
 
 
 __all__ = [
@@ -68,4 +69,5 @@ __all__ = [
     "coding_collate_fn",
     "create_coding_dataloaders",
     "run_coding_finetuning_flow",
+    "InteractiveSession",
 ]

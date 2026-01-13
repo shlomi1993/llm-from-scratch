@@ -4,11 +4,11 @@ import logging
 
 class ColoredFormatter(logging.Formatter):
     COLORS = {
-        logging.DEBUG: "\033[36m",    # Cyan
-        logging.INFO: "\033[32m",     # Green
-        logging.WARNING: "\033[33m",  # Yellow
-        logging.ERROR: "\033[31m",    # Red
-        logging.CRITICAL: "\033[35m", # Magenta
+        logging.DEBUG:    "\033[36m",    # Cyan
+        logging.INFO:     "\033[32m",    # Green
+        logging.WARNING:  "\033[33m",    # Yellow
+        logging.ERROR:    "\033[31m",    # Red
+        logging.CRITICAL: "\033[35m",    # Magenta
     }
     RESET = "\033[0m"
 
@@ -29,11 +29,15 @@ handler.setFormatter(ColoredFormatter("[%(asctime)s] :: %(colored_levelname)s ::
 root = logging.getLogger()
 root.handlers.clear()
 root.addHandler(handler)
-root.setLevel(logging.WARNING)
+root.setLevel(logging.INFO)  # Show INFO and above by default
 
-# Enable DEBUG only for project loggers
+# Enable DEBUG for project loggers
 logging.getLogger("src").setLevel(logging.DEBUG)
 logging.getLogger("__main__").setLevel(logging.DEBUG)
+
+# Suppress verbose third-party library logs
+logging.getLogger("datasets").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Global logger
 g_logger = logging.getLogger("llm-from-scratch")

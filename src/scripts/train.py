@@ -78,11 +78,8 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
 
     try:
         for epoch in range(1, n_epochs + 1):
-            batch_count = 1
             for input_batch, target_batch in train_loader:
                 input_batch: Tensor
-                print(f"Processing epoch {epoch}/{n_epochs}, batch {batch_count}/{epoch_batches}...", end="\r")
-                batch_count += 1
 
                 # Learning step
                 model.train()

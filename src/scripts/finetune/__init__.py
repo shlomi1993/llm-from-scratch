@@ -25,7 +25,6 @@ from .instruction import (
 from .code_instruction import (
     coding_collate_fn,
     create_coding_dataloaders,
-    test_coder,
     run_coding_finetuning_flow,
 )
 
@@ -46,6 +45,5 @@ __all__ = [
     "run_instruction_finetuning_flow",
     "coding_collate_fn",
     "create_coding_dataloaders",
-    "test_coder",
     "run_coding_finetuning_flow",
 ]

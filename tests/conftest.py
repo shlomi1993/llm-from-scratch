@@ -5,6 +5,8 @@ import torch
 
 from pathlib import Path
 
+from tests.common import print_title
+
 
 # Add the root directory to Python path for tools package
 root_path = os.path.join(os.path.dirname(__file__), '..')
@@ -16,6 +18,11 @@ if root_path not in sys.path:
 src_path = os.path.join(os.path.dirname(__file__), '..', 'src')
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
+
+
+@pytest.fixture(autouse=True)
+def print_test_title(request: pytest.FixtureRequest) -> None:
+    print_title(f"Running test: {request.node.name}", char="#")
 
 
 @pytest.fixture(autouse=True)
