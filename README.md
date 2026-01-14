@@ -4,21 +4,21 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 
 ## Features
 
-- 🏗️ **Complete GPT-2 Implementation**: Build and understand transformer models from scratch
-- 📥 **Model Management**: Download and convert pre-trained GPT-2 models (124M, 355M, 774M, 1558M)
-- 🎓 **Pre-training**: Train foundation models from scratch on custom text corpora
-- 🎯 **Fine-tuning**: Adapt models for specific tasks (classification, instruction-following)
-- 💬 **Interactive Applications**: Chat with fine-tuned assistants or classify text in real-time
-- 📊 **Visualization**: Training metrics, loss plots, and performance tracking
-- 🔧 **Flexible Configuration**: Customizable model architectures and training hyperparameters
+- 🏗️ **Complete GPT-2 Implementation**: Build and understand generative transformer models from scratch
+- 📥 **Download Models**: Download pre-trained GPT-2 models (124M, 355M, 774M, 1558M) in TensorFlow format and convert them to PyTorch format
+- 🧩 **Flexible Configuration**: Customize model architectures and training hyperparameters
+- 🏋️ **Pre-training**: Train foundation models from scratch on custom text corpora
+- 🎯 **Fine-tuning**: Adapt models for specific tasks (classification, instruction-following, and coding)
+- 💬 **Interactive Applications**: Chat with fine-tuned assistants, classify text in real-time, or interactively generate code with a coding assistant
+- 📈 **Visualization**: Visually track training loss and performance over time
 
 ## Installation
 
 ### Prerequisites
 
 - Python 3.10 or higher
-  - See `pyproject.toml` for complete dependency list.
-  - Packages and libraries can be easily installed using the `install.sh` script
+  - See [`pyproject.toml`](pyproject.toml) for the complete dependency list.
+  - Packages and libraries can be easily installed using the [`install.sh`](install.sh) script
 - 8GB+ RAM (16GB+ recommended for larger models)
 - CUDA GPU (optional, for faster training)
 
@@ -66,9 +66,10 @@ Commands:
     download    Download GPT2 model files
     pretrain    Train a GPT2 foundation model from scratch
     generate    Generate text using a pre-trained GPT2 model
-    finetune    Fine-tune a pre-trained GPT2 foundation model
-    spam-ham    Classify text as spam or ham using a classification fine-tuned model
-    chat-bot    Chat with an instruction fine-tuned assistant model
+    finetune    Fine-tune a pre-trained GPT2 model for downstream tasks
+    spam-ham    Classify text as spam or ham using a fine-tuned classification model
+    chat        Chat with an instruction fine-tuned assistant model
+    coder       Get coding assistance from a fine-tuned coder model
 ```
 
 For each command, use `--help` to see additional arguments, options and flags. There are many options and flags, but most of them have default values!
@@ -80,13 +81,16 @@ gpt2
 ├── download
 ├── pretrain
 ├── generate
-│   ├── non-interactive  (pass --prompt)
-│   └── interactive      (don't pass --prompt)
+│   ├── non-interactive   # pass --prompt
+│   └── interactive       # don't pass --prompt
 ├── finetune
-│   ├── classifier       (classification finetuning)
-│   └── instruction      (instruction finetuning)
+│   ├── classification    # classification finetuning
+│   ├── instruction       # instruction finetuning
+│   ├── instruction-adv   # advanced instruction finetuning (not tested!)
+│   └── code-instruction  # code instruction finetuning
 ├── spam-ham
-└── chat-bot
+├── chat
+└── coder
 ```
 
 ## Quick Start
@@ -103,18 +107,18 @@ To download custom pre-trained or fine-tuned models, check the following section
 ### Download a Fine-tuned Model
 
 - **Pretrained Model:** A GPT-2 based foundation model trained from scratch on a small, custom dataset. Useful for educational purposes and experimentation, but less capable than official models above due to limited data.
-  - [Download pretrained.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQA3Q6YBrp1iTLqcQxz4YHvnAWvHXAUW93F8M3sSTncgwP4?e=DHqSSa)
+  - [Download pretrained.zip](TBD)
 - **Classifier Model:** Fine-tuned on SMS spam-or-ham dataset using the official 124M GPT-2 model. Use this for spam detection task.
-  - [Download classifier.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQAXMhgJjpdCR60kqsl7Z_b4ARWFaDEpR_d70JbE9OZl4iQ?e=BCLBaB)
+  - [Download classifier.zip](TBD)
 - **Assistant Model:** Fine-tuned for instruction-following and chat, based on the official 355M GPT-2 model. Use this for interactive assistant or chatbot applications.
-  - [Download assistant.zip](https://1drv.ms/u/c/7c78c233cbcc4ad7/IQChWbVTl1AFRJHtwUf6W4asAdB56AKeSLI2IWxvOiOK4kE?e=GDXcuB)
+  - [Download assistant.zip](TBD)
+- **Coder Model:** Fine-tuned on Python code instruction dataset using the official 355M GPT-2 model. Use this for code generation and interactive coding assistance.
+  - [Download coder.zip](TBD)
 
 ### Pre-train a Foundation Model
 
 ```bash
-gpt2 pretrain \
-  --training-set-path dataset/the-verdict.txt
-  --saved-model-path models/pretrained/foundation.pth
+gpt2 pretrain --training-set-path dataset/the-verdict.txt --saved-model-path models/pretrained/foundation.pth
 ```
 
 ### Generate Text
@@ -133,7 +137,6 @@ gpt2 generate --model-path models/124M/model.pth --prompt "Once upon a time"
 gpt2 finetune classification \
   --pretrained-model-path models/124M/model.pth \
   --tuning-set-path dataset/sms_spam_collection/SMSSpamCollection.tsv \
-  --column-names Label Text \
   --n-epochs 5 \
   --model-save-path classifier.pth
 ```
@@ -160,7 +163,27 @@ gpt2 finetune instruction \
 ### Chat with an Assistant
 
 ```bash
-gpt2 chat-bot --model-path assistant.pth
+gpt2 chat --model-path assistant.pth
+```
+
+### Fine-tune for Code Generation
+
+```bash
+gpt2 finetune coding \
+  --pretrained-model-path models/355M/model.pth \
+  --dataset-path dataset/python_code_instructions/ \
+  --max-samples 100 \  # Limit dataset size for test speed
+  --batch_size 4 \
+  --n-epochs 1 \
+  --model-save-path coder.pth \
+  --test-output-path responses.json \
+  --evaluate
+```
+
+### Interactive Coding Session
+
+```bash
+gpt2 coder --model-path coder.pth
 ```
 
 ## Project Structure
@@ -170,41 +193,65 @@ llm-from-scratch/
 
 ├── appendices/                             # Supplementary documentation adapted from the source repository
 ├── chapters/                               # Chapter notebooks and reference implementations from the source repository
-├── dataset/                              # Training, fine-tuning, and evaluation datasets
-├── models/                                 # Saved and checkpointed model artifacts
+├── dataset/                                # Training, fine-tuning, and evaluation datasets
+│   ├── instruction_data/                   # Instruction-following datasets
+│   ├── python_code_instructions/           # Python code generation datasets
+│   ├── sms_spam_collection/                # SMS spam classification dataset
+│   ├── small-text-sample.txt               # Small text sample for testing
+│   └── the-verdict.txt                     # Verdict text for pretraining
+├── models/                                 # Saved and checkpointed model artifacts (downloaded/trained)
 ├── presentation/                           # Seminar presentation slides and figures
 ├── src/
 │   ├── cli.py                              # Primary command-line interface entry point
-│   ├── dataset.py                         # Dataset definitions and abstractions
+│   ├── dataset.py                          # Dataset definitions and abstractions
 │   ├── model/
-│   │   ├── activation.py                   # Activation functions
+│   │   ├── activation.py                   # Activation functions (GELU, etc.)
 │   │   ├── attention/                      # Attention mechanisms and modules
+│   │   │   ├── base.py                     # Base attention interface
+│   │   │   ├── multihead.py                # Multi-head attention implementation
+│   │   │   └── advanced/                   # Examples for advanced attention variants (GQA, MLA, SWA, etc.)
 │   │   ├── config.py                       # Model and training configuration
 │   │   ├── feed_forward.py                 # Feed-forward network components
 │   │   ├── gpt.py                          # GPT model implementation
-│   │   ├── normalization.py                # Normalization layers
-│   │   └── transformer.py                  # Transformer architecture building blocks
+│   │   ├── normalization.py                # Layer normalization
+│   │   └── transformer.py                  # Transformer block building blocks
 │   ├── scripts/
 │   │   ├── chat.py                         # Interactive chat interface
 │   │   ├── classify.py                     # Spam-or-ham classification flow
-│   │   ├── common.py                       # Shared script utilities
+│   │   ├── coder.py                        # Interactive coding session
 │   │   ├── download.py                     # Model download helpers
 │   │   ├── finetune/
-│   │   │   ├── classification.py           # Model classification finetuning flow
-│   │   │   ├── instruction.py              # Model Instruction fine-tuning flow
-│   │   │   └── instruction_advanced.py     # Model Advanced instruction fine-tuning flow (UNTESTED)
+│   │   │   ├── classification.py           # Classification fine-tuning flow
+│   │   │   ├── code_instruction.py         # Code instruction fine-tuning flow
+│   │   │   ├── instruction.py              # Instruction fine-tuning flow
+│   │   │   └── instruction_adv.py          # Advanced instruction fine-tuning (experimental)
 │   │   ├── generate.py                     # Simple text generation flow
-│   │   └── pretrain.py                     # Foundation model pretraining flow
+│   │   ├── interactive_session.py          # Base interactive session class
+│   │   └── train.py                        # Foundation model pretraining flow
 │   └── utils/
-│       ├── device.py                       # Device management
+│       ├── checkpoint.py                   # Model checkpoint save/load utilities
+│       ├── device.py                       # Device management (CPU/CUDA/MPS)
 │       ├── logger.py                       # Logging configuration and helpers
-│       ├── ollama.py                       # Ollama API integration for assistant evaluation
+│       ├── losses.py                       # Loss calculation utilities
+│       ├── ollama.py                       # Ollama API integration for evaluation
 │       ├── tokenization/                   # Tokenizer implementation and utilities
+│       │   ├── bpe_openai_gpt2.py          # BPE tokenizer implementation example
+│       │   ├── tokenizer.py                # Tokenizer wrapper
+│       │   └── assets/                     # Tokenizer vocabulary assets
 │       └── visualization.py                # Plotting and visualization helpers
 ├── tests/                                  # End-to-end system tests for core CLI workflows
+│   ├── chapters_code.py                    # Shared test utilities from chapters
+│   ├── common.py                           # Common test fixtures and helpers
+│   ├── conftest.py                         # Pytest configuration
+│   ├── test_assistant_cli.py               # Tests for chat assistant
+│   ├── test_classifier_cli.py              # Tests for spam classifier
+│   ├── test_coder_cli.py                   # Tests for code generation
+│   ├── test_generate_cli.py                # Tests for text generation
+│   └── test_pretrain_cli.py                # Tests for pretraining
 ├── activate.sh                             # Virtual environment activation script
 ├── install.sh                              # Automated project setup and installation
-└── pyproject.toml                          # Project metadata and dependency configuration
+├── pyproject.toml                          # Project metadata and dependency configuration
+└── README.md                               # This file
 
 ```
 
@@ -215,19 +262,19 @@ llm-from-scratch/
 - **Use smaller batch sizes**: Start with `--batch-size 1` or `2` for large models
 - **Choose appropriate model size**: 124M for testing, 355M for development, 774M+ for production
 - **Enable gradient checkpointing**: Reduces memory at the cost of speed (if implemented)
-- **Use CPU for large models**: `--device cpu` if GPU memory is insufficient
+- **Use CPU for large models**: `--device cpu` if GPU or MPS memory is insufficient
 
 ### Hyperparameter Tuning
 
 - **Learning rate**: Start with `5e-5` for fine-tuning, `5e-4` for pre-training
-- **Epochs**: 2-5 epochs for fine-tuning is usually sufficient
-- **Batch size**: Balance between memory and training stability (4-8 typical)
+- **Epochs**: 1-3 epochs for fine-tuning is usually sufficient
+- **Batch size**: Balance between memory and training stability (2, 4, 8 typical)
 - **Temperature**: Lower (0.7) for focused output, higher (1.2) for creative output
 
 ### Best Practices
 
 1. **Start small**: Test with 124M model before scaling up
-2. **Monitor losses**: Watch for NaN values (indicates learning rate too high)
+2. **Monitor losses**: Watch for NaN values, indicates learning rate too high
 3. **Validate frequently**: Use `--eval-freq` to track progress
 4. **Save checkpoints**: Always specify `--model-save-path`
 5. **Use evaluation**: Enable `--evaluate` for instruction tuning to measure quality
@@ -259,19 +306,40 @@ ham	Hi, are we still meeting for lunch?
 ]
 ```
 
+### Coding Instruction Data (JSON)
+
+**Note:** The coding instruction dataset is sourced from [Hugging Face: iamtarun/python_code_instructions_18k_alpaca](https://huggingface.co/datasets/iamtarun/python_code_instructions_18k_alpaca). It is provided in JSON format mirrored as a `.arrow` file.
+
+```json
+[
+  {
+    "instruction": "Write a Python function that returns the square of a number.",
+    "input": "",
+    "output": "def square(x):\n    return x * x"
+  },
+  {
+    "instruction": "Write a Python function that checks if a string is a palindrome.",
+    "input": "",
+    "output": "def is_palindrome(s):\n    return s == s[::-1]"
+  },
+]
+```
+
 ## Testing
 
 Run the comprehensive test suite:
 
 ```bash
-# Run all tests
-pytest tests/
+# Run all tests with terminal outputs
+pytest -s tests/ -v
 
 # Run specific test file
 pytest tests/test_pretrain_cli.py -v
+pytest tests/test_generate_cli.py -v
+pytest tests/test_classifier_cli.py -v
+pytest tests/test_assistant_cli.py -v
+pytest tests/test_coder_cli.py -v
 
-# Run with output
-pytest tests/ -s
 ```
 
 ## Troubleshooting
