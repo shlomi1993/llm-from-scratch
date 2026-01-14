@@ -3,7 +3,7 @@ import sys
 
 from pathlib import Path
 
-from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title, extract_losses, compare_losses
+from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, extract_losses, compare_losses
 
 
 def validate_evaluation_score(output: str, min_score: float = 90.0) -> None:
@@ -15,17 +15,10 @@ def validate_evaluation_score(output: str, min_score: float = 90.0) -> None:
 
 
 def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path):
-    cli_model_path = tmp_path / "test_instruction_model.pth"
-    cli_test_output = tmp_path / "instruction-test-responses.json"
-    chapter_path = chapters_path / "ch07/01_main-chapter-code/gpt_instruction_finetuning.py"
-    pretrained_model_path = "models/355M/model.pth"
-    instruction_data_path = "dataset/instruction_data/instruction-data.json"
-
-    print_title("Running CLI command for test")
     cli_cmd = [
         "gpt2", "finetune", "instruction",
-        "--pretrained-model-path", pretrained_model_path,
-        "--tuning-set-path", instruction_data_path,
+        "--pretrained-model-path", "models/355M/model.pth",
+        "--tuning-set-path", "dataset/instruction_data/instruction-data.json",
         "--train-frac", "0.85",
         "--test-frac", "0.1",
         "--batch-size", "8",
@@ -37,18 +30,18 @@ def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path)
         "--eval-freq", "5",
         "--eval-iter", "5",
         "--loss-plot-save-path", str(tmp_path / "instruction_loss_plot.png"),
-        "--model-save-path", cli_model_path,
-        "--test-output-path", cli_test_output,
+        "--model-save-path", str(tmp_path / "test_instruction_model.pth"),
+        "--test-output-path", str(tmp_path / "instruction-test-responses.json"),
         "--evaluate"
     ]
     cli_output = run_subprocess(cli_cmd)
     cli_losses = extract_losses(cli_output, ref=False)
 
-    print_title("Running chapter script for reference")
-    chapter_cmd = [sys.executable, "-u", str(chapter_path)]
-    chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
+    # chapter_cmd = [sys.executable, "-u", str(chapters_path / "ch07/01_main-chapter-code/gpt_instruction_finetuning.py")]
+    # chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
+    with open("tests/ref/instruction.txt", "r") as f:  # Load pre-saved reference output instead of running the script
+        chapter_output = f.read()
     chapter_losses = extract_losses(chapter_output, ref=True)
 
-    print_title("Validation")
     compare_losses(actual_losses=cli_losses, expected_losses=chapter_losses, tolerance=1e-2)
     validate_evaluation_score(cli_output, min_score=40.0)

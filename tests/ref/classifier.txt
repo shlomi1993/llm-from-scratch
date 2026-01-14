@@ -1,0 +1,28 @@
+File downloaded and saved as sms_spam_collection/SMSSpamCollection.tsv
+File already exists and is up-to-date: gpt2/124M/checkpoint
+File already exists and is up-to-date: gpt2/124M/encoder.json
+File already exists and is up-to-date: gpt2/124M/hparams.json
+File already exists and is up-to-date: gpt2/124M/model.ckpt.data-00000-of-00001
+Primary URL (https://openaipublic.blob.core.windows.net/gpt-2/models/124M/model.ckpt.index) failed. Attempting backup URL: https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2/124M/model.ckpt.index
+File already exists and is up-to-date: gpt2/124M/model.ckpt.index
+File already exists and is up-to-date: gpt2/124M/model.ckpt.meta
+File already exists and is up-to-date: gpt2/124M/vocab.bpe
+Ep 1 (Step 000000): Train loss 2.153, Val loss 2.392
+Ep 1 (Step 000050): Train loss 0.617, Val loss 0.637
+Ep 1 (Step 000100): Train loss 0.523, Val loss 0.557
+Training accuracy: 70.00% | Validation accuracy: 72.50%
+Ep 2 (Step 000150): Train loss 0.561, Val loss 0.489
+Ep 2 (Step 000200): Train loss 0.419, Val loss 0.397
+Ep 2 (Step 000250): Train loss 0.409, Val loss 0.353
+Training accuracy: 82.50% | Validation accuracy: 85.00%
+Ep 3 (Step 000300): Train loss 0.333, Val loss 0.320
+Ep 3 (Step 000350): Train loss 0.340, Val loss 0.306
+Training accuracy: 90.00% | Validation accuracy: 90.00%
+Ep 4 (Step 000400): Train loss 0.136, Val loss 0.200
+Ep 4 (Step 000450): Train loss 0.153, Val loss 0.132
+Ep 4 (Step 000500): Train loss 0.222, Val loss 0.137
+Training accuracy: 100.00% | Validation accuracy: 97.50%
+Ep 5 (Step 000550): Train loss 0.207, Val loss 0.143
+Ep 5 (Step 000600): Train loss 0.083, Val loss 0.074
+Training accuracy: 100.00% | Validation accuracy: 97.50%
+Training completed in 3.54 minutes.

@@ -2,7 +2,7 @@ import re
 
 from pathlib import Path
 
-from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, print_title, extract_losses
+from tests.common import COLOR_GREEN, COLOR_RESET, run_subprocess, extract_losses
 
 
 def validate_loss_sanity(metrics: dict) -> None:
@@ -47,16 +47,10 @@ def validate_evaluation_score(output: str, min_score: float = 40.0) -> None:
 
 
 def test_finetune_coding_cli(tmp_path: Path):
-    cli_model_path = tmp_path / "test_coder_model.pth"
-    cli_test_output = tmp_path / "coder_results.json"
-    pretrained_model_path = "models/355M/model.pth"
-    dataset_path = "dataset/python_code_instructions"
-
-    print_title("Running GPT2 code instruction finetuning CLI command")
     cli_cmd = [
         "gpt2", "finetune", "coding",
-        "--pretrained-model-path", pretrained_model_path,
-        "--dataset-path", dataset_path,
+        "--pretrained-model-path", "models/355M/model.pth",
+        "--dataset-path", "dataset/python_code_instructions",
         "--batch-size", "2",
         "--seed", "123",
         "--device", "cpu",
@@ -66,13 +60,11 @@ def test_finetune_coding_cli(tmp_path: Path):
         "--train-frac", "0.8",
         "--eval-freq", "2",
         "--eval-iter", "1",
-        "--model-save-path", str(cli_model_path),
-        "--test-output-path", str(cli_test_output),
+        "--model-save-path", str(tmp_path / "test_coder_model.pth"),
+        "--test-output-path", str(tmp_path / "coder_results.json"),
         "--evaluate"
     ]
     output = run_subprocess(cli_cmd)
     metrics = extract_losses(output, ref=False)
-
-    print_title("Validation")
     validate_loss_sanity(metrics)
     validate_evaluation_score(output, min_score=40.0)

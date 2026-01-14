@@ -42,18 +42,20 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
 
 def format_training_progress(epoch: int, n_epochs: int, step: int, n_steps: int, train_loss: float = None,
                              val_loss: float = None, train_acc: float = None, val_acc: float = None) -> str:
+    epoch_pad = len(str(n_epochs)) - 1
+    step_pad = len(str(n_steps)) - 1
     msg_list = [
-        f"Epoch {epoch}/{n_epochs}",
-        f"Step {step}/{n_steps}",
+        f"Epoch {epoch:>{epoch_pad}}/{n_epochs}",
+        f"Step  {step:>{step_pad}}/{n_steps}",
     ]
     if train_loss is not None:
-        msg_list.append(f"Train Loss: {train_loss:.3f}")
+        msg_list.append(f"Train-loss: {train_loss:.3f}")
     if val_loss is not None:
-        msg_list.append(f"Val Loss: {val_loss:.3f}")
+        msg_list.append(f"Val-loss: {val_loss:.3f}")
     if train_acc is not None:
-        msg_list.append(f"Train Acc: {train_acc:.2f}%")
+        msg_list.append(f"Train-acc: {train_acc:.2f}%")
     if val_acc is not None:
-        msg_list.append(f"Val Acc: {val_acc:.2f}%")
+        msg_list.append(f"Val-acc: {val_acc:.2f}%")
     return " | ".join(msg_list)
 
 

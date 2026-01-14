@@ -4,8 +4,7 @@ import sys
 import torch
 
 from pathlib import Path
-
-from tests.common import print_title
+from shutil import get_terminal_size
 
 
 # Add the root directory to Python path for tools package
@@ -22,7 +21,8 @@ if src_path not in sys.path:
 
 @pytest.fixture(autouse=True)
 def print_test_title(request: pytest.FixtureRequest) -> None:
-    print_title(f"Running test: {request.node.name}", char="#")
+    sep = "=" * get_terminal_size().columns
+    print(f"\n\n\033[94m{sep}\nRunning test: {request.node.name}\n{sep}\n\033[0m")
 
 
 @pytest.fixture(autouse=True)
