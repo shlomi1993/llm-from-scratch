@@ -44,13 +44,25 @@ def print_title(title: str, char: str = "-") -> None:
 
 
 def extract_losses(output: str, ref: bool = False) -> dict:
-    metrics = {'train_losses': [], 'val_losses': [], 'steps': []}
+    metrics = {'train_losses': [], 'val_losses': []}
     loss_pattern = CHAPTER_LOSS_PATTERN if ref else CLI_LOSS_PATTERN
     loss_matches = re.findall(loss_pattern, output)
-    for step, train_loss, val_loss in loss_matches:
-        metrics['steps'].append(int(step))
+    if not loss_matches:
+        raise ValueError("No loss metrics found in output.")
+    for train_loss, val_loss in loss_matches:
         metrics['train_losses'].append(float(train_loss))
         metrics['val_losses'].append(float(val_loss))
+    return metrics
+
+def extract_accuracies(output: str, ref: bool = False) -> dict:
+    metrics = { 'train_accs': [], 'val_accs': [], 'steps': []}
+    acc_pattern = CHAPTER_ACC_PATTERN if ref else CLI_ACC_PATTERN
+    acc_matches = re.findall(pattern, output)
+    if not acc_matches:
+        raise ValueError("No accuracy metrics found in output.")
+    for train_acc, val_acc in acc_matches:
+        metrics['train_accs'].append(float(train_acc))
+        metrics['val_accs'].append(float(val_acc))
     return metrics
 
 

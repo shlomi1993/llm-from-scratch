@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data_sets import SpamDataset
+from src.dataset import SpamDataset
 from src.model.config import GptConfig
 from src.model.gpt import GptModel
 from src.scripts.train import format_training_progress

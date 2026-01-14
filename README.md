@@ -113,7 +113,7 @@ To download custom pre-trained or fine-tuned models, check the following section
 
 ```bash
 gpt2 pretrain \
-  --training-set-path data_sets/the-verdict.txt
+  --training-set-path dataset/the-verdict.txt
   --saved-model-path models/pretrained/foundation.pth
 ```
 
@@ -132,7 +132,7 @@ gpt2 generate --model-path models/124M/model.pth --prompt "Once upon a time"
 ```bash
 gpt2 finetune classification \
   --pretrained-model-path models/124M/model.pth \
-  --tuning-set-path data_sets/sms_spam_collection/SMSSpamCollection.tsv \
+  --tuning-set-path dataset/sms_spam_collection/SMSSpamCollection.tsv \
   --column-names Label Text \
   --n-epochs 5 \
   --model-save-path classifier.pth
@@ -151,7 +151,7 @@ gpt2 spam-ham \
 ```bash
 gpt2 finetune instruction \
   --pretrained-model-path models/355M/model.pth \
-  --tuning-set-path data_sets/instruction_data/instruction-data.json \
+  --tuning-set-path dataset/instruction_data/instruction-data.json \
   --n-epochs 2 \
   --model-save-path assistant.pth \
   --evaluate
@@ -170,12 +170,12 @@ llm-from-scratch/
 
 ├── appendices/                             # Supplementary documentation adapted from the source repository
 ├── chapters/                               # Chapter notebooks and reference implementations from the source repository
-├── data_sets/                              # Training, fine-tuning, and evaluation datasets
+├── dataset/                              # Training, fine-tuning, and evaluation datasets
 ├── models/                                 # Saved and checkpointed model artifacts
 ├── presentation/                           # Seminar presentation slides and figures
 ├── src/
 │   ├── cli.py                              # Primary command-line interface entry point
-│   ├── data_sets.py                         # Dataset definitions and abstractions
+│   ├── dataset.py                         # Dataset definitions and abstractions
 │   ├── model/
 │   │   ├── activation.py                   # Activation functions
 │   │   ├── attention/                      # Attention mechanisms and modules

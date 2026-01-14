@@ -10,7 +10,7 @@ from src.scripts.finetune.classification import load_classifier, classify_review
 from tests.chapters_code import GPTModel
 from tests.common import (
     CHAPTER_LOSS_PATTERN, CLI_LOSS_PATTERN, CHAPTER_ACC_PATTERN, CLI_ACC_PATTERN, run_subprocess, print_title,
-    compare_losses, compare_accuracies
+    extract_losses, extract_accuracies, compare_losses, compare_accuracies
 )
 
 
@@ -20,37 +20,6 @@ PREDICTION_TEST_SAMPLES = [
     "URGENT! Your account has been compromised. Click here to verify your identity now.",
     "Thanks for the meeting notes. I'll review them and get back to you tomorrow."
 ]
-
-
-def extract_losses_and_accuracies(output: str) -> dict:
-    metrics = {
-        'train_losses': [],
-        'val_losses': [],
-        'train_accs': [],
-        'val_accs': [],
-        'steps': []
-    }
-
-    # Try both patterns
-    for pattern in [CHAPTER_LOSS_PATTERN, CLI_LOSS_PATTERN]:
-        matches = re.findall(pattern, output)
-        if matches:
-            for step, train_loss, val_loss in matches:
-                metrics['steps'].append(int(step))
-                metrics['train_losses'].append(float(train_loss))
-                metrics['val_losses'].append(float(val_loss))
-            break  # Stop after finding matches with one pattern
-
-    # Try both patterns
-    for pattern in [CHAPTER_ACC_PATTERN, CLI_ACC_PATTERN]:
-        matches = re.findall(pattern, output)
-        if matches:
-            for train_acc, val_acc in matches:
-                metrics['train_accs'].append(float(train_acc))
-                metrics['val_accs'].append(float(val_acc))
-            break  # Stop after finding matches with one pattern
-
-    return metrics
 
 
 def classify_review_chapter(text: str, model: GPTModel, tokenizer: tiktoken.Encoding, device: torch.device,
@@ -159,7 +128,7 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
     cli_cmd = [
         "gpt2", "finetune", "classification",
         "--pretrained-model-path", pretrained_model_path,
-        "--tuning-set-path", "data_sets/sms_spam_collection/SMSSpamCollection.tsv",
+        "--tuning-set-path", "dataset/sms_spam_collection/SMSSpamCollection.tsv",
         "--column-names", "Label", "Text",
         "--train-frac", "0.7",
         "--validation-frac", "0.1",
@@ -175,7 +144,8 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
         "--model-save-path", str(cli_model_path)
     ]
     cli_output = run_subprocess(cli_cmd)
-    cli_metrics = extract_losses_and_accuracies(cli_output)
+    cli_losses = extract_losses(cli_output, ref=False)
+    cli_accuracies = extract_accuracies(cli_output, ref=False)
 
     # Clean up split files
     for f in tmp_path / "train.csv", tmp_path / "validation.csv", tmp_path / "test.csv":
@@ -185,9 +155,10 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
     print_title("Running chapter script for reference")
     chapter_cmd = [sys.executable, "-u", str(chapter_path)]
     chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
-    chapter_metrics = extract_losses_and_accuracies(chapter_output)
+    chapter_losses = extract_losses(chapter_output, ref=True)
+    chapter_accuracies = extract_accuracies(chapter_output, ref=True)
 
     print_title("Validation")
-    compare_losses(actual_losses=cli_metrics, expected_losses=chapter_metrics, tolerance=1e-2)
-    compare_accuracies(actual_metrics=cli_metrics, expected_metrics=chapter_metrics, tolerance=1.0)
+    compare_losses(actual_losses=cli_losses, expected_losses=chapter_losses, tolerance=1e-2)
+    compare_accuracies(actual_metrics=cli_accuracies, expected_metrics=chapter_accuracies, tolerance=1.0)
     compare_model_predictions(PREDICTION_TEST_SAMPLES, cli_model_path)
