@@ -7,7 +7,7 @@ from functools import partial
 from torch import Tensor
 from torch.utils.data import DataLoader, Subset
 
-from src.data_sets import AlpacaCodeDataset
+from src.dataset import AlpacaCodeDataset
 from src.scripts.train import train_model
 from src.scripts.finetune.instruction import test_assistant
 from src.utils.checkpoint import save_model, load_model

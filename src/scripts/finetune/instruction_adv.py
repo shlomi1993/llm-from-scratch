@@ -11,7 +11,7 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.data_sets import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
+from src.dataset import InstructionDataset, InstructionDatasetWithMasking, InstructionDatasetPhi
 from src.scripts.train import train_model
 from src.utils.checkpoint import load_model, save_model
 from src.utils.device import Device, get_device

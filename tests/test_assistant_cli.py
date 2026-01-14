@@ -19,7 +19,7 @@ def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path)
     cli_test_output = tmp_path / "instruction-test-responses.json"
     chapter_path = chapters_path / "ch07/01_main-chapter-code/gpt_instruction_finetuning.py"
     pretrained_model_path = "models/355M/model.pth"
-    instruction_data_path = "data_sets/instruction_data/instruction-data.json"
+    instruction_data_path = "dataset/instruction_data/instruction-data.json"
 
     print_title("Running CLI command for test")
     cli_cmd = [
@@ -42,13 +42,13 @@ def test_finetune_instruction_cli_vs_script(tmp_path: Path, chapters_path: Path)
         "--evaluate"
     ]
     cli_output = run_subprocess(cli_cmd)
-    cli_metrics = extract_losses(cli_output, ref=False)
+    cli_losses = extract_losses(cli_output, ref=False)
 
     print_title("Running chapter script for reference")
     chapter_cmd = [sys.executable, "-u", str(chapter_path)]
     chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)
-    chapter_metrics = extract_losses(chapter_output, ref=True)
+    chapter_losses = extract_losses(chapter_output, ref=True)
 
     print_title("Validation")
-    compare_losses(actual_losses=cli_metrics, expected_losses=chapter_metrics, tolerance=1e-2)
+    compare_losses(actual_losses=cli_losses, expected_losses=chapter_losses, tolerance=1e-2)
     validate_evaluation_score(cli_output, min_score=40.0)

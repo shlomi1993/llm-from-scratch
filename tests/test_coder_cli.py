@@ -50,7 +50,7 @@ def test_finetune_coding_cli(tmp_path: Path):
     cli_model_path = tmp_path / "test_coder_model.pth"
     cli_test_output = tmp_path / "coder_results.json"
     pretrained_model_path = "models/355M/model.pth"
-    dataset_path = "data_sets/python_code_instructions"
+    dataset_path = "dataset/python_code_instructions"
 
     print_title("Running GPT2 code instruction finetuning CLI command")
     cli_cmd = [

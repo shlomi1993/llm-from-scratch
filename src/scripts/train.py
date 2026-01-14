@@ -6,7 +6,7 @@ from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from src.data_sets import GptDatasetV1
+from src.dataset import GptDatasetV1
 from src.model.config import GptConfig, add_arguments as add_gpt_config_arguments
 from src.model.gpt import GptModel
 from src.utils.checkpoint import save_model

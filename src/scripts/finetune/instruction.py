@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from typing import Callable
 
-from src.data_sets import InstructionDataset
+from src.dataset import InstructionDataset
 from src.model.gpt import GptModel
 from src.scripts.train import train_model
 from src.utils.checkpoint import save_model, load_model
