@@ -42,8 +42,8 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
 
 def format_training_progress(epoch: int, n_epochs: int, step: int, n_steps: int, train_loss: float = None,
                              val_loss: float = None, train_acc: float = None, val_acc: float = None) -> str:
-    epoch_pad = len(str(n_epochs)) - 1
-    step_pad = len(str(n_steps)) - 1
+    epoch_pad = len(str(n_epochs))
+    step_pad = len(str(n_steps))
     msg_list = [
         f"Epoch {epoch:>{epoch_pad}}/{n_epochs}",
         f"Step  {step:>{step_pad}}/{n_steps}",
