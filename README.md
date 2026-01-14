@@ -22,6 +22,8 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 - 8GB+ RAM (16GB+ recommended for larger models)
 - CUDA GPU (optional, for faster training)
 
+**Note:** The project was implemented and tested on Apple ecosystem (MacBook Pro 16 2022)
+
 ### Setup
 
 1. Clone the repository:
@@ -240,14 +242,15 @@ llm-from-scratch/
 │       │   └── assets/                     # Tokenizer vocabulary assets
 │       └── visualization.py                # Plotting and visualization helpers
 ├── tests/                                  # End-to-end system tests for core CLI workflows
+│   ├── ref/                                # Reference for notebook original script outputs
 │   ├── chapters_code.py                    # Shared test utilities from chapters
 │   ├── common.py                           # Common test fixtures and helpers
 │   ├── conftest.py                         # Pytest configuration
-│   ├── test_assistant_cli.py               # Tests for chat assistant
-│   ├── test_classifier_cli.py              # Tests for spam classifier
-│   ├── test_coder_cli.py                   # Tests for code generation
-│   ├── test_generate_cli.py                # Tests for text generation
-│   └── test_pretrain_cli.py                # Tests for pretraining
+│   ├── test_instruction_finetuning.py      # Tests for chat assistant
+│   ├── test_class_finetuning.py            # Tests for spam classifier
+│   ├── test_code_finetuning.py             # Tests for code generation
+│   ├── test_generation.py                  # Tests for text generation
+│   └── test_pretraining.py                 # Tests for pretraining
 ├── activate.sh                             # Virtual environment activation script
 ├── install.sh                              # Automated project setup and installation
 ├── pyproject.toml                          # Project metadata and dependency configuration

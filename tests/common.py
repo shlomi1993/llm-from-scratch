@@ -1,5 +1,5 @@
 import re
-from shutil import get_terminal_size
+
 from subprocess import Popen, PIPE, STDOUT
 from sys import stdout
 
@@ -11,15 +11,14 @@ COLOR_RESET = '\033[0m'
 # Pattern for chapter script loss: "Ep 1 (Step 000000): Train loss 2.153, Val loss 2.392"
 CHAPTER_LOSS_PATTERN = r'Ep \d+ \(Step (\d+)\): Train loss ([\d.]+), Val loss ([\d.]+)'
 
-# Pattern for CLI app loss (format_training_progress): "Epoch 1/5 | Step 50/650 | Train Loss: 0.693 | Val Loss: 0.693"
-CLI_LOSS_PATTERN = r'Step (\d+)/\d+ \| Train Loss: ([\d.]+) \| Val Loss: ([\d.]+)'
+# Pattern for CLI app loss (format_training_progress): "Epoch 1/5 | Step  50/650 | Train-loss: 0.693 | Val-loss: 0.693"
+CLI_LOSS_PATTERN = r'Step\s+(\d+)/\d+ \| Train-loss: ([\d.]+) \| Val-loss: ([\d.]+)'
 
 # Pattern for chapter script accuracy: "Training accuracy: 70.00% | Validation accuracy: 72.50%"
 CHAPTER_ACC_PATTERN = r'Training accuracy: ([\d.]+)%.*?Validation accuracy: ([\d.]+)%'
 
-# Pattern for CLI app accuracy: "Train Acc: 70.00% | Val Acc: 72.50%"
-CLI_ACC_PATTERN = r'Train Acc: ([\d.]+)% \| Val Acc: ([\d.]+)%'
-
+# Pattern for CLI app accuracy: "Train-acc: 70.00% | Val-acc: 72.50%"
+CLI_ACC_PATTERN = r'Train-acc: ([\d.]+)% \| Val-acc: ([\d.]+)%'
 
 def run_subprocess(cmd: list[str] | str, cwd: str = None) -> list[str]:
     shell = isinstance(cmd, str)
@@ -34,22 +33,16 @@ def run_subprocess(cmd: list[str] | str, cwd: str = None) -> list[str]:
     process.wait()
     if process.returncode != 0:
         raise RuntimeError(f"Subprocess failed: {msg_cmd}")
-    return "\n".join(output_lines)
-
-
-def print_title(title: str, char: str = "-") -> None:
-    width = get_terminal_size().columns
-    sep = char * width
-    print(f"\n\n{COLOR_BLUE}{sep}\n{title}\n{sep}\n{COLOR_RESET}")
-
+    return "".join(output_lines)
 
 def extract_losses(output: str, ref: bool = False) -> dict:
-    metrics = {'train_losses': [], 'val_losses': []}
+    metrics = {'train_losses': [], 'val_losses': [], 'steps': []}
     loss_pattern = CHAPTER_LOSS_PATTERN if ref else CLI_LOSS_PATTERN
     loss_matches = re.findall(loss_pattern, output)
     if not loss_matches:
         raise ValueError("No loss metrics found in output.")
-    for train_loss, val_loss in loss_matches:
+    for step, train_loss, val_loss in loss_matches:
+        metrics['steps'].append(int(step))
         metrics['train_losses'].append(float(train_loss))
         metrics['val_losses'].append(float(val_loss))
     return metrics
@@ -57,7 +50,7 @@ def extract_losses(output: str, ref: bool = False) -> dict:
 def extract_accuracies(output: str, ref: bool = False) -> dict:
     metrics = { 'train_accs': [], 'val_accs': [], 'steps': []}
     acc_pattern = CHAPTER_ACC_PATTERN if ref else CLI_ACC_PATTERN
-    acc_matches = re.findall(pattern, output)
+    acc_matches = re.findall(acc_pattern, output)
     if not acc_matches:
         raise ValueError("No accuracy metrics found in output.")
     for train_acc, val_acc in acc_matches:

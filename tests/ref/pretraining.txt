@@ -1,0 +1,28 @@
+Ep 1 (Step 000000): Train loss 9.812, Val loss 9.846
+Ep 1 (Step 000005): Train loss 7.588, Val loss 8.044
+Every effort moves you,,,,,,,,,,,,.                                     
+Ep 2 (Step 000010): Train loss 6.582, Val loss 6.800
+Ep 2 (Step 000015): Train loss 5.920, Val loss 6.592
+Every effort moves you, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and, and
+Ep 3 (Step 000020): Train loss 15.767, Val loss 16.154
+Ep 3 (Step 000025): Train loss 5.494, Val loss 6.384
+Every effort moves you of the                                                
+Ep 4 (Step 000030): Train loss 4.373, Val loss 6.328
+Ep 4 (Step 000035): Train loss 2.824, Val loss 6.258
+Every effort moves you know it                                                
+Ep 5 (Step 000040): Train loss 3.969, Val loss 6.221
+Every effort moves you know the "Oh, and in the fact, and I had been him.     "Oh, and in the first I, and I had been the donkey. "Oh, and in the first, and in the
+Ep 6 (Step 000045): Train loss 2.638, Val loss 6.221
+Ep 6 (Step 000050): Train loss 3.156, Val loss 6.194
+Every effort moves you know the "I turned, I was not the fact with a little a little: "Yes, and in fact, and I had been the moment--as Jack himself, and in the fact, I had been the picture--I had the
+Ep 7 (Step 000055): Train loss 2.676, Val loss 6.162
+Ep 7 (Step 000060): Train loss 1.728, Val loss 6.274
+Every effort moves you know," was one of the picture for nothing--I told Mrs.  "I looked--I looked up, I felt to see a smile behind his close that he had been; and as I felt, and down, with a small picture
+Ep 8 (Step 000065): Train loss 0.933, Val loss 6.259
+Ep 8 (Step 000070): Train loss 1.371, Val loss 6.272
+Every effort moves you?"  "Yes--quite insensible to the irony. She wanted him vindicated--and by me!"  He laughed again, and threw back his head to look up at the honour being _mine_--because he had always his
+Ep 9 (Step 000075): Train loss 0.762, Val loss 6.329
+Ep 9 (Step 000080): Train loss 0.563, Val loss 6.462
+Every effort moves you?"  "Yes--quite insensible to the irony. She wanted him vindicated--and by me!"  He laughed again, and threw back the window-curtains, I saw that, and down the room, my eyes
+Ep 10 (Step 000085): Train loss 0.358, Val loss 6.542
+Every effort moves you?"  "Yes--quite insensible to the irony. She wanted him vindicated--and by me!"  He laughed again, and threw back his head to look up at the sketch of the donkey. "There were days when I
