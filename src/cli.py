@@ -1,9 +1,27 @@
+"""
+CLI for LLM from Scratch
+
+This is the main CLI entry point for the LLM from Scratch project.
+It provides various subcommands for downloading model files, pretraining, generating text, fine-tuning, and running
+interactive sessions.
+"""
+
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
 
+from src.model.config import GptConfig
 from src.utils.logger import g_logger
 
 
-def create_gpt_config_from_args(args: Namespace):
+def create_gpt_config_from_args(args: Namespace) -> "GptConfig":
+    """
+    Create a GptConfig object from parsed CLI arguments.
+
+    Args:
+        args (Namespace): Parsed CLI arguments.
+
+    Returns:
+        GptConfig: The constructed GptConfig object.
+    """
     from src.model.config import GptConfig
     return GptConfig(
         emb_dim=args.emb_dim,
@@ -18,11 +36,17 @@ def create_gpt_config_from_args(args: Namespace):
 
 
 def run_download(args: Namespace) -> None:
+    """
+    Run the download flow for model files.
+    """
     from src.scripts.download import run_download_flow
     run_download_flow(args.sizes, args.dir, args.convert)
 
 
 def run_pretrain(args: Namespace) -> None:
+    """
+    Run the pretraining flow for a GPT model from scratch.
+    """
     from src.scripts.train import run_training_flow
     config = create_gpt_config_from_args(args)
     run_training_flow(
@@ -47,6 +71,9 @@ def run_pretrain(args: Namespace) -> None:
 
 
 def run_generate(args: Namespace) -> None:
+    """
+    Run the text generation flow, either with a provided prompt or interactively.
+    """
     from src.scripts.generate import run_generation_flow, run_interactive_generation_flow
     if args.prompt is not None:
         run_generation_flow(
@@ -72,6 +99,9 @@ def run_generate(args: Namespace) -> None:
 
 
 def run_finetune_classification(args: Namespace) -> None:
+    """
+    Run the classification fine-tuning flow.
+    """
     from src.scripts.finetune.classification import run_classification_finetuning_flow
     run_classification_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
@@ -95,6 +125,9 @@ def run_finetune_classification(args: Namespace) -> None:
 
 
 def run_finetune_instruction(args: Namespace) -> None:
+    """
+    Run the instruction fine-tuning flow.
+    """
     from src.scripts.finetune.instruction import run_instruction_finetuning_flow
     run_instruction_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
@@ -118,6 +151,11 @@ def run_finetune_instruction(args: Namespace) -> None:
 
 
 def run_finetune_instruction_advanced(args: Namespace) -> None:
+    """
+    Run the advanced instruction fine-tuning flow.
+
+    WARNING: This flow is experimental and wasn't tested properly.
+    """
     from src.scripts.finetune.instruction_adv import run_instruction_finetuning_advanced_flow
     g_logger.warning("Running advanced instruction fine-tuning ")
     run_instruction_finetuning_advanced_flow(
@@ -147,6 +185,9 @@ def run_finetune_instruction_advanced(args: Namespace) -> None:
 
 
 def run_finetune_coding(args: Namespace) -> None:
+    """
+    Run the coding instruction fine-tuning flow.
+    """
     from src.scripts.finetune.code_instruction import run_coding_finetuning_flow
     run_coding_finetuning_flow(
         pretrained_model_path=args.pretrained_model_path,
@@ -171,6 +212,9 @@ def run_finetune_coding(args: Namespace) -> None:
 
 
 def run_spam_ham(args: Namespace) -> None:
+    """
+    Run the spam or ham classification flow, either with a provided text or interactively.
+    """
     from src.scripts.classify import run_spam_ham_flow, run_spam_ham_interactive_flow
     if args.text is not None:
         run_spam_ham_flow(
@@ -188,6 +232,9 @@ def run_spam_ham(args: Namespace) -> None:
 
 
 def run_chat(args: Namespace) -> None:
+    """
+    Run the chat flow with an instruction fine-tuned assistant model.
+    """
     from src.scripts.chat import run_chat_flow
     run_chat_flow(
         model_path=args.model_path,
@@ -198,6 +245,9 @@ def run_chat(args: Namespace) -> None:
 
 
 def run_coder(args: Namespace) -> None:
+    """
+    Run the coding assistant flow with a code instruction fine-tuned model.
+    """
     from src.scripts.coder import run_coder_flow
     run_coder_flow(
         model_path=args.model_path,
@@ -208,6 +258,11 @@ def run_coder(args: Namespace) -> None:
 
 
 def cli() -> None:
+    """
+    Main CLI function for LLM from Scratch.
+
+    This function sets up the argument parser, handles subcommands, and dispatches to the appropriate functions.
+    """
     parser = ArgumentParser(description="LLM from Scratch - Main CLI", formatter_class=ArgumentDefaultsHelpFormatter)
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     subparsers.required = False
