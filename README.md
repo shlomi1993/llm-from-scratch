@@ -109,13 +109,13 @@ To download custom pre-trained or fine-tuned models, check the following section
 ### Download a Fine-tuned Model
 
 - **Pretrained Model:** A GPT-2 based foundation model trained from scratch on a small, custom dataset. Useful for educational purposes and experimentation, but less capable than official models above due to limited data.
-  - [Download pretrained.zip](TBD)
+  - [Download fpundation.zip](https://drive.google.com/file/d/1AZP-AEEm8NJF4wGXkxEF-hxAGBAdShIt/view?usp=drive_link)
 - **Classifier Model:** Fine-tuned on SMS spam-or-ham dataset using the official 124M GPT-2 model. Use this for spam detection task.
-  - [Download classifier.zip](TBD)
+  - [Download spam_classifier.zip](https://drive.google.com/file/d/1ecl-LeMq3fgNBEDjkKzisWp4ube40Jb0/view?usp=drive_link)
 - **Assistant Model:** Fine-tuned for instruction-following and chat, based on the official 355M GPT-2 model. Use this for interactive assistant or chatbot applications.
-  - [Download assistant.zip](TBD)
+  - [Download assistant.zip](https://drive.google.com/file/d/1qiM0YHdnciGoUaJadnQzL7hDhiLHJ-QZ/view?usp=drive_link)
 - **Coder Model:** Fine-tuned on Python code instruction dataset using the official 355M GPT-2 model. Use this for code generation and interactive coding assistance.
-  - [Download coder.zip](TBD)
+  - [Download coder.zip](https://drive.google.com/file/d/1PQqUhlMSgsgw46SKr7dnDhPOATG3017k/view?usp=drive_link)
 
 ### Pre-train a Foundation Model
 
