@@ -5,6 +5,9 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class GptConfig:
+    """
+    A frozen dataclass representing the configuration for a GPT model.
+    """
     emb_dim: int                        # Embedding dimension
     n_layers: int                       # Number of layers
     n_heads: int                        # Number of attention heads
@@ -16,6 +19,12 @@ class GptConfig:
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add GPT configuration arguments to an argparse parser.
+
+    Args:
+        parser (argparse.ArgumentParser): The parser to add arguments to.
+    """
     parser.add_argument("--emb-dim", type=int, default=768, help="Embedding dimension.")
     parser.add_argument("--n-layers", type=int, default=12, help="Number of layers.")
     parser.add_argument("--n-heads", type=int, default=12, help="Number of attention heads.")

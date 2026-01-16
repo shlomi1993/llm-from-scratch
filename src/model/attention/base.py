@@ -6,8 +6,19 @@ from src.model.config import GptConfig
 
 
 class SelfAttention(nn.Module):
+    """
+    A basic self-attention mechanism without causality constraints.
+    """
 
     def __init__(self, d_in: int, d_out: int, qkv_bias: bool = False) -> None:
+        """
+        Initialize the Self-Attention layer.
+
+        Args:
+            d_in (int): Input dimension.
+            d_out (int): Output dimension.
+            qkv_bias (bool, optional): Whether to use bias in QKV projections. Default is False.
+        """
         super().__init__()
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key   = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -15,9 +26,21 @@ class SelfAttention(nn.Module):
 
     @staticmethod
     def from_config(config: GptConfig) -> 'SelfAttention':
+        """
+        Create a SelfAttention layer from a GptConfig object.
+        """
         return SelfAttention(d_in=config.emb_dim, d_out=config.emb_dim, qkv_bias=config.qkv_bias)
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass through the Self-Attention layer. Applies attention mechanism to the input tensor.
+
+        Args:
+            x (Tensor): Input tensor of shape (num_tokens, emb_size).
+
+        Returns:
+            Tensor: Output tensor after applying self-attention.
+        """
         keys: Tensor = self.W_key(x)
         queries: Tensor = self.W_query(x)
         values: Tensor = self.W_value(x)
@@ -30,8 +53,21 @@ class SelfAttention(nn.Module):
 
 
 class CausalAttention(nn.Module):
+    """
+    A causal self-attention mechanism that prevents attending to future tokens.
+    """
 
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, qkv_bias: bool = False) -> None:
+        """
+        Initialize the Causal Attention layer.
+
+        Args:
+            d_in (int): Input dimension.
+            d_out (int): Output dimension.
+            context_length (int): Maximum context length for attention.
+            dropout (float): Dropout rate for attention weights.
+            qkv_bias (bool, optional): Whether to use bias in QKV projections. Default is False.
+        """
         super().__init__()
         self.d_out = d_out
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -42,6 +78,9 @@ class CausalAttention(nn.Module):
         self.register_buffer('mask', torch.triu(torch.ones(context_length, context_length), diagonal=1))  # New
 
     def from_config(config: GptConfig) -> 'CausalAttention':
+        """
+        Create a CausalAttention layer from a GptConfig object.
+        """
         return CausalAttention(
             d_in=config.emb_dim,
             d_out=config.emb_dim,
@@ -51,6 +90,15 @@ class CausalAttention(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass through the Causal Attention layer. Applies causal attention mechanism to the input tensor.
+
+        Args:
+            x (Tensor): Input tensor of shape (num_tokens, emb_size).
+
+        Returns:
+            Tensor: Output tensor after applying causal attention.
+        """
         b, num_tokens, d_in = x.shape  # New batch dimension b
         keys: Tensor = self.W_key(x)
         queries: Tensor = self.W_query(x)
