@@ -13,7 +13,7 @@ from src.utils.checkpoint import save_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_batch, calc_losses
-from src.utils.tokenization import g_tokenizer
+from src.utils.tokenization.tokenizer import g_tokenizer
 from src.utils.visualization import plot_metrics
 
 

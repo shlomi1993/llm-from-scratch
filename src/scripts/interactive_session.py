@@ -6,7 +6,7 @@ from shutil import get_terminal_size
 from src.utils.checkpoint import load_model
 from src.utils.device import get_device
 from src.utils.logger import g_logger
-from src.utils.tokenization import g_tokenizer
+from src.utils.tokenization.tokenizer import g_tokenizer
 
 
 class InteractiveSession(ABC):
