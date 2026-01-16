@@ -8,6 +8,22 @@ from src.utils.logger import g_logger
 
 def plot_metrics(epochs_seen: list[int], examples_seen: list[int], train_values: list[float], val_values: list[float],
                  label: str, savefig_path: str = None, legend_loc: str = None, simplify_x_axis: bool = False) -> None:
+    """
+    Plot training and validation metrics over epochs and tokens/examples seen.
+
+    Note that the metrics can be for example loss or accuracy, and the 'examples' term here can refer to either tokens
+    or examples, depending on the context.
+
+    Args:
+        epochs_seen (list[int]): List of epoch numbers.
+        examples_seen (list[int]): List of tokens/examples seen.
+        train_values (list[float]): List of training metric values.
+        val_values (list[float]): List of validation metric values
+        label (str): Label for the metric being plotted (e.g., "loss", "accuracy").
+        savefig_path (str, optional): Path to save the figure. If None, the plot is shown instead. Defaults to None.
+        legend_loc (str, optional): Location of the legend. If None, default location is used. Defaults to None.
+        simplify_x_axis (bool, optional): If True, only integer labels are shown on the x-axis. Defaults to False.
+    """
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
     # Plot training and validation loss against epochs
