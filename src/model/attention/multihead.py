@@ -8,14 +8,36 @@ from src.model.config import GptConfig
 
 
 class MultiheadAttentionWrapper(nn.Module):
+    """
+    A multi-head attention wrapper that combines several CausalAttention heads.
+    """
 
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, n_heads: int, qkv_bias: bool = False) -> None:
+        """
+        Initialize the MultiheadAttentionWrapper.
+
+        Args:
+            d_in (int): Input dimension.
+            d_out (int): Output dimension.
+            context_length (int): Context length.
+            dropout (float): Dropout rate.
+            n_heads (int): Number of attention heads.
+            qkv_bias (bool, optional): Whether to use bias in QKV projections. Default is False.
+        """
         super().__init__()
         attention_heads = [CausalAttention(d_in, d_out, context_length, dropout, qkv_bias) for _ in range(n_heads)]
         self.heads = nn.ModuleList(attention_heads)
 
     @staticmethod
     def from_config(config: GptConfig) -> 'MultiheadAttentionWrapper':
+        """
+         Create a MultiheadAttentionWrapper from a GptConfig.
+         Args:
+            config (GptConfig): The GPT configuration.
+
+         Returns:
+            MultiheadAttentionWrapper: The created MultiheadAttentionWrapper.
+         """
         return MultiheadAttentionWrapper(
             d_in=config.emb_dim,
             d_out=config.emb_dim // config.n_heads,
@@ -26,12 +48,37 @@ class MultiheadAttentionWrapper(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass of the MultiheadAttentionWrapper. Applies each attention head to the input and concatenates the results.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, num_tokens, emb_size).
+
+        Returns:
+            Tensor: Output tensor after applying multi-head attention.
+        """
         return torch.cat([head(x) for head in self.heads], dim=-1)
 
 
 class MultiheadAttention(nn.Module):
+    """
+    Multi-head attention module.
+
+    Implements stand-alone multi-head attention as described in "Attention is All You Need".
+    """
 
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, n_heads: int, qkv_bias: bool = False) -> None:
+        """
+        Initialize the MultiheadAttention module.
+
+        Args:
+            d_in (int): Input dimension.
+            d_out (int): Output dimension.
+            context_length (int): Context length.
+            dropout (float): Dropout rate.
+            n_heads (int): Number of attention heads.
+            qkv_bias (bool, optional): Whether to use bias in QKV projections. Default is False.
+        """
         super().__init__()
         assert d_out % n_heads == 0, "d_out must be divisible by n_heads"
 
@@ -49,6 +96,15 @@ class MultiheadAttention(nn.Module):
 
     @staticmethod
     def from_config(config: GptConfig) -> 'MultiheadAttentionCached':
+        """
+        Create a MultiheadAttention from a GptConfig.
+
+        Args:
+            config (GptConfig): The GPT configuration.
+
+        Returns:
+            MultiheadAttention: The created MultiheadAttention.
+        """
         return MultiheadAttention(
             d_in=config.emb_dim,
             d_out=config.emb_dim,
@@ -59,6 +115,17 @@ class MultiheadAttention(nn.Module):
         )
 
     def forward(self, x: Tensor, use_cache: bool = False) -> Tensor:
+        """
+        Forward pass of the MultiheadAttention.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, num_tokens, emb_size).
+            use_cache (bool, optional): Whether to use caching. This argument is ignored in this implementation, and it
+                is included for API compatibility purposes. Default is False.
+
+        Returns:
+            Tensor: Output tensor after applying multi-head attention.
+        """
         b, num_tokens, d_in = x.shape
 
         keys: Tensor = self.W_key(x)  # Shape: (b, num_tokens, d_out)
@@ -100,10 +167,27 @@ class MultiheadAttention(nn.Module):
 
 
 class MultiheadAttentionCached(nn.Module):
+    """
+    Multi-head attention module with caching.
+
+    Implements multi-head attention with key-value caching for efficient autoregressive generation.
+    """
 
     def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, n_heads: int, qkv_bias: bool = False,
                  max_seq_len: int = None, window_size: int = None) -> None:
+        """
+        Initialize the MultiheadAttentionCached module.
 
+        Args:
+            d_in (int): Input dimension.
+            d_out (int): Output dimension.
+            context_length (int): Context length.
+            dropout (float): Dropout rate.
+            n_heads (int): Number of attention heads.
+            qkv_bias (bool, optional): Whether to use bias in QKV projections. Default is False.
+            max_seq_len (int, optional): Maximum sequence length for caching. If None, defaults to context_length. Default is None.
+            window_size (int, optional): Size of the sliding window for KV cache. If None, defaults to max_seq_len. Default is None.
+        """
         super().__init__()
         assert d_out % n_heads == 0 == 0, "emb_dim must be divisible by n_heads"
 
@@ -126,6 +210,15 @@ class MultiheadAttentionCached(nn.Module):
 
     @staticmethod
     def from_config(config: GptConfig) -> 'MultiheadAttentionCached':
+        """
+        Create a MultiheadAttention from a GptConfig.
+
+        Args:
+            config (GptConfig): The GPT configuration.
+
+        Returns:
+            MultiheadAttentionCached: The created MultiheadAttentionCached.
+        """
         return MultiheadAttentionCached(
             d_in=config.emb_dim,
             d_out=config.emb_dim,
@@ -137,6 +230,16 @@ class MultiheadAttentionCached(nn.Module):
         )
 
     def forward(self, x: Tensor, use_cache: bool = False) -> Tensor:
+        """
+        Forward pass of the MultiheadAttentionCached.
+
+        Args:
+            x (Tensor): Input tensor of shape (batch_size, num_tokens, emb_size).
+            use_cache (bool, optional): Whether to use KV caching. Default is False.
+
+        Returns:
+            Tensor: Output tensor after applying multi-head attention with caching.
+        """
         batch_size, n_tokens, d_in = x.shape
 
         # Compute Q, K, V
@@ -209,4 +312,7 @@ class MultiheadAttentionCached(nn.Module):
         return context_vec
 
     def reset_cache(self) -> None:
+        """
+        Reset the KV cache by clearing stored keys and values.
+        """
         self.cache_k, self.cache_v = None, None

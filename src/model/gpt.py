@@ -10,8 +10,18 @@ from src.utils.tokenization.tokenizer import g_tokenizer
 
 
 class GptModel(nn.Module):
+    """
+    GPT2 language model architecture implementation.
+    Based on the architecture described in "Language Models are Few-Shot Learners" (Brown et al., 2020).
+    """
 
     def __init__(self, config: GptConfig) -> None:
+        """
+        Initialize an instance of a GPT2-based model to train
+
+        Args:
+            config (GptConfig): Configuration object containing model hyperparameters.
+        """
         super().__init__()
         self._config = config
 
@@ -32,9 +42,22 @@ class GptModel(nn.Module):
 
     @property
     def config(self) -> GptConfig:
+        """
+        Get the model configuration while preventing modifications (the instance is frozen).
+        """
         return self._config
 
     def forward(self, in_idx: Tensor, use_cache: bool = False) -> Tensor:
+        """
+        Forward pass of the GPT model.
+
+        Args:
+            in_idx (Tensor): Input token indices of shape (batch_size, sequence_length).
+            use_cache (bool, optional): Whether to use cached key-value pairs for attention. Defaults to False.
+
+        Returns:
+            Tensor: Output logits of shape (batch_size, sequence_length, vocab_size).
+        """
         batch_size, seq_len = in_idx.shape
         tok_embeds = self.tok_emb(in_idx)
 
@@ -65,12 +88,27 @@ class GptModel(nn.Module):
         return logits
 
     def reset_kv_cache(self) -> None:
+        """
+        Reset the key-value cache for all transformer blocks.
+        This is typically called at the beginning of a new generation sequence.
+        """
         for blk in self.trf_blocks:
             blk: TransformerBlock
             blk.att.reset_cache()
         self.ptr_current_pos = 0
 
     def generate_naive(self, idx: Tensor, max_new_tokens: int, context_size: int) -> Tensor:
+        """
+        Generate new tokens using a naive approach without caching.
+
+        Args:
+            idx (Tensor): Input token indices of shape (batch_size, sequence_length).
+            max_new_tokens (int): Number of new tokens to generate.
+            context_size (int): Maximum context size for generation.
+
+        Returns:
+            Tensor: Generated token indices of shape (batch_size, sequence_length + max_new_tokens).
+        """
         for _ in range(max_new_tokens):
 
             # Crop current context if it exceeds the supported context size (e.g., if LLM supports only 5 tokens, and
@@ -98,6 +136,15 @@ class GptModel(nn.Module):
         return idx
 
     def generate_cached(self, idx: Tensor, max_new_tokens: int, context_size: int, use_cache: bool = True):
+        """
+        Generate new tokens using cached key-value pairs for attention.
+
+        Args:
+            idx (Tensor): Input token indices of shape (batch_size, sequence_length).
+            max_new_tokens (int): Number of new tokens to generate.
+            context_size (int): Maximum context size for generation.
+            use_cache (bool, optional): Whether to use cached key-value pairs for attention. Defaults to True.
+        """
         self.eval()
         ctx_len = context_size or self.pos_emb.num_embeddings
         with torch.no_grad():
@@ -117,6 +164,18 @@ class GptModel(nn.Module):
 
     def generate(self, idx: Tensor, max_new_tokens: int, context_size: int, temperature: float = 0.0, top_k: int = None,
                  eos_id: int = None, live: bool = False) -> Tensor:
+        """
+        Generate new tokens using sampling strategies such as temperature scaling and top-k sampling.
+
+        Args:
+            idx (Tensor): Input token indices of shape (batch_size, sequence_length).
+            max_new_tokens (int): Number of new tokens to generate.
+            context_size (int): Maximum context size for generation.
+            temperature (float, optional): Temperature for scaling logits. Defaults to 0.0 (greedy sampling).
+            top_k (int, optional): If specified, only consider the top_k logits for sampling. Defaults to None.
+            eos_id (int, optional): If specified, generation stops when this token ID is generated. Defaults to None.
+            live (bool, optional): If True, prints generated tokens in real-time. Defaults to False.
+        """
         for _ in range(max_new_tokens):
 
             # Trim context
