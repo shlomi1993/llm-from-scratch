@@ -1,19 +1,16 @@
 """
 Tokenization module for encoding and decoding text using the GPT-2 tokenizer.
 
-This module provides functions to convert text to token IDs and vice versa, utilizing the tiktoken library.
+This module provides a wrapper around the tiktoken GPT-2 tokenizer, exposing convenience methods for encoding text to
+token IDs and decoding token IDs back to text.
 """
 
-from .tokenizer import TOKENIZER, EOT, PAD_IDX, IGNORE_IDX, encode, decode, text_to_token_ids, token_ids_to_text
+from .tokenizer import EOT, PAD_IDX, IGNORE_IDX, g_tokenizer
 
 
 __all__ = [
-    "TOKENIZER",
     "EOT",
     "PAD_IDX",
     "IGNORE_IDX",
-    "encode",
-    "decode",
-    "text_to_token_ids",
-    "token_ids_to_text",
+    "g_tokenizer",
 ]

@@ -17,7 +17,7 @@ from src.utils.checkpoint import load_model, save_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_losses, calc_loss_last_token
-from src.utils.tokenization import tokenizer
+from src.utils.tokenization.tokenizer import PAD_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
@@ -147,7 +147,7 @@ def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel
     return model
 
 
-def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = tokenizer.PAD_IDX) -> tuple[str, float]:
+def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = PAD_IDX) -> tuple[str, float]:
     model.eval()
 
     # Verify that the input length does not exceed model context length
@@ -156,7 +156,7 @@ def classify_review(text: str, model: GptModel, device: Device, max_length: int,
         raise ValueError(f"max_length ({max_length}) exceeds model context ({supported_context}).")
 
     # Tokenize and truncate
-    input_ids = tokenizer.encode(text)[:max_length]
+    input_ids = g_tokenizer.encode(text)[:max_length]
 
     # Pad
     input_ids += [pad_token_id] * (max_length - len(input_ids))

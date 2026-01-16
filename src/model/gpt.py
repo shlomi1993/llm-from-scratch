@@ -6,7 +6,7 @@ from torch import Tensor
 from .config import GptConfig
 from .normalization import LayerNorm
 from .transformer import TransformerBlock
-from src.utils.tokenization import tokenizer
+from src.utils.tokenization.tokenizer import g_tokenizer
 
 
 class GptModel(nn.Module):
@@ -150,7 +150,7 @@ class GptModel(nn.Module):
 
             # Live generation print
             if live:
-                token_str = tokenizer.decode([idx_next.item()])
+                token_str = g_tokenizer.decode([idx_next.item()])
                 print(token_str, end="", flush=True)
 
             # Append to sequence

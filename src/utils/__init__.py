@@ -10,7 +10,7 @@ from .logger import g_logger
 from .losses import LossFunc, calc_loss_batch, calc_loss_last_token, calc_loss_loader, calc_losses
 from .ollama import OllamaEvaluator, format_input, coding_format_input
 from .tokenization import tokenizer
-from .tokenization.tokenizer import TOKENIZER, EOT, PAD_IDX, IGNORE_IDX, encode, decode, text_to_token_ids, token_ids_to_text
+from .tokenization.tokenizer import g_tokenizer, EOT, PAD_IDX, IGNORE_IDX, encode, decode, text_to_token_ids, token_ids_to_text
 from .visualization import plot_metrics
 
 
@@ -29,7 +29,7 @@ __all__ = [
     "format_input",
     "coding_format_input",
     "tokenizer",
-    "TOKENIZER",
+    "g_tokenizer",
     "EOT",
     "PAD_IDX",
     "IGNORE_IDX",
