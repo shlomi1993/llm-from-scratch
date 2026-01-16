@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from typing import Tuple
 
 from src.utils.ollama import format_input
-from src.utils.tokenization import tokenizer, EOT
+from src.utils.tokenization import EOT, PAD_IDX, g_tokenizer
 
 
 class GptDatasetV1(Dataset):
@@ -27,7 +27,7 @@ class GptDatasetV1(Dataset):
         self.target_ids = []
 
         # Tokenize the entire text
-        token_ids = tokenizer.encode(text, allowed_special={EOT})
+        token_ids = g_tokenizer.encode(text, allowed_special={EOT})
 
         # Use a sliding window to chunk the book into overlapping sequences of max_length
         for i in range(0, len(token_ids) - max_length, stride):
@@ -63,20 +63,20 @@ class SpamDataset(Dataset):
     A PyTorch Dataset class for loading and preprocessing a spam detection dataset from a TSV file.
     """
 
-    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = tokenizer.PAD_IDX) -> None:
+    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = PAD_IDX) -> None:
         """
         Initializes the dataset by reading the CSV file, tokenizing the text data, and padding/truncating sequences.
 
         Args:
             csv_file (str): The path to the CSV file containing the dataset.
             max_length (int, optional): The maximum length of each tokenized sequence. Defaults to None.
-            pad_token_id (int, optional): The ID of the padding token. Defaults to tokenizer.PAD_IDX.
+            pad_token_id (int, optional): The ID of the padding token. Defaults to PAD_IDX.
         """
 
         self.data = pd.read_csv(csv_file)
 
         # Pre-tokenize texts
-        self.encoded_texts = [tokenizer.encode(text) for text in self.data["Text"]]
+        self.encoded_texts = [g_tokenizer.encode(text) for text in self.data["Text"]]
 
         # Set max length: either user-provided or longest sample
         self.max_length = max_length or max(len(et) for et in self.encoded_texts)
@@ -125,7 +125,7 @@ class InstructionDataset(Dataset):
         """
         self.data = data
         self.encoded_texts = [  # Pre-tokenize texts
-            tokenizer.encode(format_input(entry) + f"\n\n### Response:\n{entry['output']}") for entry in data
+            g_tokenizer.encode(format_input(entry) + f"\n\n### Response:\n{entry['output']}") for entry in data
         ]
 
     def __len__(self) -> int:
@@ -173,10 +173,10 @@ class InstructionDatasetWithMasking(Dataset):
             instruction_plus_input = format_input(entry)
             response_text = f"\n\n### Response:\n{entry['output']}"
             full_text = instruction_plus_input + response_text
-            self.encoded_texts.append(tokenizer.encode(full_text))
+            self.encoded_texts.append(g_tokenizer.encode(full_text))
 
             # Collect instruction lengths
-            instruction_length = len(tokenizer.encode(instruction_plus_input))
+            instruction_length = len(g_tokenizer.encode(instruction_plus_input))
             self.instruction_lengths.append(instruction_length)
 
     def __len__(self) -> int:
@@ -221,7 +221,7 @@ class InstructionDatasetPhi(Dataset):
             instruction_plus_input = self.format_input_phi(entry)
             response_text = f"\n<|assistant|>:\n{entry['output']}"
             full_text = instruction_plus_input + response_text
-            self.encoded_texts.append(tokenizer.encode(full_text))
+            self.encoded_texts.append(g_tokenizer.encode(full_text))
 
     def __len__(self) -> int:
         """
@@ -319,7 +319,7 @@ class AlpacaCodeDataset(Dataset):
             Tensor: The tokenized text.
         """
         text = self.format_prompt(self.dataset[idx])
-        token_ids = tokenizer.encode(text, allowed_special={EOT})
+        token_ids = g_tokenizer.encode(text, allowed_special={EOT})
         if len(token_ids) > self.max_length:
             token_ids = token_ids[:self.max_length]  # Hard truncation to avoid OOM
         return tensor(token_ids, dtype=long)  # Return raw tensor, let the collate function handle padding/masking

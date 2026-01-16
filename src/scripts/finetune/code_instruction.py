@@ -14,7 +14,7 @@ from src.utils.checkpoint import save_model, load_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_loss_batch
-from src.utils.tokenization import tokenizer, EOT, PAD_IDX, IGNORE_IDX
+from src.utils.tokenization.tokenizer import EOT, PAD_IDX, IGNORE_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
@@ -29,7 +29,7 @@ def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = P
     batch_max_length = max(len(item) + 1 for item in batch_lists)
 
     # Prepare separator for masking logic
-    sep_ids = tokenizer.encode(AlpacaCodeDataset.RESPONSE_SEPARATOR, allowed_special={EOT})
+    sep_ids = g_tokenizer.encode(AlpacaCodeDataset.RESPONSE_SEPARATOR, allowed_special={EOT})
     sep_len = len(sep_ids)
     sep_tensor = torch.tensor(sep_ids, device=device)
 
