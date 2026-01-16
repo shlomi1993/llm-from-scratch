@@ -6,6 +6,9 @@ from src.utils.logger import g_logger
 
 
 class InteractiveChatSession(InteractiveSession):
+    """
+    An interactive chat session with a code-instruction-finetuned model.
+    """
     INPUT_PROMPT_TEMPLATE = (
         "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
         "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n\n"
@@ -13,6 +16,9 @@ class InteractiveChatSession(InteractiveSession):
 
     @property
     def welcome_msg(self) -> str:
+        """
+        Returns the welcome message for the chat session.
+        """
         return (
             "Interactive Chat with GPT2 Assistant\n"
             "Type /bye to end the session\n"
@@ -20,6 +26,25 @@ class InteractiveChatSession(InteractiveSession):
         )
 
     def format_prompt(self, user_input: str) -> str:
+        """
+        Format the prompt for the chat session based on user input.
+
+        Args:
+            user_input (str): The user's input for the chat session. Example: "Explain the theory of relativity."
+
+        Returns:
+            str: The formatted prompt for the chat session.
+
+        Example:
+            >>> format_prompt("Explain the theory of relativity.")
+            "Below is an instruction that describes a task. Write a response that appropriately completes the request.
+            "### Instruction:
+            You are a helpful assistant. Provide clear and concise responses.
+            "### Input:
+            Explain the theory of relativity.
+            "### Response:
+            \n\n"
+        """
         return self.INPUT_PROMPT_TEMPLATE.format(
             instruction="You are a helpful assistant. Provide clear and concise responses.",
             input=user_input
@@ -27,12 +52,27 @@ class InteractiveChatSession(InteractiveSession):
 
 
 def run_chat_flow(model_path: str, max_new_tokens: int = 256, device_type: str = "auto", seed: int = 123) -> None:
+    """
+    Run the interactive chat flow with the specified model.
+
+    Args:
+        model_path (str): The path to the instruction-finetuned model.
+        max_new_tokens (int, optional): The maximum number of new tokens to generate. Defaults to 256.
+        device_type (str, optional): The device to use for inference. Defaults to "auto".
+        seed (int, optional): The random seed for reproducibility. Defaults to 123.
+    """
     g_logger.info("Starting interactive chat session...")
     session = InteractiveChatSession(model_path, max_new_tokens, device_type=device_type, seed=seed)
     session.start()
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add command-line arguments for the interactive chat session.
+
+    Args:
+        parser (argparse.ArgumentParser): The parser to add arguments to.
+    """
     parser.add_argument("--model-path", type=str, required=True, help="Path to the instruction-finetuned assistant model")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum number of tokens to generate")
     parser.add_argument("--device", type=str, default="auto", help="Device to use (cpu, cuda, mps, auto)")
@@ -40,6 +80,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to run the interactive chat flow. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(
         description="Interactive chat with an instruction-finetuned assistant model",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

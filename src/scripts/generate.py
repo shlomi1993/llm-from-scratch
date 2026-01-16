@@ -6,13 +6,24 @@ from src.scripts.interactive_session import InteractiveSession
 from src.utils.checkpoint import load_model
 from src.utils.device import get_device
 from src.utils.logger import g_logger
-from src.utils.tokenization import text_to_token_ids, token_ids_to_text
+from src.utils.tokenization import g_tokenizer
 
 
 def run_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, temperature: float = 1.0,
                         top_k: int = 50, device_type: str = "auto", seed: int = 123, measure_time: bool = False,
                         measure_memory: bool = False) -> str:
+    """
+    Run a one-off text generation flow using a pre-trained GPT model.
 
+    Args:
+        model_path (str): The path to the pre-trained GPT model.
+        prompt (str): The prompt text for generation.
+        max_new_tokens (int): The maximum number of new tokens to generate. Default is 25.
+        temperature (float): The sampling temperature for generation. Use 0 for greedy decoding. Default is 1.0.
+        top_k (int): The Top-K sampling parameter. Use 0 to disable Top-K sampling. Default is 50.
+        device_type (str): The device to run the model on (e.g., 'cpu', 'cuda', or 'auto'). Default is 'auto'.
+        seed (int): The random seed for reproducibility. Default is 123.
+    """
     g_logger.info("Running model generation flow...")
 
     device = get_device(device_type)
@@ -59,7 +70,7 @@ def run_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, 
 
     g_logger.info("Generating text...")
     token_ids = gpt.generate(
-        idx=text_to_token_ids(prompt).to(device),
+        idx=g_tokenizer.text_to_token_ids(prompt).to(device),
         max_new_tokens=max_new_tokens,
         context_size=gpt.config.context_length,
         temperature=temperature,
@@ -75,7 +86,7 @@ def run_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, 
         gen_max_mem_bytes = torch.cuda.max_memory_allocated()
         gen_max_mem_gb = gen_max_mem_bytes / (1024 ** 3)
 
-    generated_text = token_ids_to_text(token_ids)
+    generated_text = g_tokenizer.token_ids_to_text(token_ids)
 
     g_logger.info(f"Output text:\n{generated_text.strip()}")
     if measure_time and load_duration is not None:
@@ -93,9 +104,15 @@ def run_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, 
 
 
 class InteractiveGenerationSession(InteractiveSession):
+    """
+    An interactive session for text generation using a pre-trained GPT2 model.
+    """
 
     @property
     def welcome_msg(self) -> str:
+        """
+        Returns the welcome message for the interactive session.
+        """
         return (
             "Interactive Session with GPT2 Model\n"
             "Type your prompt and press Enter, or type /bye to exit\n"
@@ -103,17 +120,43 @@ class InteractiveGenerationSession(InteractiveSession):
         )
 
     def format_prompt(self, user_input: str) -> str:
+        """
+        Formats the user input as a prompt for generation.
+
+        Args:
+            user_input (str): The input provided by the user.
+
+        Returns:
+            str: The formatted prompt.
+        """
         return user_input
 
 
 def run_interactive_generation_flow(model_path: str, max_new_tokens: int = 25, temperature: float = 1.0,
                                     top_k: int = 50, device_type: str = "auto", seed: int = 123) -> None:
+    """
+    Run an interactive text generation session using a pre-trained GPT model.
+
+    Args:
+        model_path (str): The path to the pre-trained GPT model.
+        max_new_tokens (int): The maximum number of new tokens to generate. Default is 25.
+        temperature (float): The sampling temperature for generation. Use 0 for greedy decoding. Default is 1.0.
+        top_k (int): The Top-K sampling parameter. Use 0 to disable Top-K sampling. Default is 50.
+        device_type (str): The device to run the model on (e.g., 'cpu', 'cuda', or 'auto'). Default is 'auto'.
+        seed (int): The random seed for reproducibility. Default is 123.
+    """
     g_logger.info("Running model interactive generation flow...")
     session = InteractiveGenerationSession(model_path, max_new_tokens, temperature, top_k, device_type, seed)
     session.start()
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add command-line arguments for text generation to the given argument parser.
+
+    Args:
+        parser (argparse.ArgumentParser): The argument parser to add arguments to.
+    """
     parser.add_argument("--model-path", type=str, required=True, help="Path to a pre-trained GPT2 model saved in Pytorch format (as described in src/scripts/common.py).")
     parser.add_argument("--prompt", type=str, default=None, help="Prompt text for generation. If not provided, enters interactive mode.")
     parser.add_argument("--max-new-tokens", type=int, default=25, help="Maximum number of new tokens to generate.")
@@ -127,6 +170,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to run one of the text generation flows. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(
         description="Generate text using a pre-trained GPT model.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

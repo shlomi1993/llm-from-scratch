@@ -23,7 +23,18 @@ def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = P
                       ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[Tensor, Tensor]:
     """
     Pads sequences and masks the Instruction part so the model only trains on the Code.
+
+    Args:
+        batch (list[Tensor]): List of token ID tensors.
+        device (Device): Device to place tensors on.
+        pad_token_id (int): Token ID used for padding.
+        ignore_index (int): Target token ID to ignore in loss computation.
+        max_allowed_length (int, optional): Maximum length for truncation.
+
+    Returns:
+        tuple[Tensor, Tensor]: Padded input and target tensors.
     """
+
     # Convert batch to a list of lists
     batch_lists = [item.tolist() for item in batch]
     batch_max_length = max(len(item) + 1 for item in batch_lists)
@@ -79,7 +90,22 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
                               max_samples: int = None, n_workers: int = 0) -> tuple[DataLoader, DataLoader, list[dict]]:
     """
     Loads the AlpacaCodeDataset, splits it into Train/Val/Test, and returns DataLoaders configured with the coding_collate_fn.
+
+    Args:
+        dataset_path (str): Path to the AlpacaCodeDataset folder.
+        train_frac (float): Fraction of data to use for training.
+        test_frac (float): Fraction of data to use for testing.
+        device (Device): Device to place tensors on.
+        batch_size (int, optional): Batch size for DataLoaders. Defaults to None.
+        max_allowed_length (int, optional): Maximum sequence length for truncation. Defaults to 1024.
+        seed (int, optional): Random seed for reproducibility. Defaults to 123.
+        max_samples (int, optional): Maximum number of samples to load. Defaults to None.
+        n_workers (int, optional): Number of worker processes for data loading. Defaults to 0.
+
+    Returns:
+        tuple[DataLoader, DataLoader, list[dict]]: Train and validation DataLoaders, and raw test data entries.
     """
+
     # Load the full dataset wrapper
     full_dataset = AlpacaCodeDataset(dataset_path, max_length=max_allowed_length, max_samples=max_samples)
     total_len = len(full_dataset)
@@ -114,6 +140,15 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
 
 
 def coding_format_input(entry: dict) -> str:
+    """
+    Formats a dataset entry into a prompt for code generation.
+
+    Args:
+        entry (dict): A dataset entry with 'instruction' key.
+
+    Returns:
+        str: Formatted prompt string.
+    """
     return f"### Instruction:\n{entry['instruction']}\n\n### Response:\n"
 
 
@@ -124,7 +159,29 @@ def run_coding_finetuning_flow(pretrained_model_path: str, tuning_set_path: str,
                                loss_plot_save_path: str = None, model_save_path: str = "coder.pth",
                                max_new_tokens: int = 256, test_output_path: str = "coder-test-responses.json",
                                evaluate: bool = False, max_samples: int = None) -> None:
+    """
+    Fine-tunes a GPT-2 model on code instruction-following data.
 
+    Args:
+        pretrained_model_path (str): Path to the pre-trained GPT-2 model.
+        tuning_set_path (str): Path to the tuning dataset.
+        train_frac (float): Fraction of data to use for training.
+        test_frac (float): Fraction of data to use for testing.
+        batch_size (int): Batch size for training.
+        seed (int): Random seed for reproducibility.
+        device_type (str): Device type to use ('cpu', 'cuda', 'mps', 'auto').
+        lr (float): Learning rate for the optimizer.
+        n_epochs (int): Number of training epochs.
+        weight_decay (float): Weight decay for the optimizer.
+        eval_freq (int): Frequency of evaluation during training (in epochs).
+        eval_iter (int): Number of batches to use for evaluation.
+        loss_plot_save_path (str): Path to save the loss plot image.
+        model_save_path (str): Path to save the fine-tuned model.
+        max_new_tokens (int): Maximum number of tokens to generate during testing.
+        test_output_path (str): Path to save the test set responses.
+        evaluate (bool): Whether to evaluate the model after training.
+        max_samples (int, optional): Maximum number of samples to use from the dataset for debugging
+    """
     g_logger.info("Running code instruction finetuning flow...")
 
     torch.manual_seed(seed)
@@ -169,6 +226,12 @@ def run_coding_finetuning_flow(pretrained_model_path: str, tuning_set_path: str,
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Adds command-line arguments for the coding finetuning flow.
+
+    Args:
+        parser (argparse.ArgumentParser): ArgumentParser instance.
+    """
     parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to base GPT2 model")
     parser.add_argument("--dataset-path", type=str, required=True, help="Path to Alpaca Arrow dataset folder")
     parser.add_argument("--train-frac", type=float, default=0.85, help="Fraction of data to use for training")
@@ -190,6 +253,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to run the coding finetuning flow. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     add_arguments(parser)
     args = parser.parse_args()

@@ -13,22 +13,35 @@ from src.utils.checkpoint import save_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_batch, calc_losses
-from src.utils.tokenization import text_to_token_ids, token_ids_to_text
+from src.utils.tokenization import g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
 @dataclass
 class TrainingResults:
+    """
+    Data class to hold the results of the training process.
+    """
     model: GptModel
     train_losses: list[float]
     val_losses: list[float]
     tokens_seen: list[int] = None
 
-    def breakdown(self):
-        return self.model, self.train_losses, self.val_losses, self.tokens_seen
-
 
 def train_test_split(text: str, max_length: int, batch_size: int, stride: int = None, train_ratio: float = 0.9) -> tuple[DataLoader, DataLoader]:
+    """
+    Split the text data into training and validation sets, create datasets and data loaders.
+
+    Args:
+        text (str): The text data to split.
+        max_length (int): The maximum sequence length for training samples.
+        batch_size (int): The batch size for data loaders.
+        stride (int, optional): The stride for the sliding window over the text. Defaults to max_length if None.
+        train_ratio (float): The ratio of data to use for training. Default is 0.9.
+
+    Returns:
+        tuple: A tuple containing the training and validation data loaders.
+    """
     split_idx = int(train_ratio * len(text))
     train_text = text[:split_idx]
     val_text = text[split_idx:]
@@ -42,6 +55,26 @@ def train_test_split(text: str, max_length: int, batch_size: int, stride: int = 
 
 def format_training_progress(epoch: int, n_epochs: int, step: int, n_steps: int, train_loss: float = None,
                              val_loss: float = None, train_acc: float = None, val_acc: float = None) -> str:
+    """
+    Format the training progress message.
+
+    Args:
+        epoch (int): Current epoch number.
+        n_epochs (int): Total number of epochs.
+        step (int): Current step number.
+        n_steps (int): Total number of steps.
+        train_loss (float, optional): Training loss. Defaults to None.
+        val_loss (float, optional): Validation loss. Defaults to None.
+        train_acc (float, optional): Training accuracy. Defaults to None.
+        val_acc (float, optional): Validation accuracy. Defaults to None.
+
+    Returns:
+        str: Formatted training progress message.
+
+    Example:
+        >>> format_training_progress(3, 10, 150, 1000, train_loss=0.456, val_loss=0.512)
+        "Epoch  3/10 | Step  150/1000 | Train-loss: 0.456 | Val-loss: 0.512"
+    """
     epoch_pad = len(str(n_epochs))
     step_pad = len(str(n_steps))
     msg_list = [
@@ -60,18 +93,51 @@ def format_training_progress(epoch: int, n_epochs: int, step: int, n_steps: int,
 
 
 def generate_and_print_sample(model: GptModel, device: Device, start_context: str) -> None:
+    """
+    Generate a sample text from the model given a starting context and print it.
+
+    Note that the model is set to eval mode during generation and then switched back to train mode.
+
+    Args:
+        model (GptModel): The trained GPT model.
+        device (Device): The device to run the model on.
+        start_context (str): The starting context for text generation.
+    """
     model.eval()
-    encoded = text_to_token_ids(start_context).to(device)
+    encoded = g_tokenizer.text_to_token_ids(start_context).to(device)
     with torch.no_grad():
         token_ids = model.generate_naive(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
-        decoded_text = token_ids_to_text(token_ids)
+        decoded_text = g_tokenizer.token_ids_to_text(token_ids)
         g_logger.info("Generated sample: " + decoded_text.replace("\n", " "))
     model.train()
 
 
 def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer, device: Device,
                 n_epochs: int, eval_freq: int = 50, eval_iter: int = 5, start_context: str = None) -> TrainingResults:
+    """
+    Train the GPT model.
 
+    Logic:
+    - For each epoch, iterate over the training data loader.
+    - For each batch, perform a learning step: forward pass, loss computation, backward pass, and optimizer step.
+    - Track the number of tokens seen and global training step.
+    - At specified evaluation frequency, compute and log training and validation losses.
+    - Optionally, generate and print a sample text after each epoch.
+
+    Args:
+        model (GptModel): The GPT model to train.
+        train_loader (DataLoader): The training data loader.
+        val_loader (DataLoader): The validation data loader.
+        optimizer (Optimizer): The optimizer to use for training.
+        device (Device): The device to run the model on.
+        n_epochs (int): The number of training epochs.
+        eval_freq (int): The frequency (in steps) to evaluate the model on the validation set. Default is 50.
+        eval_iter (int): The number of batches to use for evaluation. Default is 5.
+        start_context (str, optional): The starting context for sample generation after each epoch. Defaults to None.
+
+    Returns:
+        TrainingResults: The results of the training process.
+    """
     train_losses, val_losses, tokens_seen = [], [], []  # Initialize lists to track losses and tokens/examples seen
     token_count = 0
     global_step = -1
@@ -119,7 +185,31 @@ def run_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-
                       train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
                       start_context: str = "Every effort moves you", saved_model_path: str = "model.pth",
                       saved_plot_path: str = None) -> TrainingResults:
+    """
+    Run the full training flow for the GPT model.
 
+    Args:
+        config (GptConfig): The configuration for the GPT model.
+        training_set_path (str): The path to the training .txt file.
+        lr (float): The learning rate for the optimizer. Default is 5e-4.
+        n_epochs (int): The number of training epochs. Default is 10.
+        batch_size (int): The batch size for training. Default is 2.
+        weight_decay (float): The weight decay for the optimizer. Default is 0.1.
+        dataset_encoding (str): The encoding of the training .txt file. Default is "utf-8".
+        device_type (str): The device to use for training ("cpu", "cuda", "auto"). Default is "auto".
+        seed (int): The random seed for reproducibility. Default is 123.
+        max_length (int, optional): The maximum sequence length for training samples. Defaults to None, which uses config.context_length.
+        stride (int, optional): The stride for sliding window over text. Defaults to None, which uses max_length.
+        train_ratio (float): The ratio of data to use for training vs. validation. Default is 0.9.
+        eval_freq (int): The frequency (in steps) to evaluate model on validation set. Default is 5.
+        eval_iter (int): The number of batches to use for evaluation. Default is 1.
+        start_context (str): The starting context for sample generation. Default is "Every effort moves you".
+        saved_model_path (str): The path to save the trained model. Default is "model.pth".
+        saved_plot_path (str, optional): The path to save the loss plot. Defaults to None, which skips saving the plot.
+
+    Returns:
+        TrainingResults: The results of the training process.
+    """
     g_logger.info("Running foundation model training flow...")
 
     torch.manual_seed(seed)
@@ -163,6 +253,12 @@ def run_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add command-line arguments for training configuration to the parser.
+
+    Args:
+        parser (argparse.ArgumentParser): The parser to add arguments to.
+    """
     parser.add_argument("--training-set-path", type=str, required=True, help="Path to the training .txt file.")
     parser.add_argument("--lr", type=float, default=5e-4, help="Learning rate for the optimizer.")
     parser.add_argument("--n-epochs", type=int, default=10, help="Number of training epochs.")
@@ -182,6 +278,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to parse command-line arguments and run the training flow. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(
         description="Train a GPT model from scratch.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
