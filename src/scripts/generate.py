@@ -6,7 +6,7 @@ from src.scripts.interactive_session import InteractiveSession
 from src.utils.checkpoint import load_model
 from src.utils.device import get_device
 from src.utils.logger import g_logger
-from src.utils.tokenization import g_tokenizer
+from src.utils.tokenization.tokenizer import g_tokenizer
 
 
 def run_generation_flow(model_path: str, prompt: str, max_new_tokens: int = 25, temperature: float = 1.0,

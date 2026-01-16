@@ -18,7 +18,7 @@ from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_batch, calc_loss_loader
 from src.utils.ollama import format_input
-from src.utils.tokenization import tokenizer as tok
+from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
@@ -140,22 +140,22 @@ def custom_collate_fn(batch: list, device: Device, max_allowed_length: int = Non
 
         item: list[int]
         new_item = item.copy()
-        new_item += [tok.PAD_IDX]  # Add an <|endoftext|> token
+        new_item += [PAD_IDX]  # Add an <|endoftext|> token
 
         # Pad sequences to max_length
-        padded = new_item + [tok.PAD_IDX] * (batch_max_length - len(new_item))
+        padded = new_item + [PAD_IDX] * (batch_max_length - len(new_item))
         inputs = torch.tensor(padded[:-1])  # Truncate the last token for inputs
         targets = torch.tensor(padded[1:])  # Shift +1 to the right for targets
 
         # Replace all but the first padding tokens in targets by ignore_index
-        mask = targets == tok.PAD_IDX
+        mask = targets == PAD_IDX
         indices = torch.nonzero(mask).squeeze()
         if indices.numel() > 1:
-            targets[indices[1:]] = tok.IGNORE_IDX
+            targets[indices[1:]] = IGNORE_IDX
 
         # Mask instruction tokens if instruction length is provided
         if instruction_length is not None:
-            targets[:instruction_length - 1] = tok.IGNORE_IDX
+            targets[:instruction_length - 1] = IGNORE_IDX
 
         # Optionally truncate to maximum sequence length
         if max_allowed_length is not None:
@@ -376,12 +376,12 @@ def run_instruction_finetuning_advanced_flow(
         input_text = InstructionDatasetPhi.format_input_phi(entry) if use_phi3_prompt else format_input(entry)
 
         token_ids = model.generate(
-            idx=tok.text_to_token_ids(input_text).to(device),
+            idx=g_tokenizer.text_to_token_ids(input_text).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
-            eos_id=tok.PAD_IDX
+            eos_id=PAD_IDX
         )
-        generated_text = tok.token_ids_to_text(token_ids)
+        generated_text = g_tokenizer.token_ids_to_text(token_ids)
 
         if use_phi3_prompt:
             response_text = generated_text[len(input_text):].replace("<|assistant|>:", "").strip()
