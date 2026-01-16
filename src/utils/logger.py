@@ -3,6 +3,9 @@ import logging
 
 
 class ColoredFormatter(logging.Formatter):
+    """
+    Custom logging formatter to add colors based on log level.
+    """
     COLORS = {
         logging.DEBUG:    "\033[36m",    # Cyan
         logging.INFO:     "\033[32m",    # Green
@@ -13,11 +16,30 @@ class ColoredFormatter(logging.Formatter):
     RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
+        """
+        Format the log record with colors.
+
+        Args:
+            record (logging.LogRecord): The log record to format.
+
+        Returns:
+            str: The formatted log message with colors.
+        """
         color = self.COLORS.get(record.levelno, self.RESET)
         record.colored_levelname = f"{color}{record.levelname}{self.RESET}"
         return super().format(record)
 
     def formatTime(self, record: logging.LogRecord, datefmt: str = None) -> str:
+        """
+        Format the timestamp of the log record.
+
+        Args:
+            record (logging.LogRecord): The log record containing the timestamp.
+            datefmt (str, optional): The date format string. Defaults to None.
+
+        Returns:
+            str: The formatted timestamp string.
+        """
         dt = datetime.datetime.fromtimestamp(record.created)
         return f"{dt.strftime('%Y-%m-%d %H:%M:%S')}.{int(record.msecs):03d}"
 
