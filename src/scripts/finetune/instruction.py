@@ -16,12 +16,26 @@ from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_loss_batch
 from src.utils.ollama import OllamaEvaluator, format_input
-from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, text_to_token_ids, token_ids_to_text
+from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
 def instruction_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_IDX,
-                      ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[torch.Tensor, torch.Tensor]:
+                           ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Collate function for instruction tuning dataset.
+
+    Args:
+        batch (list[list[int]]): List of token ID sequences.
+        device (Device): Target device for tensors.
+        pad_token_id (int): Token ID used for padding.
+        ignore_index (int): Index to ignore in loss computation.
+        max_allowed_length (int, optional): Maximum allowed sequence length. Defaults to None.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: Collated input and target tensors.
+    """
+
     # Find the longest sequence in the batch
     batch_max_length = max(len(item) + 1 for item in batch)
 
@@ -61,7 +75,24 @@ def instruction_collate_fn(batch: list[int], device: Device, pad_token_id: int =
 
 
 def create_instruction_dataloaders(tuning_set_path: str, train_frac: float, test_frac: float, device: Device,
-                        batch_size: int = None, max_allowed_length: int = 1024, n_workers: int = 0, seed: int = 123) -> tuple[DataLoader, DataLoader, list[dict]]:
+                                   batch_size: int = None, max_allowed_length: int = 1024, n_workers: int = 0,
+                                   seed: int = 123) -> tuple[DataLoader, DataLoader, list[dict]]:
+    """
+    Create DataLoaders for instruction tuning.
+
+    Args:
+        tuning_set_path (str): Path to the tuning JSON file.
+        train_frac (float): Fraction of data to use for training.
+        test_frac (float): Fraction of data to use for testing.
+        device (Device): Target device for tensors.
+        batch_size (int, optional): Batch size for DataLoaders. Defaults to None.
+        max_allowed_length (int, optional): Maximum allowed sequence length. Defaults to 1024.
+        n_workers (int, optional): Number of worker processes for data loading. Defaults to 0.
+        seed (int, optional): Random seed for reproducibility. Defaults to 123.
+
+    Returns:
+        tuple[DataLoader, DataLoader, list[dict]]: Train, validation, and test DataLoaders.
+    """
 
     # Load the tuning dataset
     with open(tuning_set_path, "r") as f:
@@ -103,18 +134,37 @@ def create_instruction_dataloaders(tuning_set_path: str, train_frac: float, test
 
 def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_new_tokens: int,
                    test_output_path: str, format_func: Callable, evaluate: bool = False, seed: int = 123) -> None:
+    """
+    Generate responses for the test dataset, save them in the given test_data dict, and optionally evaluate them.
+
+    Notes:
+    1. This function sets the model to eval mode during generation and back to train mode afterwards.
+    2. If evaluation is enabled, it uses the Ollama API to score the responses
+    3. The test_data list is modified in-place to include the model responses.
+
+    Args:
+        model (GptModel): The instruction-finetuned model to test.
+        test_data (list[dict]): List of test samples.
+        device (Device): Target device for tensors.
+        max_new_tokens (int): Maximum number of tokens to generate for each response.
+        test_output_path (str): Path to save the test responses JSON.
+        format_func (Callable): Function to format the prompt from a test sample.
+        evaluate (bool, optional): Whether to evaluate the model responses using Ollama API. Defaults to False.
+        seed (int, optional): Random seed for reproducibility. Defaults to 123.
+    """
+
     # Generate responses
     g_logger.info("Generating model responses...")
     model.eval()
     for entry in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=True):
         prompt = format_func(entry)
         token_ids = model.generate(
-            idx=text_to_token_ids(prompt).to(device),
+            idx=g_tokenizer.text_to_token_ids(prompt).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
             eos_id=PAD_IDX
         )
-        generated_text = token_ids_to_text(token_ids)
+        generated_text = g_tokenizer.token_ids_to_text(token_ids)
         response = generated_text[len(prompt):].replace("### Response:", "").strip()
         entry["model_response"] = response  # Add response to the entry in-place
     model.train()
@@ -140,7 +190,28 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
                                     loss_plot_save_path: str = None, model_save_path: str = "assistant.pth",
                                     max_new_tokens: int = 256, test_output_path: str = "instruction-test-responses.json",
                                     evaluate: bool = False) -> None:
+    """
+    Fine-tune a GPT model for instruction following.
 
+    Args:
+        pretrained_model_path (str): Path to a pre-trained foundation GPT2 model.
+        tuning_set_path (str): Path to the instruction tuning JSON file.
+        train_frac (float): Fraction of data to use for training.
+        test_frac (float): Fraction of data to use for testing.
+        batch_size (int): Batch size for training.
+        seed (int): Random seed for reproducibility.
+        device_type (str): Device to use for training (cpu, cuda, mps, auto).
+        lr (float): Learning rate for the optimizer.
+        n_epochs (int): Number of training epochs.
+        weight_decay (float): Weight decay for the optimizer.
+        eval_freq (int): Evaluation frequency (in steps).
+        eval_iter (int): Number of batches to evaluate.
+        loss_plot_save_path (str, optional): Path to save loss plot (None to skip). Defaults to None.
+        model_save_path (str, optional): Path to save the fine-tuned model. Defaults to "assistant.pth".
+        max_new_tokens (int): Maximum number of tokens to generate for test responses.
+        test_output_path (str): Path to save test responses JSON.
+        evaluate (bool): Whether to evaluate the model responses using Ollama API.
+    """
     g_logger.info("Running instruction finetuning flow...")
 
     torch.manual_seed(seed)
@@ -188,6 +259,12 @@ def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path:
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add command-line arguments for instruction fine-tuning.
+
+    Args:
+        parser (argparse.ArgumentParser): The argument parser to which to add arguments.
+    """
     parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
     parser.add_argument("--tuning-set-path", type=str, required=True, help="Path to the instruction tuning JSON file.")
     parser.add_argument("--train-frac", type=float, default=0.85, help="Fraction of data for training.")
@@ -208,6 +285,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to run instruction fine-tuning from command-line. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(
         description="Fine-tune a GPT model for instruction following.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

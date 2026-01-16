@@ -35,6 +35,13 @@ FILES_TO_DOWNLOAD = [
 
 
 def _download_file(url: str, destination: str) -> None:
+    """
+    Download a file from a URL to a specified destination with progress indication.
+
+    Args:
+        url (str): The URL of the file to download.
+        destination (str): The local path where the file will be saved.
+    """
 
     # Send a GET request to download the file
     response = requests.get(url, stream=True, timeout=60)
@@ -66,6 +73,16 @@ def _download_file(url: str, destination: str) -> None:
 
 
 def download_gpt2(model_size: str, models_dir: str) -> str:
+    """
+    Download GPT-2 model files of a specified size, in TensorFlow format.
+
+    Args:
+        model_size (str): The size of the GPT-2 model to download.
+        models_dir (str): The directory where the model files will be saved.
+
+    Returns:
+        str: The directory where the model files are saved.
+    """
     if model_size not in ALLOWED_MODEL_SIZES:
         raise ValueError(f"Model size {model_size} not in {ALLOWED_MODEL_SIZES}")
 
@@ -99,6 +116,16 @@ def download_gpt2(model_size: str, models_dir: str) -> str:
 
 
 def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[str, int]) -> dict:
+    """
+    Load GPT-2 model parameters from a TensorFlow checkpoint.
+
+    Args:
+        ckpt_path (str): The path to the TensorFlow checkpoint file.
+        settings (dict): A dictionary containing model hyperparameters.
+
+    Returns:
+        dict: A dictionary containing the loaded model parameters.
+    """
 
     # Initialize parameters dictionary with empty blocks for each layer
     params = {"blocks": [{} for _ in range(settings["n_layer"])]}
@@ -131,9 +158,20 @@ def _load_gpt2_params_from_tf_ckpt(ckpt_path : dict[str, str], settings: dict[st
 
 
 def _load_gpt2_params(model_size: str, models_dir: str) -> tuple[dict, dict]:
+    """
+    Load GPT-2 model parameters and settings from TensorFlow checkpoint files.
+
+    Args:
+        model_size (str): The size of the GPT-2 model.
+        models_dir (str): The directory where the model files are saved.
+
+    Returns:
+        tuple: A tuple containing the loaded model parameters and settings.
+    """
     model_dir = os.path.join(models_dir, model_size)
     if not os.path.exists(model_dir):
         raise FileNotFoundError(f"Model directory '{model_dir}' does not exist. Please download the model first.")
+
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
     params = _load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
@@ -141,15 +179,37 @@ def _load_gpt2_params(model_size: str, models_dir: str) -> tuple[dict, dict]:
 
 
 def _assign(left: torch.nn.Parameter, right: np.ndarray) -> torch.nn.Parameter:
+    """
+    Assign a NumPy array to a PyTorch parameter, ensuring shape compatibility.
+
+    Args:
+        left (torch.nn.Parameter): The target PyTorch parameter.
+        right (np.ndarray): The NumPy array to assign.
+
+    Returns:
+        torch.nn.Parameter: The assigned PyTorch parameter.
+    """
     if left.shape != right.shape:
         raise ValueError(f"Shape mismatch. Left: {left.shape}, Right: {right.shape}")
     return torch.nn.Parameter(torch.tensor(right))
 
 
 def convert_tf_weights_into_pytorch_model(model_size: str, models_dir: str, file_name: str = "model.pth") -> GptModel:
+    """
+    Convert TensorFlow GPT-2 model weights into PyTorch format and save the converted model.
+
+    Args:
+        model_size (str): The size of the GPT-2 model to convert.
+        models_dir (str): The directory where the TensorFlow model files are saved.
+        file_name (str): The filename for the converted PyTorch model. Default is "model.pth".
+
+    Returns:
+        GptModel: The converted PyTorch model instance (that is also saved to disk).
+    """
     target_path = os.path.join(models_dir, model_size, file_name)
     g_logger.info(f"Converting TensorFlow model to PyTorch format in {target_path}")
 
+    # Load parameters and settings from TensorFlow checkpoint
     params, settings = _load_gpt2_params(model_size, models_dir)
 
     # Create GPT config
@@ -164,9 +224,9 @@ def convert_tf_weights_into_pytorch_model(model_size: str, models_dir: str, file
     )
 
     # Initialize GPT model
+    gpt = GptModel(config)
 
     # Load embedding weights
-    gpt = GptModel(config)
     gpt.pos_emb.weight = _assign(gpt.pos_emb.weight, params["wpe"])
     gpt.tok_emb.weight = _assign(gpt.tok_emb.weight, params["wte"])
 
@@ -219,12 +279,26 @@ def convert_tf_weights_into_pytorch_model(model_size: str, models_dir: str, file
 
 
 def run_download_flow(model_sizes: list[str], models_dir: str, convert: bool = False) -> None:
+    """
+    Run the GPT-2 model download flow for specified model sizes.
+
+    Args:
+        model_sizes (list[str]): List of model sizes to download.
+        models_dir (str): Directory to save the downloaded model files.
+        convert (bool): Whether to convert and save the model in PyTorch format. Default is False.
+    """
     for model_size in model_sizes:
         download_gpt2(model_size, models_dir)
         if convert:
             convert_tf_weights_into_pytorch_model(model_size, models_dir)
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add command-line arguments for the download script.
+
+    Args:
+        parser (argparse.ArgumentParser): The argument parser instance.
+    """
     parser.add_argument("--sizes", type=str, nargs="+", default=["124M"], choices=ALLOWED_MODEL_SIZES, help="Size(s) of the GPT-2 model(s) to download. You can specify multiple sizes.")
     parser.add_argument("--dir", type=str, default="models", help="Directory to save the downloaded model files.")
     parser.add_argument("--convert", action="store_true", help="Whether to convert and save the model in PyTorch format.")
@@ -232,6 +306,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to execute the download flow based on command-line arguments. Called when the script is run directly.
+    """
     parser = argparse.ArgumentParser(
         description="Download GPT-2 model files.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

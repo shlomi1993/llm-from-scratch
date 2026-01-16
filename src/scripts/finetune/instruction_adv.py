@@ -23,8 +23,21 @@ from src.utils.visualization import plot_metrics
 
 
 class LoraLayer(nn.Module):
+    """
+    A Low-Rank Adaptation (LoRA) layer that approximates a weight matrix using two smaller matrices.
+    This implementation follows the LoRA technique for efficient fine-tuning of large language models.
+    """
 
     def __init__(self, in_dim: int, out_dim: int, rank: int, alpha: float) -> None:
+        """
+        Initializes the LoRA layer.
+
+        Args:
+            in_dim (int): Input dimension.
+            out_dim (int): Output dimension.
+            rank (int): Rank of the low-rank approximation.
+            alpha (float): Scaling factor for the low-rank approximation.
+        """
         super().__init__()
         self.A = nn.Parameter(torch.empty(in_dim, rank))
         nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))  # similar to standard weight initialization
@@ -32,21 +45,59 @@ class LoraLayer(nn.Module):
         self.alpha = alpha
 
     def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass of the LoRA layer.
+
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            Tensor: Output tensor after applying LoRA.
+        """
         return self.alpha * (x @ self.A @ self.B)
 
 
 class LinearWithLora(nn.Module):
+    """
+    A wrapper for nn.Linear that adds a LoRA layer to the linear transformation.
+    This allows for efficient fine-tuning of large language models by adapting only a small number of parameters.
+    """
 
     def __init__(self, linear: nn.Linear, rank: int, alpha: float) -> None:
+        """
+        Initializes the LinearWithLora layer.
+
+        Args:
+            linear (nn.Linear): The original nn.Linear layer.
+            rank (int): Rank of the LoRA layer.
+            alpha (float): Scaling factor for the LoRA layer.
+        """
         super().__init__()
         self.linear = linear
         self.lora = LoraLayer(linear.in_features, linear.out_features, rank, alpha)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the LinearWithLora layer. Adds the output of the original linear layer and the LoRA layer.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor after applying the LoRA layer.
+        """
         return self.linear(x) + self.lora(x)
 
 
 def replace_linear_with_lora(model: nn.Module, rank: int, alpha: float) -> None:
+    """
+    Recursively replaces all nn.Linear layers in the model with LinearWithLora layers.
+
+    Args:
+        model (nn.Module): The model to be modified.
+        rank (int): Rank of the LoRA layers.
+        alpha (float): Scaling factor for the LoRA layers.
+    """
     for name, module in model.named_children():
         if isinstance(module, nn.Linear):
             setattr(model, name, LinearWithLora(module, rank, alpha))  # Replace the Linear layer with LinearWithLoRA
@@ -55,6 +106,20 @@ def replace_linear_with_lora(model: nn.Module, rank: int, alpha: float) -> None:
 
 
 def custom_collate_fn(batch: list, device: Device, max_allowed_length: int = None) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Custom collate function to prepare batches for instruction fine-tuning.
+    It handles padding, target masking, and optional truncation to a maximum length.
+
+    Args:
+        batch (list): A list of samples, where each sample is either a tuple of (instruction_length, list of token IDs)
+            or a list of token IDs.
+        device (Device): The target device to transfer the tensors to.
+        max_allowed_length (int, optional): Maximum allowed sequence length. If provided, sequences will be truncated to
+            this length. Defaults to None.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor]: A tuple containing the input tensor and the target tensor
+    """
 
     # Detect if batch contains instruction lengths (tuples) or just sequences (lists)
     has_instruction_lengths = isinstance(batch[0], tuple)
@@ -108,6 +173,16 @@ def custom_collate_fn(batch: list, device: Device, max_allowed_length: int = Non
 
 
 def fetch_json(file_path: str, url: str) -> list[dict]:
+    """
+    Fetches a JSON file from a URL and saves it locally if it doesn't already exist.
+
+    Args:
+        file_path (str): The local path to save the JSON file.
+        url (str): The URL to download the JSON file from.
+
+    Returns:
+        list[dict]: The loaded JSON data.
+    """
     if not os.path.exists(file_path):
         g_logger.info(f"Downloading {url}")
         response = requests.get(url, timeout=30)
@@ -148,7 +223,33 @@ def run_instruction_finetuning_advanced_flow(
     max_new_tokens: int = 256,
     test_output_path: str = "instruction-test-responses-advanced.json"
 ) -> None:
+    """
+    Runs the advanced instruction fine-tuning flow with options for LoRA, instruction masking, and alternative prompts.
 
+    Args:
+        pretrained_model_path (str): Path to a pre-trained foundation GPT2 model.
+        tuning_set_path (str, optional): Path to the instruction tuning JSON file. Downloads default if not provided. Defaults to None.
+        use_alpaca52k (bool, optional): Whether to use the Alpaca 52k dataset. Defaults to False.
+        mask_instructions (bool, optional): Whether to mask instruction tokens in loss calculation. Defaults to False.
+        use_phi3_prompt (bool, optional): Whether to use the Phi-3 prompt template. Defaults to False.
+        use_lora (bool, optional): Whether to apply Low-Rank Adaptation (LoRA). Defaults to False.
+        lora_rank (int, optional): LoRA rank parameter. Defaults to 16.
+        lora_alpha (float, optional): LoRA alpha parameter. Defaults to 16.0.
+        train_frac (float, optional): Fraction of data for training. Defaults to 0.85.
+        test_frac (float, optional): Fraction of data for testing. Defaults to 0.1.
+        batch_size (int, optional): Batch size for training. Defaults to 8.
+        seed (int, optional): Random seed for reproducibility. Defaults to 123.
+        device_type (str, optional): Device to use for training (cpu, cuda, mps, auto). Defaults to "auto".
+        lr (float, optional): Learning rate for the optimizer. Defaults to 5e-5.
+        n_epochs (int, optional): Number of training epochs. Defaults to 2.
+        weight_decay (float, optional): Weight decay for the optimizer. Defaults to 0.1.
+        eval_freq (int, optional): Evaluation frequency (in steps). Defaults to 5.
+        eval_iter (int, optional): Number of batches to evaluate. Defaults to 5.
+        loss_plot_save_path (str, optional): Path to save loss plot (None to skip). Defaults to None.
+        model_save_path (str, optional): Path to save the fine-tuned model. Defaults to "assistant-advanced.pth".
+        max_new_tokens (int, optional): Maximum number of new tokens to generate during testing. Defaults to 256.
+        test_output_path (str, optional): Path to save test output responses. Defaults to "instruction-test-responses-advanced.json".
+    """
     g_logger.info("Starting advanced instruction fine-tuning flow")
     g_logger.warning("\033[93mThis flow is experimental and may not be fully tested.\033[0m")
 
@@ -299,6 +400,12 @@ def run_instruction_finetuning_advanced_flow(
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Adds command-line arguments for the advanced instruction fine-tuning flow.
+
+    Args:
+        parser (argparse.ArgumentParser): The parser to add arguments to.
+    """
     parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
     parser.add_argument("--tuning-set-path", type=str, default=None, help="Path to the instruction tuning JSON file (downloads default if not provided).")
     parser.add_argument("--use-alpaca52k", action="store_true", help="Use Alpaca 52k dataset instead of default.")
@@ -324,6 +431,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to run the advanced instruction fine-tuning flow. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(
         description="Advanced instruction fine-tuning with LoRA, masking, and alternative prompts.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

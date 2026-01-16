@@ -23,6 +23,9 @@ from src.utils.visualization import plot_metrics
 
 @dataclass
 class ClassificationFineTuningResults:
+    """
+    Data class to hold the results of classification fine-tuning.
+    """
     model: GptModel
     train_losses: list[float]
     val_losses: list[float]
@@ -30,12 +33,18 @@ class ClassificationFineTuningResults:
     val_accuracies: list[float]
     n_examples_seen: int = None
 
-    def breakdown(self):
-        return self.model, self.train_losses, self.val_losses, self.train_accuracies, self.val_accuracies, self.n_examples_seen
-
-
 
 def create_balanced_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a balanced dataset by under-sampling the majority class.
+
+    Args:
+        df (pd.DataFrame): Original DataFrame with 'Label' column containing 'spam' and 'ham' entries.
+
+    Returns:
+        pd.DataFrame: Balanced dataset with an equal number of 'spam' and 'ham' entries, where 'spam' is labeled as 1
+            and 'ham' as 0.
+    """
 
     # Count the instances of "spam"
     n_spam = df[df["Label"] == "spam"].shape[0]
@@ -53,6 +62,17 @@ def create_balanced_dataset(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def random_split(df: pd.DataFrame, train_frac: float, validation_frac: float) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Randomly split a DataFrame into training, validation, and test sets.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame to be split.
+        train_frac (float): Fraction of data to be used for training.
+        validation_frac (float): Fraction of data to be used for validation.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Tuple containing the split DataFrames.
+    """
 
     # Shuffle the entire DataFrame
     df = df.sample(frac=1, random_state=123).reset_index(drop=True)
@@ -71,6 +91,22 @@ def random_split(df: pd.DataFrame, train_frac: float, validation_frac: float) ->
 
 def create_classification_dataloaders(training_set_path: str, sep: str, column_names: list[str], train_frac: float,
                                       val_frac: float, save_split_dir: str, batch_size: int, seed: int) -> tuple[DataLoader, DataLoader, DataLoader]:
+    """
+    Create DataLoaders for classification fine-tuning.
+
+    Args:
+        training_set_path (str): Path to the training .tsv (tab-separated) file.
+        sep (str): Separator used in the .tsv file.
+        column_names (list[str]): Column names for the dataset.
+        train_frac (float): Fraction of data to be used for training.
+        val_frac (float): Fraction of data to be used for validation.
+        save_split_dir (str): Directory to save train/val/test splits.
+        batch_size (int): Batch size for training.
+        seed (int): Random seed for reproducibility.
+
+    Returns:
+        tuple[DataLoader, DataLoader, DataLoader]: Tuple containing the DataLoaders for training, validation, and test sets.
+    """
 
     # Load and preprocess dataset
     df = pd.read_csv(training_set_path, sep=sep, header=None, names=column_names)
@@ -101,6 +137,18 @@ def create_classification_dataloaders(training_set_path: str, sep: str, column_n
 
 
 def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_batches: int = None) -> float:
+    """
+    Calculate accuracy of the model on a given DataLoader.
+
+    Args:
+        loader (DataLoader): DataLoader to evaluate the model on.
+        model (GptModel): The classification model.
+        device (Device): Device to perform computation on.
+        n_batches (int, optional): Number of batches to evaluate. If None, evaluate on the entire loader. Defaults to None.
+
+    Returns:
+        float: Accuracy of the model on the given DataLoader.
+    """
     model.eval()
     correct_predictions = 0
     n_examples = 0
@@ -126,6 +174,17 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
 
 
 def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel:
+    """
+    Load a fine-tuned classification model from a checkpoint and return it as a GptModel instance in eval mode.
+
+    Args:
+        model_path (str): Path to the checkpoint file.
+        device (Device): Device to load the model on.
+        n_classes (int): Number of output classes.
+
+    Returns:
+        GptModel: Loaded classification model.
+    """
 
     # Load the checkpoint to extract config
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
@@ -148,6 +207,21 @@ def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel
 
 
 def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = PAD_IDX) -> tuple[str, float]:
+    """
+    Classify a single SMS review as "spam" or "not spam" using the fine-tuned classification model.
+
+    Note that this function change the model to eval mode.
+
+    Args:
+        text (str): Input text to classify.
+        model (GptModel): Fine-tuned classification model.
+        device (Device): Device to perform computation on.
+        max_length (int): Maximum input length for the model.
+        pad_token_id (int, optional): Token ID used for padding. Defaults to PAD_IDX.
+
+    Returns:
+        tuple[str, float]: Predicted label ("spam" or "not spam") and confidence score as a float.
+    """
     model.eval()
 
     # Verify that the input length does not exceed model context length
@@ -178,6 +252,23 @@ def classify_review(text: str, model: GptModel, device: Device, max_length: int,
 
 def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer,
                         device: Device, n_epochs: int, eval_freq, eval_iter) -> ClassificationFineTuningResults:
+
+    """
+    Fine-tune a classification model using the provided training and validation DataLoaders.
+
+    Args:
+        model (GptModel): The classification model to fine-tune.
+        train_loader (DataLoader): DataLoader for training data.
+        val_loader (DataLoader): DataLoader for validation data.
+        optimizer (Optimizer): Optimizer for updating model parameters.
+        device (Device): Device to perform computation on.
+        n_epochs (int): Number of training epochs.
+        eval_freq (int): Frequency (in steps) to evaluate model on validation set.
+        eval_iter (int): Number of batches to evaluate.
+
+    Returns:
+        ClassificationFineTuningResults: Results of the fine-tuning process.
+    """
 
     train_losses, val_losses, train_accs, val_accs = [], [], [], []  # Initialize lists to track losses and accuracies
     example_count = 0
@@ -231,7 +322,32 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
                                        weight_decay: float = 0.1, eval_freq: int = 50, eval_iter: int = 5,
                                        loss_plot_save_path: str = None, accuracy_plot_save_path: str = None,
                                        model_save_path: str = "spam-classifier.pth") -> ClassificationFineTuningResults:
+    """
+    Run the classification fine-tuning flow.
 
+    Args:
+        pretrained_model_path (str): Path to a pre-trained foundation GPT2 model.
+        tuning_set_path (str): Path to the training .tsv (tab-separated) file.
+        sep (str, optional): Separator used in the .tsv file. Defaults to "\t".
+        column_names (list[str], optional): Column names for the dataset. Defaults to ["Label", "Text"].
+        train_frac (float, optional): Fraction of data to be used for training. Defaults to 0.7.
+        validation_frac (float, optional): Fraction of data to be used for validation. Defaults to 0.1.
+        save_split_dir (str, optional): Directory to save train/val/test splits. Defaults to ".".
+        batch_size (int, optional): Batch size for training. Defaults to 8.
+        seed (int, optional): Random seed for reproducibility. Defaults to 123.
+        device_type (str, optional): Device to use for training (cpu, cuda, mps, auto). Defaults to "auto".
+        lr (float, optional): Learning rate for the optimizer. Defaults to 5e-5.
+        n_epochs (int, optional): Number of training epochs. Defaults to 5.
+        weight_decay (float, optional): Weight decay for the optimizer. Defaults to 0.1.
+        eval_freq (int, optional): Evaluation frequency (in steps). Defaults to 50.
+        eval_iter (int, optional): Number of batches to evaluate. Defaults to 5.
+        loss_plot_save_path (str, optional): Path to save the loss plot. If None, no plot is saved. Defaults to None.
+        accuracy_plot_save_path (str, optional): Path to save the accuracy plot. If None, no plot is saved. Defaults to None.
+        model_save_path (str, optional): Path to save the fine-tuned model. Defaults to "spam-classifier.pth".
+
+    Returns:
+        ClassificationFineTuningResults: Results of the fine-tuning process.
+    """
     g_logger.info("Running classification fine-tuning flow...")
 
     torch.manual_seed(seed)
@@ -302,6 +418,12 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add command-line arguments to the parser for classification fine-tuning.
+
+    Args:
+        parser (argparse.ArgumentParser): The parser to add arguments to.
+    """
     parser.add_argument("--pretrained-model-path", type=str, required=True, help="Path to a pre-trained foundation GPT2 model.")
     parser.add_argument("--tuning-set-path", type=str, required=True, help="Path to the training .tsv (tab-separated) file.")
     parser.add_argument("--column-names", type=str, nargs="+", default=["Label", "Text"], help="Column names for the dataset.")
@@ -322,6 +444,9 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> None:
+    """
+    Main function to run the classification fine-tuning flow. Called when the script is executed directly.
+    """
     parser = argparse.ArgumentParser(
         description="Fine-tune a GPT model for SMS spam classification.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
