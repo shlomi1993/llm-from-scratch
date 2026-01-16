@@ -272,7 +272,7 @@ class AlpacaCodeDataset(Dataset):
 
         Args:
             data_path (str): The path to the directory containing the dataset.
-            max_length (int): The maximum length of tokenized sequences. Defaults to 1024.
+            max_length (int, optional): The maximum length of tokenized sequences. Defaults to 1024.
             max_samples (int, optional): The maximum number of samples to load. Defaults to None
         """
         self.max_length = max_length
