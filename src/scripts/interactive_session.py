@@ -76,13 +76,12 @@ class InteractiveSession(ABC):
             - Tokenize the prompt and move it to the appropriate device.
             - Generate a live response using the model (can be interrupted with KeyboardInterrupt).
         """
-        if self.model is None:
-            raise RuntimeError("Model not loaded. Call load() before starting the interactive session.")
-
         torch.manual_seed(self._seed)
         g_logger.info(f"Using device '{self._device.type}' and random seed {self._seed}")
 
         self.load()
+        if self.model is None:
+            raise RuntimeError("Model not loaded. Call load() before starting the interactive session.")
 
         sep = "=" * get_terminal_size().columns
         print(f"{sep}\n{self.welcome_msg}\n{sep}")
@@ -99,8 +98,12 @@ class InteractiveSession(ABC):
 
                 prompt = self.format_prompt(user_input)
                 idx = g_tokenizer.text_to_token_ids(prompt).to(self._device)
-                self.model.generate(idx, self._max_new_tokens, self.model.config.context_length, self._temperature,
-                                    self._top_k, live=True)
+                try:
+                    self.model.generate(idx, self._max_new_tokens, self.model.config.context_length, self._temperature,
+                                        self._top_k, live=True)
+                except KeyboardInterrupt:
+                    print("\nGeneration interrupted by user")
+
                 print()  # Newline after generation ends
 
             except KeyboardInterrupt:

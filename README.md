@@ -136,30 +136,19 @@ gpt2 generate --model-path models/124M/model.pth --prompt "Once upon a time"
 ### Fine-tune for Classification
 
 ```bash
-gpt2 finetune classification \
-  --pretrained-model-path models/124M/model.pth \
-  --tuning-set-path dataset/sms_spam_collection/SMSSpamCollection.tsv \
-  --n-epochs 5 \
-  --model-save-path classifier.pth
+gpt2 finetune classification --pretrained-model-path models/124M/model.pth --tuning-set-path dataset/sms_spam_collection/SMSSpamCollection.tsv --n-epochs 5 --model-save-path classifier.pth
 ```
 
 ### Classify Text to Spam or Ham
 
 ```bash
-gpt2 spam-ham \
-  --model-path classifier.pth
-  --text "You are a winner you have been specially selected to receive $1000 cash or a $2000 award."
+gpt2 spam-ham --model-path classifier.pth --text "You are a winner you have been specially selected to receive $1000 cash or a $2000 award."
 ```
 
 ### Fine-tune for Instruction Following
 
 ```bash
-gpt2 finetune instruction \
-  --pretrained-model-path models/355M/model.pth \
-  --tuning-set-path dataset/instruction_data/instruction-data.json \
-  --n-epochs 2 \
-  --model-save-path assistant.pth \
-  --evaluate
+gpt2 finetune instruction --pretrained-model-path models/355M/model.pth --tuning-set-path dataset/instruction_data/instruction-data.json --n-epochs 2 --model-save-path assistant.pth --evaluate
 ```
 
 ### Chat with an Assistant
@@ -171,16 +160,10 @@ gpt2 chat --model-path assistant.pth
 ### Fine-tune for Code Generation
 
 ```bash
-gpt2 finetune coding \
-  --pretrained-model-path models/355M/model.pth \
-  --dataset-path dataset/python_code_instructions/ \
-  --max-samples 100 \  # Limit dataset size for test speed
-  --batch_size 4 \
-  --n-epochs 1 \
-  --model-save-path coder.pth \
-  --test-output-path responses.json \
-  --evaluate
+gpt2 finetune coding --pretrained-model-path models/355M/model.pth --dataset-path dataset/python_code_instructions/ --max-samples 100 --batch_size 4 --n-epochs 1 --model-save-path coder.pth --test-output-path responses.json --evaluate
 ```
+
+- **Note:** The use of `--max-samples 100` is to limit dataset size for test speed
 
 ### Interactive Coding Session
 
