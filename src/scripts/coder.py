@@ -19,15 +19,18 @@ class InteractiveCoderSession(InteractiveSession):
         return self.CODER_PROMPT_TEMPLATE.format(instruction=user_input)
 
 
-def run_coder_flow(model_path: str, max_new_tokens: int = 256, device_type: str = "auto", seed: int = 123) -> None:
+def run_coder_flow(model_path: str, max_new_tokens: int = 256, temperature: float = 0.0, top_k: int = None,
+                   device_type: str = "auto", seed: int = 123) -> None:
     g_logger.info("Starting interactive coding session...")
-    session = InteractiveCoderSession(model_path, max_new_tokens, device_type=device_type, seed=seed)
+    session = InteractiveCoderSession(model_path, max_new_tokens, temperature, top_k, device_type, seed)
     session.start()
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model-path", type=str, default="coder.pth", help="Path to the finetuned coder model")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum code tokens to generate")
+    parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature for generation. If not set, uses model default.")
+    parser.add_argument("--top-k", type=int, default=None, help="Top-K sampling parameter. If not set, uses model default.")
     parser.add_argument("--device", type=str, default="auto", help="Device to use (cpu, cuda, mps, auto)")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility")
 
@@ -39,7 +42,7 @@ def main() -> None:
     )
     add_arguments(parser)
     args = parser.parse_args()
-    run_coder_flow(args.model_path, args.max_new_tokens, args.device, args.seed)
+    run_coder_flow(args.model_path, args.max_new_tokens, args.temperature, args.top_k, args.device, args.seed)
 
 
 if __name__ == "__main__":

@@ -239,6 +239,8 @@ def run_chat(args: Namespace) -> None:
     run_chat_flow(
         model_path=args.model_path,
         max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_k=args.top_k,
         device_type=args.device,
         seed=args.seed
     )
@@ -252,6 +254,8 @@ def run_coder(args: Namespace) -> None:
     run_coder_flow(
         model_path=args.model_path,
         max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_k=args.top_k,
         device_type=args.device,
         seed=args.seed
     )
