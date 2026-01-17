@@ -97,7 +97,7 @@ gpt2
 
 ## Quick Start
 
-### Download a Pre-trained Model
+### Download "Formal" Pre-trained Models
 
 ```bash
 gpt2 download --sizes 124M --dir models --convert
@@ -106,10 +106,26 @@ gpt2 download --sizes 124M --dir models --convert
 This script downloads the selected official pre-trained models in TensorFlow format and converts them to PyTorch format.  
 To download custom pre-trained or fine-tuned models, check the following section.
 
-### Download a Fine-tuned Model
+### Download Custom Fine-tuned Models
+
+**Automated Download (Recommended):**
+
+Use the provided script to download all custom models automatically:
+
+```bash
+# Download all models to default location (models/)
+./download_custom_models.sh
+
+# Download to a custom directory
+./download_custom_models.sh my_models
+```
+
+**Manual Download:**
+
+Alternatively, download models individually from Google Drive:
 
 - **Pretrained Model:** A GPT-2 based foundation model trained from scratch on a small, custom dataset. Useful for educational purposes and experimentation, but less capable than official models above due to limited data.
-  - [Download fpundation.zip](https://drive.google.com/file/d/1AZP-AEEm8NJF4wGXkxEF-hxAGBAdShIt/view?usp=drive_link)
+  - [Download foundation.zip](https://drive.google.com/file/d/1AZP-AEEm8NJF4wGXkxEF-hxAGBAdShIt/view?usp=drive_link)
 - **Classifier Model:** Fine-tuned on SMS spam-or-ham dataset using the official 124M GPT-2 model. Use this for spam detection task.
   - [Download spam_classifier.zip](https://drive.google.com/file/d/1ecl-LeMq3fgNBEDjkKzisWp4ube40Jb0/view?usp=drive_link)
 - **Assistant Model:** Fine-tuned for instruction-following and chat, based on the official 355M GPT-2 model. Use this for interactive assistant or chatbot applications.
@@ -235,6 +251,7 @@ llm-from-scratch/
 │   ├── test_generation.py                  # Tests for text generation
 │   └── test_pretraining.py                 # Tests for pretraining
 ├── activate.sh                             # Virtual environment activation script
+├── download_custom_models.sh               # Script to download all custom fine-tuned models from Google Drive
 ├── install.sh                              # Automated project setup and installation
 ├── pyproject.toml                          # Project metadata and dependency configuration
 └── README.md                               # This file
