@@ -16,11 +16,11 @@ from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_loss_batch
 from src.utils.ollama import OllamaEvaluator, format_input
-from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, g_tokenizer
+from src.utils.tokenization.tokenizer import EOT_IDX, IGNORE_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
-def instruction_collate_fn(batch: list[int], device: Device, pad_token_id: int = PAD_IDX,
+def instruction_collate_fn(batch: list[int], device: Device, pad_token_id: int = EOT_IDX,
                            ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Collate function for instruction tuning dataset.
@@ -162,7 +162,7 @@ def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_n
             idx=g_tokenizer.text_to_token_ids(prompt).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
-            eos_id=PAD_IDX
+            eos_id=EOT_IDX
         )
         generated_text = g_tokenizer.token_ids_to_text(token_ids)
         response = generated_text[len(prompt):].replace("### Response:", "").strip()

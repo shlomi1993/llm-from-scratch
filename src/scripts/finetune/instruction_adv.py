@@ -18,7 +18,7 @@ from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_batch, calc_loss_loader
 from src.utils.ollama import format_input
-from src.utils.tokenization.tokenizer import PAD_IDX, IGNORE_IDX, g_tokenizer
+from src.utils.tokenization.tokenizer import EOT_IDX, IGNORE_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
@@ -140,15 +140,15 @@ def custom_collate_fn(batch: list, device: Device, max_allowed_length: int = Non
 
         item: list[int]
         new_item = item.copy()
-        new_item += [PAD_IDX]  # Add an <|endoftext|> token
+        new_item += [EOT_IDX]  # Add an <|endoftext|> token
 
         # Pad sequences to max_length
-        padded = new_item + [PAD_IDX] * (batch_max_length - len(new_item))
+        padded = new_item + [EOT_IDX] * (batch_max_length - len(new_item))
         inputs = torch.tensor(padded[:-1])  # Truncate the last token for inputs
         targets = torch.tensor(padded[1:])  # Shift +1 to the right for targets
 
         # Replace all but the first padding tokens in targets by ignore_index
-        mask = targets == PAD_IDX
+        mask = targets == EOT_IDX
         indices = torch.nonzero(mask).squeeze()
         if indices.numel() > 1:
             targets[indices[1:]] = IGNORE_IDX
@@ -379,7 +379,7 @@ def run_instruction_finetuning_advanced_flow(
             idx=g_tokenizer.text_to_token_ids(input_text).to(device),
             max_new_tokens=max_new_tokens,
             context_size=model.config.context_length,
-            eos_id=PAD_IDX
+            eos_id=EOT_IDX
         )
         generated_text = g_tokenizer.token_ids_to_text(token_ids)
 

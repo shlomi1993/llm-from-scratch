@@ -3,8 +3,8 @@ import torch
 
 
 # Special tokens
-EOT = "<|endoftext|>"
-PAD_IDX = 50256  # <|endoftext|>
+EOT_TOK = "<|endoftext|>"
+EOT_IDX = 50256  # <|endoftext|>
 IGNORE_IDX = -100  # Used to ignore padding tokens in cross-entropy loss computation
 
 

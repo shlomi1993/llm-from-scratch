@@ -17,7 +17,7 @@ from src.utils.checkpoint import load_model, save_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_losses, calc_loss_last_token
-from src.utils.tokenization.tokenizer import PAD_IDX, g_tokenizer
+from src.utils.tokenization.tokenizer import EOT_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
@@ -206,7 +206,7 @@ def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel
     return model
 
 
-def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = PAD_IDX) -> tuple[str, float]:
+def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = EOT_IDX) -> tuple[str, float]:
     """
     Classify a single SMS review as "spam" or "not spam" using the fine-tuned classification model.
 

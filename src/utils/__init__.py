@@ -9,7 +9,7 @@ from .device import Device, get_device
 from .logger import g_logger
 from .losses import LossFunc, calc_loss_batch, calc_loss_last_token, calc_loss_loader, calc_losses
 from .ollama import OllamaEvaluator, format_input, coding_format_input
-from .tokenization.tokenizer import EOT, PAD_IDX, IGNORE_IDX, g_tokenizer
+from .tokenization.tokenizer import EOT_TOK, EOT_IDX, IGNORE_IDX, g_tokenizer
 from .visualization import plot_metrics
 
 
@@ -27,8 +27,8 @@ __all__ = [
     "OllamaEvaluator",
     "format_input",
     "coding_format_input",
-    "EOT",
-    "PAD_IDX",
+    "EOT_TOK",
+    "EOT_IDX",
     "IGNORE_IDX",
     "g_tokenizer",
     "text_to_token_ids",
