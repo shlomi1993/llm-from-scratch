@@ -204,7 +204,7 @@ class GptModel(nn.Module):
                 idx_next = torch.argmax(logits, dim=-1, keepdim=True)
 
             # Stop if EOS token is generated
-            if eos_id is not None and (idx_next == eos_id or idx_next.item() == eos_id):
+            if eos_id is not None and idx_next.item() == eos_id:
                 break
 
             # Live generation print
