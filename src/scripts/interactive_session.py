@@ -6,7 +6,7 @@ from shutil import get_terminal_size
 from src.utils.checkpoint import load_model
 from src.utils.device import get_device
 from src.utils.logger import g_logger
-from src.utils.tokenization.tokenizer import g_tokenizer
+from src.utils.tokenization.tokenizer import EOT_IDX, g_tokenizer
 
 
 class InteractiveSession(ABC):
@@ -100,7 +100,7 @@ class InteractiveSession(ABC):
                 idx = g_tokenizer.text_to_token_ids(prompt).to(self._device)
                 try:
                     self.model.generate(idx, self._max_new_tokens, self.model.config.context_length, self._temperature,
-                                        self._top_k, live=True)
+                                        self._top_k, eos_id=EOT_IDX, live=True)
                 except KeyboardInterrupt:
                     print("\nGeneration interrupted by user")
 
