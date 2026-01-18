@@ -92,7 +92,7 @@ def format_training_progress(epoch: int, n_epochs: int, step: int, n_steps: int,
     return " | ".join(msg_list)
 
 
-def generate_and_print_sample(model: GptModel, device: Device, start_context: str) -> None:
+def generate_and_print_sample(model: GptModel, device: Device, start_context: str, max_new_tokens: int = 50) -> None:
     """
     Generate a sample text from the model given a starting context and print it.
 
@@ -104,16 +104,17 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
         start_context (str): The starting context for text generation.
     """
     model.eval()
-    encoded = g_tokenizer.text_to_token_ids(start_context).to(device)
+    encoded_idx = g_tokenizer.text_to_token_ids(start_context).to(device)
     with torch.no_grad():
-        token_ids = model.generate_naive(idx=encoded, max_new_tokens=50, context_size=model.pos_emb.weight.shape[0])
+        token_ids = model.generate_naive(encoded_idx, max_new_tokens, model.pos_emb.weight.shape[0])
         decoded_text = g_tokenizer.token_ids_to_text(token_ids)
         g_logger.info("Generated sample: " + decoded_text.replace("\n", " "))
     model.train()
 
 
 def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer, device: Device,
-                n_epochs: int, eval_freq: int = 50, eval_iter: int = 5, start_context: str = None) -> TrainingResults:
+                n_epochs: int, eval_freq: int = 50, eval_iter: int = 5, start_context: str = None,
+                max_new_tokens: int = 50) -> TrainingResults:
     """
     Train the GPT model.
 
@@ -134,6 +135,7 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
         eval_freq (int): The frequency (in steps) to evaluate the model on the validation set. Default is 50.
         eval_iter (int): The number of batches to use for evaluation. Default is 5.
         start_context (str, optional): The starting context for sample generation after each epoch. Defaults to None.
+        max_new_tokens (int): The number of new tokens to generate for the sample text. Default is 50.
 
     Returns:
         TrainingResults: The results of the training process.
@@ -171,7 +173,7 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
 
             # Print a sample text after each epoch, if requested
             if start_context is not None:
-                generate_and_print_sample(model, device, start_context)
+                generate_and_print_sample(model, device, start_context, max_new_tokens)
 
     except KeyboardInterrupt:
         g_logger.info("Training interrupted by user. Returning current model state...")
