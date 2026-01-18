@@ -162,7 +162,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--max-new-tokens", type=int, default=25, help="Maximum number of new tokens to generate.")
     parser.add_argument("--temperature", type=float, default=1.0, help="Sampling temperature for generation. Use 0 for greedy decoding.")
     parser.add_argument("--top-k", type=int, default=50, help="Top-K sampling parameter. Use 0 to disable Top-K sampling.")
-    parser.add_argument("--device", type=str, default="auto", help="Device to run the model on (e.g., 'cpu', 'cuda', or 'auto').")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for inference.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
     parser.add_argument("--measure-time", action="store_true", help="Measure and report time taken for model loading and generation.")
     parser.add_argument("--measure-memory", action="store_true", help="Measure and report peak GPU memory usage for model loading and generation.")

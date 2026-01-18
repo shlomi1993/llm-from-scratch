@@ -136,7 +136,7 @@ Alternatively, download models individually from Google Drive:
 ### Pre-train a Foundation Model
 
 ```bash
-gpt2 pretrain --training-set-path dataset/the-verdict.txt --saved-model-path models/pretrained/foundation.pth
+gpt2 pretrain --training-set-path dataset/the-verdict.txt --n-epochs 5 --batch-size 2 --lr 5e-4 --weight-decay 0.1 --seed 123 --device cpu --max-length 256 --eval-freq 5 --eval-iter 1 --saved-model-path example/pretrained.pth --context-length 256 --emb-dim 768 --n-layers 12 --n-heads 12 --vocab-size 50257 --drop-rate 0.1 --start-context "Every effort moves you"
 ```
 
 ### Generate Text

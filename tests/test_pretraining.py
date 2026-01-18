@@ -19,6 +19,7 @@ def test_pretrain_cli_vs_script(tmp_path: Path, chapters_path: Path):
         "--max-length", "256",
         "--eval-freq", "5",
         "--eval-iter", "1",
+        "--start-context", "Every effort moves you",
         "--saved-model-path", str(tmp_path / "test_model_cli.pth"),
         "--context-length", "256",
         "--emb-dim", "768",
