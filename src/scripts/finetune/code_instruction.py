@@ -14,12 +14,12 @@ from src.utils.checkpoint import save_model, load_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_loss_batch
-from src.utils.tokenization.tokenizer import EOT, PAD_IDX, IGNORE_IDX, g_tokenizer
+from src.utils.tokenization.tokenizer import EOT_TOK, EOT_IDX, IGNORE_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
 
-def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = PAD_IDX,
+def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = EOT_IDX,
                       ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[Tensor, Tensor]:
     """
     Pads sequences and masks the Instruction part so the model only trains on the Code.
@@ -40,7 +40,7 @@ def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = P
     batch_max_length = max(len(item) + 1 for item in batch_lists)
 
     # Prepare separator for masking logic
-    sep_ids = g_tokenizer.encode(AlpacaCodeDataset.RESPONSE_SEPARATOR, allowed_special={EOT})
+    sep_ids = g_tokenizer.encode(AlpacaCodeDataset.RESPONSE_SEPARATOR, allowed_special={EOT_TOK})
     sep_len = len(sep_ids)
     sep_tensor = torch.tensor(sep_ids, device=device)
 
@@ -139,19 +139,6 @@ def create_coding_dataloaders(dataset_path: str, train_frac: float, test_frac: f
     return train_loader, val_loader, test_data_raw
 
 
-def coding_format_input(entry: dict) -> str:
-    """
-    Formats a dataset entry into a prompt for code generation.
-
-    Args:
-        entry (dict): A dataset entry with 'instruction' key.
-
-    Returns:
-        str: Formatted prompt string.
-    """
-    return f"### Instruction:\n{entry['instruction']}\n\n### Response:\n"
-
-
 def run_coding_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
                                test_frac: float = 0.1, batch_size: int = 8, seed: int = 123,
                                device_type: str = "auto", lr: float = 5e-5, n_epochs: int = 2,
@@ -205,12 +192,13 @@ def run_coding_finetuning_flow(pretrained_model_path: str, tuning_set_path: str,
     g_logger.info(f"Using AdamW optimizer with learning rate {lr} and weight decay {weight_decay}")
 
     # Prompt format used in dataset and reset seed
-    formatted_input = coding_format_input(test_data[0])
+    formatted_input = AlpacaCodeDataset.format_input(test_data[0])
     torch.manual_seed(seed)
 
     g_logger.info("Starting code instruction fine-tuning...")
     start_time = time.time()
-    results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, formatted_input)
+    results = train_model(model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter,
+                          formatted_input, max_new_tokens)
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
     g_logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
@@ -222,7 +210,7 @@ def run_coding_finetuning_flow(pretrained_model_path: str, tuning_set_path: str,
         plot_metrics(epochs_tensor, results.tokens_seen, results.train_losses, results.val_losses, label="loss",
                      savefig_path=loss_plot_save_path, legend_loc="upper right")
 
-    test_assistant(model, test_data, device, max_new_tokens, test_output_path, coding_format_input, evaluate, seed)
+    test_assistant(model, test_data, device, max_new_tokens, test_output_path, AlpacaCodeDataset.format_input, evaluate, seed)
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:

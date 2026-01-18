@@ -119,7 +119,7 @@ class InteractiveGenerationSession(InteractiveSession):
             "You can also hit Ctrl+C / Command+C to abort generation"
         )
 
-    def format_prompt(self, user_input: str) -> str:
+    def format_input(self, user_input: str) -> str:
         """
         Formats the user input as a prompt for generation.
 

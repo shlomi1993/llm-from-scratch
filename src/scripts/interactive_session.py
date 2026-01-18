@@ -51,7 +51,7 @@ class InteractiveSession(ABC):
         pass
 
     @abstractmethod
-    def format_prompt(self, user_input: str) -> str:
+    def format_input(self, user_input: str) -> str:
         """
         Format the user input into a prompt suitable for the model.
 
@@ -96,7 +96,7 @@ class InteractiveSession(ABC):
                     print("Goodbye!")
                     break
 
-                prompt = self.format_prompt(user_input)
+                prompt = self.format_input(user_input)
                 idx = g_tokenizer.text_to_token_ids(prompt).to(self._device)
                 try:
                     self.model.generate(idx, self._max_new_tokens, self.model.config.context_length, self._temperature,

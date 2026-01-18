@@ -25,9 +25,9 @@ class InteractiveChatSession(InteractiveSession):
             "You can also hit Ctrl+C / Command+C to abort generation"
         )
 
-    def format_prompt(self, user_input: str) -> str:
+    def format_input(self, user_input: str) -> str:
         """
-        Format the prompt for the chat session based on user input.
+        Format the input prompt for the chat session based on user input.
 
         Args:
             user_input (str): The user's input for the chat session. Example: "Explain the theory of relativity."
