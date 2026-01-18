@@ -58,7 +58,7 @@ def run_spam_ham_interactive_flow(model_path: str, device_type: str = "auto", se
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model-path", type=str, required=True, help="Path to a fine-tuned spam/ham classification model saved in PyTorch format.")
     parser.add_argument("--text", type=str, default=None, help="Text to classify. If not provided, enters interactive mode.")
-    parser.add_argument("--device", type=str, default="auto", help="Device to run the model on (e.g., 'cpu', 'cuda', 'mps', or 'auto').")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for inference.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
 
 

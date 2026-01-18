@@ -108,7 +108,7 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
     with torch.no_grad():
         token_ids = model.generate_naive(encoded_idx, max_new_tokens, model.pos_emb.weight.shape[0])
         decoded_text = g_tokenizer.token_ids_to_text(token_ids)
-        g_logger.info(f"Generated sample:\n{decoded_text}")
+        g_logger.info("Generated sample:\n" + decoded_text.replace("\n", " "))
     model.train()
 
 
@@ -267,14 +267,14 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--batch-size", type=int, default=2, help="Batch size for training.")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for the optimizer.")
     parser.add_argument("--dataset-encoding", type=str, default="utf-8", help="Encoding of the training .txt file.")
-    parser.add_argument("--device", type=str, default="auto", help="Device to use for training (cpu, cuda, auto).")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for training.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
-    parser.add_argument("--max-length", type=int, default=None, help="Maximum sequence length for training samples.")
-    parser.add_argument("--stride", type=int, default=None, help="Stride for sliding window over text.")
+    parser.add_argument("--max-length", type=int, default=256, help="Maximum sequence length for training samples.")
+    parser.add_argument("--stride", type=int, default=None, help="Stride for sliding window over text. Defaults to max-length if not set.")
     parser.add_argument("--train-ratio", type=float, default=0.9, help="Ratio of data to use for training vs. validation.")
     parser.add_argument("--eval-freq", type=int, default=5, help="Frequency (in steps) to evaluate model on validation set.")
     parser.add_argument("--eval-iter", type=int, default=1, help="Number of batches to use for evaluation.")
-    parser.add_argument("--start-context", type=str, default="Every effort moves you", help="Starting context for sample generation.")
+    parser.add_argument("--start-context", type=str, default=None, help="Starting context for sample generation.")
     parser.add_argument("--saved-model-path", type=str, default="model.pth", help="Path to save the trained model.")
     parser.add_argument("--saved-plot-path", type=str, default=None, help="Path to save the loss plot.")
 

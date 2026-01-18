@@ -432,7 +432,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--save-split-dir", type=str, default=".", help="Directory to save train/val/test splits.")
     parser.add_argument("--batch-size", type=int, default=8, help="Batch size for training.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
-    parser.add_argument("--device", type=str, default="auto", help="Device to use for training (cpu, cuda, mps, auto).")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for tuning.")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for the optimizer.")
     parser.add_argument("--n-epochs", type=int, default=5, help="Number of training epochs.")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for the optimizer.")
