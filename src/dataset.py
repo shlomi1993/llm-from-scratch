@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from typing import Tuple
 
 from src.utils.ollama import format_input
-from src.utils.tokenization import EOT, PAD_IDX, g_tokenizer
+from src.utils.tokenization import EOT_TOK, EOT_IDX, g_tokenizer
 
 
 class GptDatasetV1(Dataset):
@@ -27,7 +27,7 @@ class GptDatasetV1(Dataset):
         self.target_ids = []
 
         # Tokenize the entire text
-        token_ids = g_tokenizer.encode(text, allowed_special={EOT})
+        token_ids = g_tokenizer.encode(text, allowed_special={EOT_TOK})
 
         # Use a sliding window to chunk the book into overlapping sequences of max_length
         for i in range(0, len(token_ids) - max_length, stride):
@@ -63,7 +63,7 @@ class SpamDataset(Dataset):
     A PyTorch Dataset class for loading and preprocessing a spam detection dataset from a TSV file.
     """
 
-    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = PAD_IDX) -> None:
+    def __init__(self, csv_file: str, max_length: int = None, pad_token_id: int = EOT_IDX) -> None:
         """
         Initializes the dataset by reading the CSV file, tokenizing the text data, and padding/truncating sequences.
 
@@ -264,7 +264,7 @@ class AlpacaCodeDataset(Dataset):
     """
     A PyTorch Dataset class for the Alpaca Python coding instruction dataset.
     """
-    RESPONSE_SEPARATOR = "\n### Response:\n"
+    RESPONSE_SEPARATOR = "### Output:\n"  # Maybe "\n### Response:\n" is better?
 
     def __init__(self, data_path: str, max_length: int = 1024, max_samples: int = None) -> None:
         """
@@ -276,9 +276,7 @@ class AlpacaCodeDataset(Dataset):
             max_samples (int, optional): The maximum number of samples to load. Defaults to None
         """
         self.max_length = max_length
-        self.dataset = load_from_disk(data_path)
-        if hasattr(self.dataset, 'keys') and 'train' in self.dataset.keys():
-            self.dataset = self.dataset['train']
+        self.dataset = load_from_disk(data_path)['train']  # Assume loaded data has a 'keys' attribute and 'train' key
         if max_samples is not None:
             self.dataset = self.dataset.select(range(max_samples))  # Partial loading for CPU/Debug
 
@@ -291,21 +289,24 @@ class AlpacaCodeDataset(Dataset):
         """
         return len(self.dataset)
 
-    def format_prompt(self, entry: dict[str, str]) -> str:
+    @staticmethod
+    def format_input(entry: dict[str, str]) -> str:
         """
-        Formats the prompt for a given dataset entry in the Alpaca coding style.
+        Formats just the input portion (without output) for inference/generation.
+        Merges instruction and input into a single natural prompt for chat-style interaction.
 
         Args:
-            entry (dict[str, str]): A dictionary containing 'instruction', 'input', and 'output' keys.
+            entry (dict[str, str]): A dictionary containing 'instruction' and optionally 'input' keys.
 
         Returns:
-            str: The formatted prompt string.
+            str: The formatted input prompt string ready for generation.
         """
-        prompt_builder = []
-        prompt_builder.append(f"### Instruction:\n{entry['instruction']}")
-        if entry['input']:
-            prompt_builder.append(f"### Input:\n{entry['input']}")
-        prompt_builder.append(f"{self.RESPONSE_SEPARATOR}{entry['output']}{EOT}")
+        instruction = f"{entry['instruction']}\nInput: {entry['input']}" if entry.get('input') else entry['instruction']
+        prompt_builder = [
+            "Below is an instruction that describes a task. Write a response that appropriately completes the request.",
+            f"### Instruction:\n{instruction}",
+            AlpacaCodeDataset.RESPONSE_SEPARATOR
+        ]
         return '\n\n'.join(prompt_builder)
 
     def __getitem__(self, idx: int) -> Tensor:
@@ -318,8 +319,10 @@ class AlpacaCodeDataset(Dataset):
         Returns:
             Tensor: The tokenized text.
         """
-        text = self.format_prompt(self.dataset[idx])
-        token_ids = g_tokenizer.encode(text, allowed_special={EOT})
+        entry = self.dataset[idx]
+        text = self.format_input(entry) + entry['output'] + EOT_TOK
+        token_ids = g_tokenizer.encode(text, allowed_special={EOT_TOK})
         if len(token_ids) > self.max_length:
-            token_ids = token_ids[:self.max_length]  # Hard truncation to avoid OOM
+            sep = token_ids.index(EOT_IDX) if EOT_IDX in token_ids else self.max_length - 1
+            token_ids = token_ids[:sep] + [EOT_IDX]  # Truncate and ensure EOT at end
         return tensor(token_ids, dtype=long)  # Return raw tensor, let the collate function handle padding/masking
