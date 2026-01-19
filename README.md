@@ -176,10 +176,12 @@ gpt2 generate \
 # Single generation
 gpt2 generate \
   --model-path pretrained.pth \
-  --prompt "Every effort moves you"
+  --prompt "Every effort moves you" \
+  ----measure-time \
+  --measure-memory
 ```
 
-<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/73a57cf0-c53f-46cf-a096-9c9bcfe3b455" />
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/b4e6428e-89c2-41b9-a912-0870714d5897" />
 
 ### Fine-tune for Classification
 
