@@ -2,6 +2,7 @@
 
 A comprehensive implementation of GPT-2 language models built from the ground up, featuring pre-training, fine-tuning, and interactive applications. This project is based on the excellent work in [rasbt/LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) and provides a complete CLI interface for working with transformer-based language models.
 
+
 ## Features
 
 - 🏗️ **Complete GPT-2 Implementation**: Build and understand generative transformer models from scratch
@@ -11,6 +12,7 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 - 🎯 **Fine-tuning**: Adapt models for specific tasks (classification, instruction-following, and coding)
 - 💬 **Interactive Applications**: Chat with fine-tuned assistants, classify text in real-time, or interactively generate code with a coding assistant
 - 📈 **Visualization**: Visually track training loss and performance over time
+
 
 ## Installation
 
@@ -22,85 +24,75 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 - 8GB+ RAM (16GB+ recommended for larger models)
 - CUDA GPU (optional, for faster training)
 
-**Note:** The project was implemented and tested on Apple ecosystem (MacBook Pro 16 2022)
+> The project was implemented and tested on the Apple ecosystem (MacBook Pro 16 2022).
 
 ### Setup
 
 1. Clone the repository:
-```bash
-git clone https://github.com/shlomi1993/llm-from-scratch.git
-cd llm-from-scratch
-```
+    ```bash
+    git clone https://github.com/shlomi1993/llm-from-scratch.git
+    cd llm-from-scratch
+    ```
 
 2. Install and activate the environment:
 
-**Option A: Automated Setup (Recommended)**
-```bash
-# Run the installation script
-./install.sh
+    **Option A: Automated Setup (Recommended)**
+    ```bash
+    # Run the installation script
+    ./install.sh
 
-# Activate the environment
-source activate.sh
-```
+    # Activate the environment
+    source activate.sh
+    ```
 
-**Option B: Manual Setup**
-```bash
-# Create virtual environment
-python -m venv llm-from-scratch-venv
+    **Option B: Manual Setup**
+    ```bash
+    # Create virtual environment
+    python -m venv llm-from-scratch-venv
 
-# Activate it
-source llm-from-scratch-venv/bin/activate  # On Windows: llm-from-scratch-venv\Scripts\activate
+    # Activate it
+    source llm-from-scratch-venv/bin/activate  # On Windows: llm-from-scratch-venv\Scripts\activate
 
-# Install dependencies
-pip install -e .
-```
+    # Install dependencies
+    pip install -e .
+    ```
 
-The `gpt2` command is now available in your environment!
+3. The `gpt2` command is now available in your environment!
+
 
 ## CLI Reference
 
 The `gpt2` command provides access to all functionality:
 
 ```
-gpt2 <command> [options]
+gpt2 <command> [subcommand] [options]
 
 Commands:
-    download    Download GPT2 model files
-    pretrain    Train a GPT2 foundation model from scratch
-    generate    Generate text using a pre-trained GPT2 model
-    finetune    Fine-tune a pre-trained GPT2 model for downstream tasks
-    spam-ham    Classify text as spam or ham using a fine-tuned classification model
-    chat        Chat with an instruction fine-tuned assistant model
-    coder       Get coding assistance from a fine-tuned coder model
+    download                Download formal GPT2 model files
+    pretrain                Train a GPT2 foundation model from scratch
+    generate                Generate text using a pre-trained GPT2 model (interactive option available)
+    finetune                Fine-tune a pre-trained GPT2 model for downstream tasks
+     ├── classification     spam classification finetuning
+     ├── instruction        instruction finetuning
+     ├── instruction-adv    advanced instruction finetuning (not tested!)
+     └── code-instruction   code instruction finetuning
+    spam-ham                Classify text as spam or ham using a fine-tuned classification model (interactive option available)
+    chat                    Chat with an instruction fine-tuned assistant model (interactive option available)
+    coder                   Get coding assistance from a fine-tuned coder model (interactive option available)
 ```
 
 For each command, use `--help` to see additional arguments, options and flags. There are many options and flags, but most of them have default values!
 
-### Command Tree
-
-```
-gpt2
-├── download
-├── pretrain
-├── generate
-│   ├── non-interactive   # pass --prompt
-│   └── interactive       # don't pass --prompt
-├── finetune
-│   ├── classification    # classification finetuning
-│   ├── instruction       # instruction finetuning
-│   ├── instruction-adv   # advanced instruction finetuning (not tested!)
-│   └── code-instruction  # code instruction finetuning
-├── spam-ham
-├── chat
-└── coder
-```
 
 ## Quick Start
 
 ### Download "Formal" Pre-trained Models
 
 ```bash
-gpt2 download --sizes 124M --dir models --convert
+gpt2 download \
+  --sizes 124M 355M \
+  --dir models \
+  --convert
 ```
 
 This script downloads the selected official pre-trained models in TensorFlow format and converts them to PyTorch format.  
@@ -136,47 +128,98 @@ Alternatively, download models individually from Google Drive:
 ### Pre-train a Foundation Model
 
 ```bash
-gpt2 pretrain --training-set-path dataset/the-verdict.txt --n-epochs 5 --batch-size 2 --lr 5e-4 --weight-decay 0.1 --seed 123 --device cpu --max-length 256 --eval-freq 5 --eval-iter 1 --saved-model-path example/pretrained.pth --context-length 256 --emb-dim 768 --n-layers 12 --n-heads 12 --vocab-size 50257 --drop-rate 0.1 --start-context "Every effort moves you"
+gpt2 pretrain \
+  --training-set-path dataset/the-verdict.txt \
+  --n-epochs 5 \
+  --batch-size 2 \
+  --lr 5e-4 \
+  --weight-decay 0.1 \
+  --seed 123 \
+  --device cpu \
+  --max-length 256 \
+  --eval-freq 5 \
+  --eval-iter 1 \
+  --saved-model-path pretrained.pth \
+  --context-length 256 \
+  --emb-dim 768 \
+  --n-layers 12 \
+  --n-heads 12 \
+  --vocab-size 50257 \
+  --drop-rate 0.1 \
+  --start-context "Every effort moves you"
 ```
 
 ### Generate Text
 
 ```bash
 # Interactive mode
-gpt2 generate --model-path models/124M/model.pth
+gpt2 generate \
+  --model-path pretrained.pth
 
 # Single generation
-gpt2 generate --model-path models/124M/model.pth --prompt "Once upon a time"
+gpt2 generate \
+  --model-path pretrained.pth \
+  --prompt "Every effort moves you"
 ```
 
 ### Fine-tune for Classification
 
 ```bash
-gpt2 finetune classification --pretrained-model-path models/124M/model.pth --tuning-set-path dataset/sms_spam_collection/SMSSpamCollection.tsv --n-epochs 5 --model-save-path classifier.pth
+gpt2 finetune classification \
+  --pretrained-model-path pretrained.pth \
+  --tuning-set-path dataset/sms_spam_collection/SMSSpamCollection.tsv \
+  --n-epochs 5 \
+  --model-save-path classifier.pth
 ```
 
-### Classify Text to Spam or Ham
+#### Classify Text to Spam or Ham
 
 ```bash
-gpt2 spam-ham --model-path classifier.pth --text "You are a winner you have been specially selected to receive $1000 cash or a $2000 award."
+# Spam example
+gpt2 spam-ham \
+  --model-path classifier.pth \
+  --text "You are a winner you have been specially selected to receive $1000 cash or a $2000 award."
+
+# Ham example
+gpt2 spam-ham \
+  --model-path classifier.pth \
+  --text "Hey, just wanted to check if we're still on for dinner tonight? Let me know!"
+
+# Interactive mode
+gpt2 spam-ham \
+  --model-path classifier.pth
 ```
 
 ### Fine-tune for Instruction Following
 
 ```bash
-gpt2 finetune instruction --pretrained-model-path models/355M/model.pth --tuning-set-path dataset/instruction_data/instruction-data.json --n-epochs 2 --model-save-path assistant.pth --evaluate
+gpt2 finetune instruction \
+  --pretrained-model-path pretrained.pth \
+  --tuning-set-path dataset/instruction_data/instruction-data.json \
+  --n-epochs 2 \
+  --model-save-path assistant.pth \
+  --evaluate
 ```
 
-### Chat with an Assistant
+#### Chat with an Assistant
 
 ```bash
-gpt2 chat --model-path assistant.pth
+gpt2 chat \
+  --model-path assistant.pth
 ```
 
 ### Fine-tune for Code Generation
 
 ```bash
-gpt2 finetune coding --pretrained-model-path models/355M/model.pth --dataset-path dataset/python_code_instructions/ --max-samples 100 --batch_size 4 --n-epochs 1 --model-save-path coder.pth --test-output-path responses.json --evaluate
+gpt2 finetune coding \
+  --pretrained-model-path pretrained.pth \
+  --dataset-path dataset/python_code_instructions/ \
+  --max-samples 100 \
+  --batch_size 4 \
+  --n-epochs 1 \
+  --model-save-path coder.pth \
+  --test-output-path responses.json \
+  --evaluate
 ```
 
 - **Note:** The use of `--max-samples 100` is to limit dataset size for test speed
@@ -184,8 +227,10 @@ gpt2 finetune coding --pretrained-model-path models/355M/model.pth --dataset-pat
 ### Interactive Coding Session
 
 ```bash
-gpt2 coder --model-path coder.pth
+gpt2 coder \
+  --model-path coder.pth
 ```
+
 
 ## Project Structure
 
@@ -258,6 +303,7 @@ llm-from-scratch/
 
 ```
 
+
 ## Training Tips
 
 ### Memory Optimization
@@ -281,6 +327,7 @@ llm-from-scratch/
 3. **Validate frequently**: Use `--eval-freq` to track progress
 4. **Save checkpoints**: Always specify `--model-save-path`
 5. **Use evaluation**: Enable `--evaluate` for instruction tuning to measure quality
+
 
 ## Dataset Format
 
@@ -328,6 +375,7 @@ ham	Hi, are we still meeting for lunch?
 ]
 ```
 
+
 ## Testing
 
 Run the comprehensive test suite:
@@ -344,6 +392,7 @@ pytest tests/test_assistant_cli.py -v
 pytest tests/test_coder_cli.py -v
 
 ```
+
 
 ## Troubleshooting
 
@@ -368,9 +417,11 @@ pytest tests/test_coder_cli.py -v
 - Reduce `--eval-freq` for less frequent validation
 - Use smaller model for experimentation
 
+
 ## License
 
 This project is based on [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) by Sebastian Raschka.
+
 
 ## Acknowledgments
 
