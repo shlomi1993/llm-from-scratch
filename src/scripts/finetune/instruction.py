@@ -156,31 +156,36 @@ def test_assistant(model: GptModel, test_data: list[dict], device: Device, max_n
     # Generate responses
     g_logger.info("Generating model responses...")
     model.eval()
-    for entry in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=True):
-        prompt = format_func(entry)
-        token_ids = model.generate(
-            idx=g_tokenizer.text_to_token_ids(prompt).to(device),
-            max_new_tokens=max_new_tokens,
-            context_size=model.config.context_length,
-            eos_id=EOT_IDX
-        )
-        generated_text = g_tokenizer.token_ids_to_text(token_ids)
-        response = generated_text[len(prompt):].replace("### Response:", "").strip()
-        entry["model_response"] = response  # Add response to the entry in-place
-    model.train()
+    try:
+        for entry in tqdm(test_data, total=len(test_data), desc="Generating responses", leave=True):
+            prompt = format_func(entry)
+            token_ids = model.generate(
+                idx=g_tokenizer.text_to_token_ids(prompt).to(device),
+                max_new_tokens=max_new_tokens,
+                context_size=model.config.context_length,
+                eos_id=EOT_IDX
+            )
+            generated_text = g_tokenizer.token_ids_to_text(token_ids)
+            response = generated_text[len(prompt):].replace("### Response:", "").strip()
+            entry["model_response"] = response  # Add response to the entry in-place
 
-    # Save responses
-    with open(test_output_path, "w") as file:
-        json.dump(test_data, file, indent=4)
-    g_logger.info(f"Responses saved as {test_output_path}")
+        # Save responses
+        with open(test_output_path, "w") as file:
+            json.dump(test_data, file, indent=4)
+        g_logger.info(f"Responses saved as {test_output_path}")
 
-    # Evaluation
-    if evaluate:
-        g_logger.info("Evaluating responses with Ollama...")
-        evaluator = OllamaEvaluator(seed=seed, formatter=format_func)
-        avg_score, scores = evaluator.evaluate(test_output_path)
-        g_logger.info(f"Average score {avg_score:.2f}% across {len(scores)} samples")
+        # Evaluation
+        if evaluate:
+            g_logger.info("Evaluating responses with Ollama...")
+            evaluator = OllamaEvaluator(seed=seed, formatter=format_func)
+            avg_score, scores = evaluator.evaluate(test_output_path)
+            g_logger.info(f"Average score {avg_score:.2f}% across {len(scores)} samples")
 
+    except KeyboardInterrupt:
+        g_logger.warning("Response generation interrupted by user")
+
+    finally:
+        model.train()
 
 
 def run_instruction_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, train_frac: float = 0.85,
@@ -271,7 +276,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--test-frac", type=float, default=0.1, help="Fraction of data for testing.")
     parser.add_argument("--batch-size", type=int, default=8, help="Batch size for training.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
-    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for tuning.")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="cpu", help="Device to use for tuning.")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for the optimizer.")
     parser.add_argument("--n-epochs", type=int, default=2, help="Number of training epochs.")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for the optimizer.")

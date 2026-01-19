@@ -229,7 +229,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for optimizer")
     parser.add_argument("--n-epochs", type=int, default=2, help="Number of training epochs")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for optimizer")
-    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for tuning.")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="cpu", help="Device to use for tuning.")
     parser.add_argument("--eval-freq", type=int, default=5, help="Evaluate every N epochs")
     parser.add_argument("--eval-iter", type=int, default=5, help="Number of batches to use for evaluation")
     parser.add_argument("--model-save-path", type=str, default="coder.pth", help="Path to save the finetuned coder model")

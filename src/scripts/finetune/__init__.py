@@ -11,8 +11,6 @@ from .classification import (
     random_split,
     create_classification_dataloaders,
     calc_accuracy_loader,
-    load_classifier,
-    classify_review,
     finetune_classifier,
     run_classification_finetuning_flow
 )
@@ -35,8 +33,6 @@ __all__ = [
     "random_split",
     "create_classification_dataloaders",
     "calc_accuracy_loader",
-    "load_classifier",
-    "classify_review",
     "finetune_classifier",
     "run_classification_finetuning_flow",
     "instruction_collate_fn",

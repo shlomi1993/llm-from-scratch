@@ -6,12 +6,9 @@ import tiktoken
 
 from pathlib import Path
 
-from src.scripts.finetune.classification import load_classifier, classify_review
+from src.scripts.classify import classify_review, load_classifier
 from tests.chapters_code import GPTModel
-from tests.common import (
-    CHAPTER_LOSS_PATTERN, CLI_LOSS_PATTERN, CHAPTER_ACC_PATTERN, CLI_ACC_PATTERN, run_subprocess, extract_losses,
-    extract_accuracies, compare_losses, compare_accuracies
-)
+from tests.common import run_subprocess, extract_losses, extract_accuracies, compare_losses, compare_accuracies
 
 
 PREDICTION_TEST_SAMPLES = [
@@ -90,6 +87,7 @@ def compare_model_predictions(test_samples: list[str], model_path: str) -> None:
 
     print("Loading model using application code...")
     cli_model = load_classifier(model_path, device, n_classes=2)
+    cli_model.eval()
 
     print("\nComparing predictions on test samples:\n")
 
@@ -144,10 +142,10 @@ def test_finetune_classifier_cli_vs_script(tmp_path: Path, chapters_path: Path):
     cli_losses = extract_losses(cli_output, ref=False)
     cli_accuracies = extract_accuracies(cli_output, ref=False)
 
-    # Clean up split files
-    for f in tmp_path / "train.csv", tmp_path / "validation.csv", tmp_path / "test.csv":
-        if os.path.exists(f):
-            os.remove(f)
+    # Clean up split files - NOTE: uncomment if running the chapter script below
+    # for f in tmp_path / "train.csv", tmp_path / "validation.csv", tmp_path / "test.csv":
+    #     if os.path.exists(f):
+    #         os.remove(f)
 
     # chapter_cmd = [sys.executable, "-u", str(chapters_path / "ch06/01_main-chapter-code/gpt_class_finetune.py")]
     # chapter_output = run_subprocess(chapter_cmd, cwd=tmp_path)

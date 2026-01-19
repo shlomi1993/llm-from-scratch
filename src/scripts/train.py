@@ -267,7 +267,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--batch-size", type=int, default=2, help="Batch size for training.")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for the optimizer.")
     parser.add_argument("--dataset-encoding", type=str, default="utf-8", help="Encoding of the training .txt file.")
-    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for training.")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="cpu", help="Device to use for training.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
     parser.add_argument("--max-length", type=int, default=256, help="Maximum sequence length for training samples.")
     parser.add_argument("--stride", type=int, default=None, help="Stride for sliding window over text. Defaults to max-length if not set.")

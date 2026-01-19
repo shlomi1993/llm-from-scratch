@@ -10,14 +10,12 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from src.dataset import SpamDataset
-from src.model.config import GptConfig
 from src.model.gpt import GptModel
 from src.scripts.train import format_training_progress
 from src.utils.checkpoint import load_model, save_model
 from src.utils.device import Device, get_device
 from src.utils.logger import g_logger
 from src.utils.losses import calc_loss_loader, calc_losses, calc_loss_last_token
-from src.utils.tokenization.tokenizer import EOT_IDX, g_tokenizer
 from src.utils.visualization import plot_metrics
 
 
@@ -173,83 +171,6 @@ def calc_accuracy_loader(loader: DataLoader, model: GptModel, device: Device, n_
     return correct_predictions / n_examples
 
 
-def load_classifier(model_path: str, device: Device, n_classes: int) -> GptModel:
-    """
-    Load a fine-tuned classification model from a checkpoint and return it as a GptModel instance in eval mode.
-
-    Args:
-        model_path (str): Path to the checkpoint file.
-        device (Device): Device to load the model on.
-        n_classes (int): Number of output classes.
-
-    Returns:
-        GptModel: Loaded classification model.
-    """
-
-    # Load the checkpoint to extract config
-    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-    config = GptConfig(**checkpoint["config"])
-
-    # Create model with the same architecture
-    model = GptModel(config)
-
-    # Replace output head with classification head BEFORE loading weights
-    model.out_head = torch.nn.Linear(in_features=config.emb_dim, out_features=n_classes)
-
-    # Load the fine-tuned weights
-    model.load_state_dict(checkpoint["model_state_dict"])
-
-    # Move to device and set to eval mode
-    model.to(device)
-    model.eval()
-
-    return model
-
-
-def classify_review(text: str, model: GptModel, device: Device, max_length: int, pad_token_id: int = EOT_IDX) -> tuple[str, float]:
-    """
-    Classify a single SMS review as "spam" or "not spam" using the fine-tuned classification model.
-
-    Note that this function change the model to eval mode.
-
-    Args:
-        text (str): Input text to classify.
-        model (GptModel): Fine-tuned classification model.
-        device (Device): Device to perform computation on.
-        max_length (int): Maximum input length for the model.
-        pad_token_id (int, optional): Token ID used for padding. Defaults to PAD_IDX.
-
-    Returns:
-        tuple[str, float]: Predicted label ("spam" or "not spam") and confidence score as a float.
-    """
-    model.eval()
-
-    # Verify that the input length does not exceed model context length
-    supported_context = model.pos_emb.weight.shape[0]
-    if max_length > supported_context:
-        raise ValueError(f"max_length ({max_length}) exceeds model context ({supported_context}).")
-
-    # Tokenize and truncate
-    input_ids = g_tokenizer.encode(text)[:max_length]
-
-    # Pad
-    input_ids += [pad_token_id] * (max_length - len(input_ids))
-    input_tensor = torch.tensor(input_ids, device=device).unsqueeze(0)
-
-    # Inference
-    with torch.no_grad():
-        logits: Tensor = model(input_tensor)[:, -1]
-
-    # Get predicted label and confidence
-    probabilities = torch.softmax(logits, dim=-1)
-    label_id = torch.argmax(probabilities, dim=-1).item()
-    label = "spam" if label_id == 1 else "not spam"
-    confidence = probabilities[0, label_id].item()
-
-    # Decode label
-    return label, confidence
-
-
 def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer,
                         device: Device, n_epochs: int, eval_freq, eval_iter) -> ClassificationFineTuningResults:
 
@@ -313,6 +234,36 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
         g_logger.info("Fine-tuning interrupted by user. Returning current model state...")
 
     return ClassificationFineTuningResults(model, train_losses, val_losses, train_accs, val_accs, example_count)
+
+
+def evaluate_finetuned_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, test_loader: DataLoader,
+                             device: Device, n_batches: int) -> None:
+    """
+    Evaluate the fine-tuned model on the training, validation, and test sets.
+
+    Args:
+        model (GptModel): The fine-tuned classification model.
+        train_loader (DataLoader): DataLoader for training data.
+        val_loader (DataLoader): DataLoader for validation data.
+        test_loader (DataLoader): DataLoader for test data.
+        device (Device): Device to perform computation on.
+        n_batches (int): Number of batches to evaluate.
+    """
+    g_logger.info("Evaluation on fine-tuned model:")
+    try:
+        with torch.no_grad(): # Disable gradient tracking for efficiency because we are not training, yet
+            train_loss = calc_loss_loader(train_loader, calc_loss_last_token, model, device, n_batches=n_batches)
+            val_loss = calc_loss_loader(val_loader, calc_loss_last_token, model, device, n_batches=n_batches)
+            test_loss = calc_loss_loader(test_loader, calc_loss_last_token, model, device, n_batches=n_batches)
+        train_accuracy = calc_accuracy_loader(train_loader, model, device)
+        val_accuracy = calc_accuracy_loader(val_loader, model, device)
+        test_accuracy = calc_accuracy_loader(test_loader, model, device)
+        print()
+        g_logger.info(f"  Training:   loss = {train_loss:.3f}, accuracy = {train_accuracy * 100:.2f}%")
+        g_logger.info(f"  Validation: loss = {val_loss:.3f}, accuracy = {val_accuracy * 100:.2f}%")
+        g_logger.info(f"  Test:       loss = {test_loss:.3f}, accuracy = {test_accuracy * 100:.2f}%")
+    except KeyboardInterrupt:
+        g_logger.info("Evaluation interrupted by user")
 
 
 def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, sep="\t",
@@ -387,18 +338,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
     execution_time_minutes = (end_time - start_time) / 60
     g_logger.info(f"Fine-tuning completed in {execution_time_minutes:.2f} minutes.")
 
-    g_logger.info("Evaluation on fine-tuned model:")
-    with torch.no_grad(): # Disable gradient tracking for efficiency because we are not training, yet
-        train_loss = calc_loss_loader(train_loader, calc_loss_last_token, model, device, n_batches=eval_iter)
-        val_loss = calc_loss_loader(val_loader, calc_loss_last_token, model, device, n_batches=eval_iter)
-        test_loss = calc_loss_loader(test_loader, calc_loss_last_token, model, device, n_batches=eval_iter)
-    train_accuracy = calc_accuracy_loader(train_loader, model, device)
-    val_accuracy = calc_accuracy_loader(val_loader, model, device)
-    test_accuracy = calc_accuracy_loader(test_loader, model, device)
-    print()
-    g_logger.info(f"  Training:   loss = {train_loss:.3f}, accuracy = {train_accuracy * 100:.2f}%")
-    g_logger.info(f"  Validation: loss = {val_loss:.3f}, accuracy = {val_accuracy * 100:.2f}%")
-    g_logger.info(f"  Test:       loss = {test_loss:.3f}, accuracy = {test_accuracy * 100:.2f}%")
+    save_model(model, model_save_path, optimizer)
 
     if loss_plot_save_path:
         loss_epochs_tensor = torch.linspace(0, n_epochs, len(results.train_losses))
@@ -412,7 +352,7 @@ def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_pa
         plot_metrics(accu_epochs_tensor, accu_examples_seen_tensor, results.train_accuracies, results.val_accuracies,
                      savefig_path=accuracy_plot_save_path, label="accuracy")
 
-    save_model(model, model_save_path, optimizer)
+    evaluate_finetuned_model(model, train_loader, val_loader, test_loader, device, n_batches=eval_iter)
 
     return results
 
@@ -432,7 +372,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--save-split-dir", type=str, default=".", help="Directory to save train/val/test splits.")
     parser.add_argument("--batch-size", type=int, default=8, help="Batch size for training.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility.")
-    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="auto", help="Device to use for tuning.")
+    parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="cpu", help="Device to use for tuning.")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for the optimizer.")
     parser.add_argument("--n-epochs", type=int, default=5, help="Number of training epochs.")
     parser.add_argument("--weight-decay", type=float, default=0.1, help="Weight decay for the optimizer.")

@@ -24,8 +24,6 @@ from .finetune.classification import (
     random_split,
     create_classification_dataloaders,
     calc_accuracy_loader,
-    load_classifier,
-    classify_review,
     finetune_classifier,
     run_classification_finetuning_flow
 )
@@ -40,6 +38,7 @@ from .finetune.code_instruction import (
     create_coding_dataloaders,
     run_coding_finetuning_flow,
 )
+from .classify import load_classifier, classify_review
 from .interactive_session import InteractiveSession
 
 
@@ -58,8 +57,6 @@ __all__ = [
     "random_split",
     "create_classification_dataloaders",
     "calc_accuracy_loader",
-    "load_classifier",
-    "classify_review",
     "finetune_classifier",
     "run_classification_finetuning_flow",
     "instruction_collate_fn",
@@ -69,5 +66,7 @@ __all__ = [
     "coding_collate_fn",
     "create_coding_dataloaders",
     "run_coding_finetuning_flow",
+    "load_classifier",
+    "classify_review",
     "InteractiveSession",
 ]
