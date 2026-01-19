@@ -12,9 +12,11 @@ A comprehensive implementation of GPT-2 language models built from the ground up
   - [Pre-train a Foundation Model](#pre-train-a-foundation-model)
   - [Generate Text](#generate-text)
   - [Fine-tune for Classification](#fine-tune-for-classification)
+    - [Classify Text to Spam or Ham](#classify-text-to-spam-or-ham)
   - [Fine-tune for Instruction Following](#fine-tune-for-instruction-following)
+    - [Chat with an Assistant](#chat-with-an-assistant)
   - [Fine-tune for Code Generation](#fine-tune-for-code-generation)
-  - [Interactive Coding Session](#interactive-coding-session)
+    - [Interactive Coding Session](#interactive-coding-session)
 - [Project Structure](#project-structure)
 - [Training Tips](#training-tips)
   - [Memory Optimization](#memory-optimization)
@@ -251,7 +253,7 @@ gpt2 finetune coding \
 
 <img width="1001" height="565" alt="image" src="https://github.com/user-attachments/assets/6a9dbbc9-009c-4160-82be-3d6ad398f809" />
 
-### Interactive Coding Session
+#### Interactive Coding Session
 
 ```bash
 gpt2 coder \
