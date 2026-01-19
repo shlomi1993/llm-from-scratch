@@ -24,11 +24,10 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 - 8GB+ RAM (16GB+ recommended for larger models)
 - CUDA GPU (optional, for faster training)
 
-  
 > The project was implemented and tested on the Apple ecosystem (MacBook Pro 16 2022).
-  
 
 ### Setup
+
 
 1. Clone the repository:
     ```bash
@@ -69,12 +68,12 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 
 3. The `gpt2` command is now available in your environment!
 
-
     <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/d564c2aa-d021-486b-ab0e-ed654246aed7" />
 
 For each command, use `--help` to see additional arguments, options and flags. There are many options and flags, but most of them have default values!
 
-## Quick Start
+
+## Usage Walkthrough
 
 ### Download "Formal" Pre-trained Models
 
@@ -84,6 +83,9 @@ gpt2 download \
   --dir models \
   --convert
 ```
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/473606da-36b8-4922-8e60-b6caecbb1894" />
+
 
 This script downloads the selected official pre-trained models in TensorFlow format and converts them to PyTorch format.  
 To download custom pre-trained or fine-tuned models, check the following section.
@@ -101,6 +103,9 @@ Use the provided script to download all custom models automatically:
 # Download to a custom directory
 ./download_custom_models.sh my_models
 ```
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/b84ae279-852f-4624-a8fa-b1f77b03b4bd" />
+
 
 **Manual Download:**
 
@@ -139,8 +144,7 @@ gpt2 pretrain \
   --start-context "Every effort moves you"
 ```
 
-#### Example:
-<img width="1436" height="466" alt="image" src="https://github.com/user-attachments/assets/c31143c2-54e2-49b1-8961-137e53b5115d" />
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/3644a3e8-e2c9-4be0-8a7d-5eea9742c90b" />
 
 ### Generate Text
 
@@ -155,6 +159,8 @@ gpt2 generate \
   --prompt "Every effort moves you"
 ```
 
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/73a57cf0-c53f-46cf-a096-9c9bcfe3b455" />
+
 ### Fine-tune for Classification
 
 ```bash
@@ -164,6 +170,8 @@ gpt2 finetune classification \
   --n-epochs 5 \
   --model-save-path classifier.pth
 ```
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/9923ccb6-ce8f-49b0-8cb5-d5ed6ae2de34" />
 
 #### Classify Text to Spam or Ham
 
@@ -183,6 +191,8 @@ gpt2 spam-ham \
   --model-path classifier.pth
 ```
 
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/6e80d1ce-197d-469e-8759-4f335a186ade" />
+
 ### Fine-tune for Instruction Following
 
 ```bash
@@ -194,12 +204,16 @@ gpt2 finetune instruction \
   --evaluate
 ```
 
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/57f3d764-936a-40f1-8a5f-4c45731fba68" />
+
 #### Chat with an Assistant
 
 ```bash
 gpt2 chat \
   --model-path assistant.pth
 ```
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/e5378bf3-1019-411b-814c-b92996db5bda" />
 
 ### Fine-tune for Code Generation
 
@@ -208,7 +222,7 @@ gpt2 finetune coding \
   --pretrained-model-path pretrained.pth \
   --dataset-path dataset/python_code_instructions/ \
   --max-samples 100 \
-  --batch_size 4 \
+  --batch-size 4 \
   --n-epochs 1 \
   --model-save-path coder.pth \
   --test-output-path responses.json \
@@ -217,12 +231,17 @@ gpt2 finetune coding \
 
 - **Note:** The use of `--max-samples 100` is to limit dataset size for test speed
 
+<img width="1001" height="565" alt="image" src="https://github.com/user-attachments/assets/6a9dbbc9-009c-4160-82be-3d6ad398f809" />
+
 ### Interactive Coding Session
 
 ```bash
 gpt2 coder \
-  --model-path coder.pth
+  --model-path coder.pth \
+  --device mps  # Works much faster if available
 ```
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/0c274c88-de75-444e-8567-83921b51258d" />
 
 
 ## Project Structure
@@ -375,14 +394,14 @@ Run the comprehensive test suite:
 
 ```bash
 # Run all tests with terminal outputs
-pytest -s tests/ -v
+pytest -s tests/
 
 # Run specific test file
-pytest tests/test_pretrain_cli.py -v
-pytest tests/test_generate_cli.py -v
-pytest tests/test_classifier_cli.py -v
-pytest tests/test_assistant_cli.py -v
-pytest tests/test_coder_cli.py -v
+pytest tests/test_pretraining.py
+pytest tests/test_generation.py
+pytest tests/test_class_finetuning.py
+pytest tests/test_instruction_finetuning.py
+pytest tests/test_code_finetuning.py
 
 ```
 
