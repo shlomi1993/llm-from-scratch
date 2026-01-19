@@ -33,6 +33,7 @@ llm-from-scratch-venv/
 
 # Models
 models/
+_models/
 
 # Log files
 *.log
