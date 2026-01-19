@@ -149,6 +149,9 @@ gpt2 pretrain \
   --start-context "Every effort moves you"
 ```
 
+#### Example:
+<img width="1436" height="466" alt="image" src="https://github.com/user-attachments/assets/c31143c2-54e2-49b1-8961-137e53b5115d" />
+
 ### Generate Text
 
 ```bash
