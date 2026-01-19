@@ -13,6 +13,7 @@ class InteractiveSession(ABC):
     """
     Abstract base class for interactive sessions with language models.
     """
+    EXIT_COMMANDS = ["/bye", "/exit", "/quit", "q!"]
 
     def __init__(self, model_path: str, max_new_tokens: int = None, temperature: float = 0.0,
                  top_k: int = None, device_type: str = "auto", seed: int = 123) -> None:
@@ -92,7 +93,7 @@ class InteractiveSession(ABC):
                 if not user_input:
                     continue
 
-                if user_input.lower() == "/bye":
+                if user_input.lower() in self.EXIT_COMMANDS:
                     print("Goodbye!")
                     break
 
