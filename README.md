@@ -35,13 +35,20 @@ cd llm-from-scratch
 2. Install and activate the environment:
 
 **Option A: Automated Setup (Recommended)**
+
 ```bash
 # Run the installation script
 ./install.sh
+```
 
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/4a25c9f7-92cb-4ccc-b092-ab58db92fd7e" />
+
+```bash
 # Activate the environment
 source activate.sh
 ```
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/2410bf77-1306-4cdc-bed4-61dd09ea6a1d" />
 
 **Option B: Manual Setup**
 ```bash
@@ -57,43 +64,9 @@ pip install -e .
 
 The `gpt2` command is now available in your environment!
 
-## CLI Reference
-
-The `gpt2` command provides access to all functionality:
-
-```
-gpt2 <command> [options]
-
-Commands:
-    download    Download GPT2 model files
-    pretrain    Train a GPT2 foundation model from scratch
-    generate    Generate text using a pre-trained GPT2 model
-    finetune    Fine-tune a pre-trained GPT2 model for downstream tasks
-    spam-ham    Classify text as spam or ham using a fine-tuned classification model
-    chat        Chat with an instruction fine-tuned assistant model
-    coder       Get coding assistance from a fine-tuned coder model
-```
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/d564c2aa-d021-486b-ab0e-ed654246aed7" />
 
 For each command, use `--help` to see additional arguments, options and flags. There are many options and flags, but most of them have default values!
-
-### Command Tree
-
-```
-gpt2
-├── download
-├── pretrain
-├── generate
-│   ├── non-interactive   # pass --prompt
-│   └── interactive       # don't pass --prompt
-├── finetune
-│   ├── classification    # classification finetuning
-│   ├── instruction       # instruction finetuning
-│   ├── instruction-adv   # advanced instruction finetuning (not tested!)
-│   └── code-instruction  # code instruction finetuning
-├── spam-ham
-├── chat
-└── coder
-```
 
 ## Quick Start
 
