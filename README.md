@@ -42,16 +42,10 @@ A comprehensive implementation of GPT-2 language models built from the ground up
     ```bash
     # Run the installation script
     ./install.sh
-    ```
 
-    <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/4a25c9f7-92cb-4ccc-b092-ab58db92fd7e" />
-
-    ```bash
     # Activate the environment
     source activate.sh
     ```
-
-    <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/2410bf77-1306-4cdc-bed4-61dd09ea6a1d" />
 
     **Option B: Manual Setup**
 
@@ -69,7 +63,6 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 3. The `gpt2` command is now available in your environment!
 
     <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/d564c2aa-d021-486b-ab0e-ed654246aed7" />
-
 For each command, use `--help` to see additional arguments, options and flags. There are many options and flags, but most of them have default values!
 
 
@@ -85,7 +78,6 @@ gpt2 download \
 ```
 
 <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/473606da-36b8-4922-8e60-b6caecbb1894" />
-
 
 This script downloads the selected official pre-trained models in TensorFlow format and converts them to PyTorch format.  
 To download custom pre-trained or fine-tuned models, check the following section.
@@ -408,21 +400,21 @@ pytest tests/test_code_finetuning.py
 
 ## Troubleshooting
 
-### Out of Memory (OOM)
+#### Out of Memory (OOM)
 
 - Reduce `--batch-size` to 1 or 2
 - Use smaller model (124M instead of 355M/774M)
 - Switch to CPU: `--device cpu`
 - Close other applications
 
-### NaN Losses
+#### NaN Losses
 
 - Lower learning rate: `--lr 5e-5` or `--lr 1e-5`
 - Check data format and quality
 - Reduce batch size
 - Ensure proper data normalization
 
-### Slow Training
+#### Slow Training
 
 - Use GPU if available: `--device cuda` or `--device mps`
 - Increase batch size (if memory allows)
