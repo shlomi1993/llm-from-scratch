@@ -177,7 +177,7 @@ gpt2 generate \
 gpt2 generate \
   --model-path pretrained.pth \
   --prompt "Every effort moves you" \
-  ----measure-time \
+  --measure-time \
   --measure-memory
 ```
 
