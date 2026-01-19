@@ -176,7 +176,7 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
                 generate_and_print_sample(model, device, start_context, max_new_tokens)
 
     except KeyboardInterrupt:
-        g_logger.info("Training interrupted by user. Returning current model state...")
+        g_logger.warning("Training interrupted by user. Returning current model state...")
 
     return TrainingResults(model=model, train_losses=train_losses, val_losses=val_losses, tokens_seen=tokens_seen)
 

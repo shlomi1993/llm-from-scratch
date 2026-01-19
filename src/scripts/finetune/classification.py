@@ -231,7 +231,7 @@ def finetune_classifier(model: GptModel, train_loader: DataLoader, val_loader: D
             g_logger.info(progress_msg)
 
     except KeyboardInterrupt:
-        g_logger.info("Fine-tuning interrupted by user. Returning current model state...")
+        g_logger.warning("Fine-tuning interrupted by user. Returning current model state...")
 
     return ClassificationFineTuningResults(model, train_losses, val_losses, train_accs, val_accs, example_count)
 
@@ -263,7 +263,7 @@ def evaluate_finetuned_model(model: GptModel, train_loader: DataLoader, val_load
         g_logger.info(f"  Validation: loss = {val_loss:.3f}, accuracy = {val_accuracy * 100:.2f}%")
         g_logger.info(f"  Test:       loss = {test_loss:.3f}, accuracy = {test_accuracy * 100:.2f}%")
     except KeyboardInterrupt:
-        g_logger.info("Evaluation interrupted by user")
+        g_logger.warning("Evaluation interrupted by user")
 
 
 def run_classification_finetuning_flow(pretrained_model_path: str, tuning_set_path: str, sep="\t",
