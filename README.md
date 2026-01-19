@@ -2,6 +2,32 @@
 
 A comprehensive implementation of GPT-2 language models built from the ground up, featuring pre-training, fine-tuning, and interactive applications. This project is based on the excellent work in [rasbt/LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) and provides a complete CLI interface for working with transformer-based language models.
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Usage Walkthrough](#usage-walkthrough)
+  - [Download "Formal" Pre-trained Models](#download-formal-pre-trained-models)
+  - [Download Custom Fine-tuned Models](#download-custom-fine-tuned-models)
+  - [Pre-train a Foundation Model](#pre-train-a-foundation-model)
+  - [Generate Text](#generate-text)
+  - [Fine-tune for Classification](#fine-tune-for-classification)
+  - [Fine-tune for Instruction Following](#fine-tune-for-instruction-following)
+  - [Fine-tune for Code Generation](#fine-tune-for-code-generation)
+  - [Interactive Coding Session](#interactive-coding-session)
+- [Project Structure](#project-structure)
+- [Training Tips](#training-tips)
+  - [Memory Optimization](#memory-optimization)
+  - [Hyperparameter Tuning](#hyperparameter-tuning)
+  - [Best Practices](#best-practices)
+- [Dataset Format](#dataset-format)
+  - [Classification Data (TSV/CSV)](#classification-data-tsvcsv)
+  - [Instruction Data (JSON)](#instruction-data-json)
+  - [Coding Instruction Data (JSON)](#coding-instruction-data-json)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 ## Features
 
