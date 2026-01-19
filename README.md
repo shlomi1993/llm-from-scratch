@@ -24,7 +24,9 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 - 8GB+ RAM (16GB+ recommended for larger models)
 - CUDA GPU (optional, for faster training)
 
+  
 > The project was implemented and tested on the Apple ecosystem (MacBook Pro 16 2022).
+  
 
 ### Setup
 
@@ -37,15 +39,23 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 2. Install and activate the environment:
 
     **Option A: Automated Setup (Recommended)**
+
     ```bash
     # Run the installation script
     ./install.sh
+    ```
 
+    <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/4a25c9f7-92cb-4ccc-b092-ab58db92fd7e" />
+
+    ```bash
     # Activate the environment
     source activate.sh
     ```
 
+    <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/2410bf77-1306-4cdc-bed4-61dd09ea6a1d" />
+
     **Option B: Manual Setup**
+
     ```bash
     # Create virtual environment
     python -m venv llm-from-scratch-venv
@@ -60,29 +70,9 @@ A comprehensive implementation of GPT-2 language models built from the ground up
 3. The `gpt2` command is now available in your environment!
 
 
-## CLI Reference
-
-The `gpt2` command provides access to all functionality:
-
-```
-gpt2 <command> [subcommand] [options]
-
-Commands:
-    download                Download formal GPT2 model files
-    pretrain                Train a GPT2 foundation model from scratch
-    generate                Generate text using a pre-trained GPT2 model (interactive option available)
-    finetune                Fine-tune a pre-trained GPT2 model for downstream tasks
-     ├── classification     spam classification finetuning
-     ├── instruction        instruction finetuning
-     ├── instruction-adv    advanced instruction finetuning (not tested!)
-     └── code-instruction   code instruction finetuning
-    spam-ham                Classify text as spam or ham using a fine-tuned classification model (interactive option available)
-    chat                    Chat with an instruction fine-tuned assistant model (interactive option available)
-    coder                   Get coding assistance from a fine-tuned coder model (interactive option available)
-```
+    <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/d564c2aa-d021-486b-ab0e-ed654246aed7" />
 
 For each command, use `--help` to see additional arguments, options and flags. There are many options and flags, but most of them have default values!
-
 
 ## Quick Start
 
