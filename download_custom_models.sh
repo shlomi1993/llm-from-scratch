@@ -22,7 +22,7 @@ MODEL_FILENAMES=("foundation.zip" "spam_classifier.zip" "assistant.zip" "coder.z
 MODEL_SUBDIRS=("pretrained" "classifier" "assistant" "coder")
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}LLM Model Downloader${NC}"
+echo -e "${GREEN}Custom Models Downloader${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "Target directory: ${TARGET_DIR}"
 echo ""
