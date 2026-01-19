@@ -457,6 +457,7 @@ This project is based on [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-
 
 ## Acknowledgments
 
-- Sebastian Raschka for the excellent [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) book and repository
+- Prof. Elishai Ezra Tsur and PhD Idan Alter from the Open University of Israel for their guidance in the Natural Language Applications course
+- PhD Sebastian Raschka for the excellent [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) book and repository
 - OpenAI for the GPT-2 architecture and pre-trained models
 - The PyTorch team for the excellent deep learning framework
