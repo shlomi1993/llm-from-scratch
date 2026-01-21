@@ -264,7 +264,8 @@ class AlpacaCodeDataset(Dataset):
     """
     A PyTorch Dataset class for the Alpaca Python coding instruction dataset.
     """
-    RESPONSE_SEPARATOR = "### Output:\n"  # Maybe "\n### Response:\n" is better?
+    RESPONSE_SEPARATOR = "\n### Response:\n"
+    # NOTE: Use 'Response' instead of 'Output' as in the dataset, because the pretrained model was trained with 'Response'
 
     def __init__(self, data_path: str, max_length: int = 1024, max_samples: int = None) -> None:
         """
@@ -301,12 +302,12 @@ class AlpacaCodeDataset(Dataset):
         Returns:
             str: The formatted input prompt string ready for generation.
         """
-        instruction = f"{entry['instruction']}\nInput: {entry['input']}" if entry.get('input') else entry['instruction']
-        prompt_builder = [
-            "Below is an instruction that describes a task. Write a response that appropriately completes the request.",
-            f"### Instruction:\n{instruction}",
-            AlpacaCodeDataset.RESPONSE_SEPARATOR
-        ]
+        prompt_builder = []
+        # prompt_builder.append("Below is an instruction that describes a task. Write a response that appropriately completes the request.",)  # Optional system prompt
+        prompt_builder.append(f"### Instruction:\n{entry['instruction']}")
+        if entry.get('input'):
+            prompt_builder.append(f"### Input:\n{entry['input']}")
+        prompt_builder.append(f"{AlpacaCodeDataset.RESPONSE_SEPARATOR}")
         return '\n\n'.join(prompt_builder)
 
     def __getitem__(self, idx: int) -> Tensor:
@@ -323,6 +324,7 @@ class AlpacaCodeDataset(Dataset):
         text = self.format_input(entry) + entry['output'] + EOT_TOK
         token_ids = g_tokenizer.encode(text, allowed_special={EOT_TOK})
         if len(token_ids) > self.max_length:
+            # token_ids = token_ids[:self.max_length]  # Backup truncation strategy
             sep = token_ids.index(EOT_IDX) if EOT_IDX in token_ids else self.max_length - 1
             token_ids = token_ids[:sep] + [EOT_IDX]  # Truncate and ensure EOT at end
         return tensor(token_ids, dtype=long)  # Return raw tensor, let the collate function handle padding/masking
