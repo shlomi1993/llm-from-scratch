@@ -45,18 +45,19 @@ def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = E
     sep_tensor = torch.tensor(sep_ids, device=device)
 
     inputs_lst, targets_lst = [], []
-    for item in batch_lists:
+    for idx in batch_lists:
+        idx_size = len(idx)
+
         # Pad sequence
-        padded = item + [pad_token_id] * (batch_max_length - len(item))
+        padded = idx + [pad_token_id] * (batch_max_length - idx_size)
 
         # Create Inputs (0..N-1) and Targets (1..N)
         inputs = torch.tensor(padded[:-1], device=device)
         targets = torch.tensor(padded[1:], device=device)
 
-        # Mask Padding in Targets
-        mask_pad = targets == pad_token_id
-        if mask_pad.any():
-            targets[mask_pad] = ignore_index
+        # Mask padding EOTs in targets while leaving the real one
+        if idx_size < len(targets):
+            targets[idx_size:] = ignore_index
 
         # Mask instruction part in Targets
         windows = inputs.unfold(0, sep_len, 1)

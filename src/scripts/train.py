@@ -114,7 +114,7 @@ def generate_and_print_sample(model: GptModel, device: Device, start_context: st
 
 def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoader, optimizer: Optimizer, device: Device,
                 n_epochs: int, eval_freq: int = 50, eval_iter: int = 5, start_context: str = None,
-                max_new_tokens: int = 50) -> TrainingResults:
+                max_new_tokens: int = 50, checkpoint_freq: int = None, checkpoint_path_prefix: str = None) -> TrainingResults:
     """
     Train the GPT model.
 
@@ -136,6 +136,8 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
         eval_iter (int): The number of batches to use for evaluation. Default is 5.
         start_context (str, optional): The starting context for sample generation after each epoch. Defaults to None.
         max_new_tokens (int): The number of new tokens to generate for the sample text. Default is 50.
+        checkpoint_freq (int, optional): The frequency (in steps) to save model checkpoints. Defaults to None (no checkpointing).
+        checkpoint_path_prefix (str, optional): The prefix for checkpoint file paths. Defaults to None.
 
     Returns:
         TrainingResults: The results of the training process.
@@ -171,6 +173,12 @@ def train_model(model: GptModel, train_loader: DataLoader, val_loader: DataLoade
                     progress_msg = format_training_progress(epoch, n_epochs, global_step, total_batches, train_loss, val_loss)
                     g_logger.info(progress_msg)
 
+                # Optional checkpoint step
+                if checkpoint_freq is not None and checkpoint_path_prefix is not None and global_step % checkpoint_freq == 0:
+                    checkpoint_path = f"{checkpoint_path_prefix}_step_{global_step}.pth"
+                    save_model(model, checkpoint_path, optimizer)
+                    g_logger.info(f"Saved checkpoint to {checkpoint_path}")
+
             # Print a sample text after each epoch, if requested
             if start_context is not None:
                 generate_and_print_sample(model, device, start_context, max_new_tokens)
@@ -186,7 +194,7 @@ def run_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-
                       device_type: str = "auto", seed: int = 123, max_length: int = None, stride: int = None,
                       train_ratio: float = 0.9, eval_freq: int = 5, eval_iter: int = 1,
                       start_context: str = "Every effort moves you", saved_model_path: str = "model.pth",
-                      saved_plot_path: str = None) -> TrainingResults:
+                      saved_plot_path: str = None, checkpoint_freq: int = None, checkpoint_path_prefix: str = None) -> TrainingResults:
     """
     Run the full training flow for the GPT model.
 
@@ -208,6 +216,8 @@ def run_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-
         start_context (str): The starting context for sample generation. Default is "Every effort moves you".
         saved_model_path (str): The path to save the trained model. Default is "model.pth".
         saved_plot_path (str, optional): The path to save the loss plot. Defaults to None, which skips saving the plot.
+        checkpoint_freq (int, optional): The frequency (in steps) to save model checkpoints. Defaults to None (no checkpointing).
+        checkpoint_path_prefix (str, optional): The prefix for checkpoint file paths. Defaults to None.
 
     Returns:
         TrainingResults: The results of the training process.
@@ -238,7 +248,8 @@ def run_training_flow(config: GptConfig, training_set_path: str, lr: float = 5e-
 
     g_logger.info(f"Training for {n_epochs} epochs...")
     training_results = train_model(
-        model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context
+        model, train_loader, val_loader, optimizer, device, n_epochs, eval_freq, eval_iter, start_context,
+        max_new_tokens=50, checkpoint_freq=checkpoint_freq, checkpoint_path_prefix=checkpoint_path_prefix
     )
     g_logger.info("Training completed.")
 
@@ -277,6 +288,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--start-context", type=str, default=None, help="Starting context for sample generation.")
     parser.add_argument("--saved-model-path", type=str, default="model.pth", help="Path to save the trained model.")
     parser.add_argument("--saved-plot-path", type=str, default=None, help="Path to save the loss plot.")
+    parser.add_argument("--checkpoint-freq", type=int, default=None, help="Frequency (in steps) to save model checkpoints. Disabled if not set.")
+    parser.add_argument("--checkpoint-path-prefix", type=str, default=None, help="Prefix for checkpoint file paths (e.g., 'checkpoints/model').")
 
 
 def main() -> None:
@@ -319,8 +332,9 @@ def main() -> None:
         eval_iter=args.eval_iter,
         start_context=args.start_context,
         saved_model_path=args.saved_model_path,
-        make_plot=args.make_plot,
-        saved_plot_path=args.saved_plot_path
+        saved_plot_path=args.saved_plot_path,
+        checkpoint_freq=args.checkpoint_freq,
+        checkpoint_path_prefix=args.checkpoint_path_prefix
     )
 
 

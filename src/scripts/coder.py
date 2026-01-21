@@ -58,8 +58,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     """
     parser.add_argument("--model-path", type=str, default="coder.pth", help="Path to the finetuned coder model")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="Maximum code tokens to generate")
-    parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature for generation. If not set, uses model default.")
-    parser.add_argument("--top-k", type=int, default=None, help="Top-K sampling parameter. If not set, uses model default.")
+    parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature for generation. Use 0.0 for deterministic code generation.")
+    parser.add_argument("--top-k", type=int, default=None, help="Top-K sampling parameter. None uses greedy decoding.")
     parser.add_argument("--device", type=str, choices=["cpu", "cuda", "mps", "auto"], default="cpu", help="Device to use for inference.")
     parser.add_argument("--seed", type=int, default=123, help="Random seed for reproducibility")
 
