@@ -138,7 +138,7 @@ Alternatively, download models individually from Google Drive:
 - **Assistant Model:** Fine-tuned for instruction-following and chat, based on the official 355M GPT-2 model. Use this for interactive assistant or chatbot applications.
   - [Download assistant.zip](https://drive.google.com/file/d/1qiM0YHdnciGoUaJadnQzL7hDhiLHJ-QZ/view?usp=drive_link)
 - **Coder Model:** Fine-tuned on Python code instruction dataset using the official 355M GPT-2 model. Use this for code generation and interactive coding assistance.
-  - [Download coder.zip](https://drive.google.com/file/d/1PQqUhlMSgsgw46SKr7dnDhPOATG3017k/view?usp=drive_link)
+  - [Download coder.zip](https://drive.google.com/file/d/1ugMFBx8cfDz_q6RJ7G5YHrJhHSLTPFi7/view?usp=drive_link)
 
 ### Pre-train a Foundation Model
 
@@ -260,7 +260,7 @@ gpt2 finetune coding \
 ```bash
 gpt2 coder \
   --model-path coder.pth \
-  --device mps  # Works much faster if available
+  --device mps  # Works much faster that 'cpu' if available
 ```
 
 <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/0c274c88-de75-444e-8567-83921b51258d" />
