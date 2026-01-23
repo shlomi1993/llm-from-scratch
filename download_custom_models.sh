@@ -17,7 +17,7 @@ TARGET_DIR="${1:-models}"
 
 # Model information arrays
 MODEL_NAMES=("foundation" "classifier" "assistant" "coder")
-MODEL_FILE_IDS=("1AZP-AEEm8NJF4wGXkxEF-hxAGBAdShIt" "1ecl-LeMq3fgNBEDjkKzisWp4ube40Jb0" "1qiM0YHdnciGoUaJadnQzL7hDhiLHJ-QZ" "1PQqUhlMSgsgw46SKr7dnDhPOATG3017k")
+MODEL_FILE_IDS=("1AZP-AEEm8NJF4wGXkxEF-hxAGBAdShIt" "1ecl-LeMq3fgNBEDjkKzisWp4ube40Jb0" "1qiM0YHdnciGoUaJadnQzL7hDhiLHJ-QZ" "1ugMFBx8cfDz_q6RJ7G5YHrJhHSLTPFi7")
 MODEL_FILENAMES=("foundation.zip" "spam_classifier.zip" "assistant.zip" "coder.zip")
 MODEL_SUBDIRS=("pretrained" "classifier" "assistant" "coder")
 
