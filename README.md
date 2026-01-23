@@ -1,4 +1,4 @@
-# LLM from Scratch
+<img width="468" height="60" alt="image" src="https://github.com/user-attachments/assets/c7b110f0-54fc-40c3-853a-2f2021ac5991" /># LLM from Scratch
 
 A comprehensive implementation of GPT-2 language models built from the ground up, featuring pre-training, fine-tuning, and interactive applications. This project is based on the excellent work in [rasbt/LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) and provides a complete CLI interface for working with transformer-based language models.
 
@@ -263,7 +263,25 @@ gpt2 coder \
   --device mps  # Works much faster that 'cpu' if available
 ```
 
-<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/0c274c88-de75-444e-8567-83921b51258d" />
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/b24a9f48-f465-4530-bd87-ff5e7377a48b" />
+
+
+ניתן לראות שהמודל מצליח לעקוב אחר הוראות תכנות ולייצר קוד Python תקני ופונקציונלי, ואף מפגין יכולת בסיסית למעקב אחר הוראות שאינן תכנותיות.
+
+לשם השוואה, מודל ה-assistant (עוקב אחר הוראות) ממטלה 2 הורץ גם הוא על אותם קלטים.
+
+Running the assistant model on the same inputs:
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/0d572f2a-ff7e-40c4-a316-e305476b12b9" />
+
+מהתוצאות עולה כי מודל זה, שאומן למעקב אחר הוראות כלליות שאינן תכנותיות, מפגין יכולת נמוכה יותר בביצוע משימות כתיבת קוד.
+
+Running the chat model of the same inputs:
+
+<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/2f40f3ef-0f7f-4622-8a4a-6634035b4c61" />
+
+
+
 
 
 ## Project Structure
