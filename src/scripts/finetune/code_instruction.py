@@ -18,7 +18,6 @@ from src.utils.tokenization.tokenizer import EOT_TOK, EOT_IDX, IGNORE_IDX, g_tok
 from src.utils.visualization import plot_metrics
 
 
-
 def coding_collate_fn(batch: list[Tensor], device: Device, pad_token_id: int = EOT_IDX,
                       ignore_index: int = IGNORE_IDX, max_allowed_length: int = None) -> tuple[Tensor, Tensor]:
     """
