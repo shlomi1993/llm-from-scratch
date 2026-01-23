@@ -265,7 +265,6 @@ class AlpacaCodeDataset(Dataset):
     A PyTorch Dataset class for the Alpaca Python coding instruction dataset.
     """
     RESPONSE_SEPARATOR = "\n### Response:\n"
-    # NOTE: Use 'Response' instead of 'Output' as in the dataset, because the pretrained model was trained with 'Response'
 
     def __init__(self, data_path: str, max_length: int = 1024, max_samples: int = None) -> None:
         """
