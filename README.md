@@ -265,23 +265,13 @@ gpt2 coder \
 
 <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/b24a9f48-f465-4530-bd87-ff5e7377a48b" />
 
+As we can see, the model is able to follow coding instructions to generate valid functional Python code, and even demonstrates a basic ability to follow non-coding instructions as well.
 
-ניתן לראות שהמודל מצליח לעקוב אחר הוראות תכנות ולייצר קוד Python תקני ופונקציונלי, ואף מפגין יכולת בסיסית למעקב אחר הוראות שאינן תכנותיות.
-
-לשם השוואה, מודל ה-assistant (עוקב אחר הוראות) ממטלה 2 הורץ גם הוא על אותם קלטים.
-
-Running the assistant model on the same inputs:
+For comparison, let's run the assistant model (the instruction-finetuned one) on the same inputs.
 
 <img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/0d572f2a-ff7e-40c4-a316-e305476b12b9" />
 
-מהתוצאות עולה כי מודל זה, שאומן למעקב אחר הוראות כלליות שאינן תכנותיות, מפגין יכולת נמוכה יותר בביצוע משימות כתיבת קוד.
-
-Running the chat model of the same inputs:
-
-<img width="1045" height="609" alt="image" src="https://github.com/user-attachments/assets/2f40f3ef-0f7f-4622-8a4a-6634035b4c61" />
-
-
-
+The results show that this model, which was trained to follow general (non-coding) instructions, demonstrates lower ability in performing code-writing tasks.
 
 
 ## Project Structure
