@@ -1,4 +1,4 @@
-<img width="468" height="60" alt="image" src="https://github.com/user-attachments/assets/c7b110f0-54fc-40c3-853a-2f2021ac5991" /># LLM from Scratch
+# LLM from Scratch
 
 A comprehensive implementation of GPT-2 language models built from the ground up, featuring pre-training, fine-tuning, and interactive applications. This project is based on the excellent work in [rasbt/LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) and provides a complete CLI interface for working with transformer-based language models.
 
