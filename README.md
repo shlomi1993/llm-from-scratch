@@ -1,5 +1,10 @@
 # LLM from Scratch
 
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.6%2B-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Transformers](https://img.shields.io/badge/🤗_Transformers-4.33%2B-FFD21E)](https://huggingface.co/docs/transformers/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![GPT-2](https://img.shields.io/badge/Model-GPT--2-412991?logo=openai&logoColor=white)](https://openai.com/index/better-language-models/)
+
 A comprehensive implementation of GPT-2 language models built from the ground up, featuring pre-training, fine-tuning, and interactive applications. This project is based on the excellent work in [rasbt/LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) and provides a complete CLI interface for working with transformer-based language models.
 
 ## Table of Contents
